@@ -1,26 +1,27 @@
-import { AppBar, Box, Container, Toolbar, Typography } from '@mui/material'
+import { Navigate, Route, Routes } from 'react-router-dom'
+import { Layout } from './components/Layout'
+import AddBookingPage from './pages/AddBookingPage'
+import AddPersonPage from './pages/AddPersonPage'
+import AddRoomPage from './pages/AddRoomPage'
+import BookingsPage from './pages/BookingsPage'
+import HomePage from './pages/HomePage'
+import PersonsPage from './pages/PersonsPage'
+import RoomsPage from './pages/RoomsPage'
 
 function App() {
   return (
-    <>
-      <AppBar position="static">
-        <Toolbar>
-          <Typography variant="h6" component="div">
-            Room Booking
-          </Typography>
-        </Toolbar>
-      </AppBar>
-      <Container maxWidth="sm">
-        <Box sx={{ mt: 8, textAlign: 'center' }}>
-          <Typography variant="h3" component="h1" gutterBottom>
-            Hello, world!
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            The room-booking webapp is up and running.
-          </Typography>
-        </Box>
-      </Container>
-    </>
+    <Routes>
+      <Route element={<Layout />}>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/persons" element={<PersonsPage />} />
+        <Route path="/persons/add" element={<AddPersonPage />} />
+        <Route path="/rooms" element={<RoomsPage />} />
+        <Route path="/rooms/add" element={<AddRoomPage />} />
+        <Route path="/bookings" element={<BookingsPage />} />
+        <Route path="/bookings/add" element={<AddBookingPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Route>
+    </Routes>
   )
 }
 

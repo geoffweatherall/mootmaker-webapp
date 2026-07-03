@@ -23,7 +23,9 @@ export type BookingError =
   | 'EndMissaligned'
   | 'InsufficientCapacity'
   | 'TimeRangeUnavailable'
+  | 'RoomRequired'
   | 'RoomNotFound'
+  | 'OrganiserRequired'
   | 'OrganiserNotFound'
   | 'AttendeeNotFound'
 
@@ -37,7 +39,9 @@ export const BOOKING_ERROR_MESSAGES: Record<BookingError, string> = {
   EndMissaligned: 'End time must fall on a 5 minute boundary.',
   InsufficientCapacity: 'The room does not have enough capacity for all attendees.',
   TimeRangeUnavailable: 'The room is already booked during that time range.',
+  RoomRequired: 'Please select a room.',
   RoomNotFound: 'The selected room could not be found.',
+  OrganiserRequired: 'Please select an organiser.',
   OrganiserNotFound: 'The selected organiser could not be found.',
   AttendeeNotFound: 'One or more selected attendees could not be found.',
 }

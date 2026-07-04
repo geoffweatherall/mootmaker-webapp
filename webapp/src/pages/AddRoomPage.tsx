@@ -3,24 +3,43 @@ import { Button, Paper, Stack, TextField, Typography } from '@mui/material'
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ErrorBanner } from '../components/ErrorBanner'
+import { SubmitButton } from '../components/SubmitButton'
 import { errorMessages } from '../graphql/errorMessages'
 import { CREATE_ROOM } from '../graphql/mutations'
-import type { Room } from '../graphql/types'
+import { ROOM_ERROR_MESSAGES } from '../graphql/types'
+import type { CreateRoomResult } from '../graphql/types'
 
 export default function AddRoomPage() {
   const navigate = useNavigate()
   const [name, setName] = useState('')
   const [capacity, setCapacity] = useState('')
-  const [createRoom, { loading, error, reset }] = useMutation<{ createRoom: Room }>(CREATE_ROOM)
+  const [roomErrors, setRoomErrors] = useState<string[]>([])
+  const [createRoom, { loading, error, reset }] = useMutation<{ createRoom: CreateRoomResult }>(
+    CREATE_ROOM,
+  )
+
+  const bannerMessages = [...roomErrors, ...errorMessages(error)]
+
+  function dismissBanner() {
+    setRoomErrors([])
+    reset()
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
+    setRoomErrors([])
 
     const result = await createRoom({
       variables: { room: { name, capacity: Number(capacity) } },
     })
-    if (result.data) {
-      navigate('/rooms', { state: { toast: `${result.data.createRoom.name} was successfully added.` } })
+
+    const payload = result.data?.createRoom
+    if (payload?.errors.length) {
+      setRoomErrors(payload.errors.map((code) => ROOM_ERROR_MESSAGES[code]))
+      return
+    }
+    if (payload?.room) {
+      navigate('/rooms', { state: { toast: `${payload.room.name} was successfully added.` } })
     }
   }
 
@@ -30,7 +49,7 @@ export default function AddRoomPage() {
         Add Room
       </Typography>
 
-      <ErrorBanner messages={errorMessages(error)} onDismiss={reset} />
+      <ErrorBanner messages={bannerMessages} onDismiss={dismissBanner} />
 
       <Paper sx={{ p: 3 }}>
         <Stack component="form" spacing={3} onSubmit={handleSubmit}>
@@ -50,9 +69,7 @@ export default function AddRoomPage() {
             fullWidth
           />
           <Stack direction="row" spacing={2}>
-            <Button type="submit" variant="contained" disabled={loading}>
-              Save
-            </Button>
+            <SubmitButton loading={loading}>Save</SubmitButton>
             <Button variant="outlined" onClick={() => navigate('/rooms')} disabled={loading}>
               Cancel
             </Button>

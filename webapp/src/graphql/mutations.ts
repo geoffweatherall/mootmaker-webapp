@@ -12,9 +12,12 @@ export const CREATE_PERSON = gql`
 export const CREATE_ROOM = gql`
   mutation CreateRoom($room: RoomInput!) {
     createRoom(room: $room) {
-      id
-      name
-      capacity
+      room {
+        id
+        name
+        capacity
+      }
+      errors
     }
   }
 `

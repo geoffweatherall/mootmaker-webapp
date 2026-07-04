@@ -18,6 +18,7 @@ import {
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ErrorBanner } from '../components/ErrorBanner'
+import { SubmitButton } from '../components/SubmitButton'
 import { errorMessages } from '../graphql/errorMessages'
 import { CREATE_BOOKING } from '../graphql/mutations'
 import { LIST_PEOPLE, LIST_ROOMS } from '../graphql/queries'
@@ -178,9 +179,7 @@ export default function AddBookingPage() {
             />
 
             <Stack direction="row" spacing={2}>
-              <Button type="submit" variant="contained" disabled={submitting}>
-                Save
-              </Button>
+              <SubmitButton loading={submitting}>Save</SubmitButton>
               <Button variant="outlined" onClick={() => navigate('/bookings')} disabled={submitting}>
                 Cancel
               </Button>

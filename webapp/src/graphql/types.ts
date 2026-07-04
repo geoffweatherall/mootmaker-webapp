@@ -9,6 +9,17 @@ export interface Room {
   capacity: number
 }
 
+export type RoomError = 'NameRequired'
+
+export interface CreateRoomResult {
+  room: Room | null
+  errors: RoomError[]
+}
+
+export const ROOM_ERROR_MESSAGES: Record<RoomError, string> = {
+  NameRequired: 'Name must not be blank.',
+}
+
 export interface Booking {
   id: string
   room: Room

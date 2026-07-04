@@ -3,6 +3,7 @@ import { Button, Paper, Stack, TextField, Typography } from '@mui/material'
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ErrorBanner } from '../components/ErrorBanner'
+import { SubmitButton } from '../components/SubmitButton'
 import { errorMessages } from '../graphql/errorMessages'
 import { CREATE_PERSON } from '../graphql/mutations'
 import type { Person } from '../graphql/types'
@@ -59,9 +60,7 @@ export default function AddPersonPage() {
             fullWidth
           />
           <Stack direction="row" spacing={2}>
-            <Button type="submit" variant="contained" disabled={loading}>
-              Save
-            </Button>
+            <SubmitButton loading={loading}>Save</SubmitButton>
             <Button variant="outlined" onClick={() => navigate('/persons')} disabled={loading}>
               Cancel
             </Button>

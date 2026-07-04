@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   CircularProgress,
+  LinearProgress,
   Paper,
   Stack,
   Table,
@@ -43,6 +44,8 @@ export default function BookingsPage() {
           Add
         </Button>
       </Stack>
+
+      {loading && data && <LinearProgress />}
 
       {!dismissedError && (
         <ErrorBanner messages={errorMessages(error)} onDismiss={() => setDismissedError(true)} />

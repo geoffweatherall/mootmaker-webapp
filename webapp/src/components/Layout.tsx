@@ -12,7 +12,7 @@ const navItems = [
 export function Layout() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
-  const { email, signOut } = useAuth()
+  const { email, displayName, signOut } = useAuth()
 
   function handleSignOut() {
     signOut()
@@ -48,7 +48,7 @@ export function Layout() {
             {email ? (
               <>
                 <Typography variant="body2" sx={{ ml: 2, opacity: 0.8 }}>
-                  {email}
+                  {displayName}
                 </Typography>
                 <Button color="inherit" onClick={handleSignOut}>
                   Sign out

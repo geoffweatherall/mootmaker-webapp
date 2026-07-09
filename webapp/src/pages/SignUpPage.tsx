@@ -7,14 +7,17 @@ import { ErrorBanner } from '../components/ErrorBanner'
 import { SubmitButton } from '../components/SubmitButton'
 
 /**
- * Two-step sign-up: register an email + password, then enter the verification
- * code Cognito emails to that address. On success the user is signed in
- * automatically.
+ * Two-step sign-up: register a name, email + password, then enter the
+ * verification code Cognito emails to that address. On success the user is
+ * signed in automatically. The name is stored as a Cognito user attribute and
+ * used by a PostConfirmation trigger to create a linked Person record once
+ * the email is confirmed.
  */
 export default function SignUpPage() {
   const navigate = useNavigate()
   const { signIn } = useAuth()
   const [step, setStep] = useState<'details' | 'confirm'>('details')
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [code, setCode] = useState('')
@@ -26,7 +29,7 @@ export default function SignUpPage() {
     setLoading(true)
     setError(null)
     try {
-      await signUp(email.trim(), password)
+      await signUp(email.trim(), password, name.trim())
       setStep('confirm')
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Sign up failed.')
@@ -61,12 +64,20 @@ export default function SignUpPage() {
         <Paper sx={{ p: 3 }}>
           <Stack component="form" spacing={3} onSubmit={handleDetailsSubmit}>
             <TextField
+              label="Name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              autoComplete="name"
+              autoFocus
+              required
+              fullWidth
+            />
+            <TextField
               label="Email"
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               autoComplete="email"
-              autoFocus
               required
               fullWidth
             />

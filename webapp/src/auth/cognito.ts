@@ -39,6 +39,12 @@ export async function currentUserEmail(): Promise<string | null> {
   return (session?.getIdToken().payload.email as string | undefined) ?? null
 }
 
+/** The signed-in user's name, or null if unset (e.g. accounts created before sign-up collected it). */
+export async function currentUserName(): Promise<string | null> {
+  const session = await currentSession()
+  return (session?.getIdToken().payload.name as string | undefined) ?? null
+}
+
 export function signIn(email: string, password: string): Promise<void> {
   const user = new CognitoUser({ Username: email, Pool: userPool })
   return new Promise((resolve, reject) => {
@@ -51,12 +57,15 @@ export function signIn(email: string, password: string): Promise<void> {
   })
 }
 
-export function signUp(email: string, password: string): Promise<void> {
+export function signUp(email: string, password: string, name: string): Promise<void> {
   return new Promise((resolve, reject) => {
     userPool.signUp(
       email,
       password,
-      [new CognitoUserAttribute({ Name: 'email', Value: email })],
+      [
+        new CognitoUserAttribute({ Name: 'email', Value: email }),
+        new CognitoUserAttribute({ Name: 'name', Value: name }),
+      ],
       [],
       (error) => (error ? reject(error) : resolve()),
     )

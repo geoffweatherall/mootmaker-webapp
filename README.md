@@ -8,7 +8,7 @@ A single-page web application for the [room-booking-api](https://github.com/geof
 
 This checkout expects the `room-booking-api` project to be a **sibling directory** — the deploy script reads the API's URL and Cognito settings from its Terraform outputs.
 
-Users must **sign in** (or sign up) with an email address and password before they can see any page other than the home page; see [Authentication](#authentication).
+Users must **sign in** (or sign up) with an email address and password before they can see any page other than the home page; see [Authentication](#authentication). Signing up also collects the user's name, which the API uses to automatically create a linked Person record once the account is confirmed (see the [room-booking-api README](https://github.com/geoffweatherall/room-booking-api#sign-up-creates-a-linked-person)) — so a new user doesn't need the "Add Person" page just to book something as themselves.
 
 ## Directory structure
 
@@ -53,8 +53,9 @@ The browser calls the AppSync GraphQL endpoint directly via Apollo Client. Every
 
 Authentication is an **Amazon Cognito user pool** owned by the API project (see the [API README](../room-booking-api/README.md)); this app uses the pool's public `room-booking-webapp` app client via `amazon-cognito-identity-js`.
 
-- **Sign up** ([SignUpPage](webapp/src/pages/SignUpPage.tsx)) is two steps: register an email + password (at least 8 characters with upper/lower case, a number and a symbol), then enter the verification code Cognito emails. On confirmation the user is signed in automatically.
+- **Sign up** ([SignUpPage](webapp/src/pages/SignUpPage.tsx)) is two steps: register a name, email + password (at least 8 characters with upper/lower case, a number and a symbol), then enter the verification code Cognito emails. The name is sent to Cognito as the standard `name` user attribute. On confirmation the user is signed in automatically, and the API's PostConfirmation trigger creates a Person record for them in the background.
 - **Sign in** ([SignInPage](webapp/src/pages/SignInPage.tsx)) authenticates with SRP (the password never leaves the browser in plain form). Tokens are cached in `localStorage` and refreshed transparently, so sessions survive page reloads.
+- **Signed-in display name** ([AuthProvider](webapp/src/auth/AuthProvider.tsx)): the toolbar shows the caller's own `Person.name` (fetched via the API's `myPerson` query, which resolves it server-side from the JWT's `sub` claim), not the JWT's own `name` claim — the Person record is the single source of truth a future "change my name" feature would update, so reading it live avoids the two ever drifting apart. Falls back to the Cognito `name`/email attributes (read straight from the ID token, no round trip) until that query resolves, and permanently for accounts with no linked Person (e.g. the e2e test user).
 - **Forgot password** ([ForgotPasswordPage](webapp/src/pages/ForgotPasswordPage.tsx), linked from the sign-in form) is two steps: request a verification code for an email address, then enter the emailed code with a new password. On success the user is signed in with the new password automatically. Cognito's *prevent user existence errors* setting is enabled, so requesting a code for an unknown address behaves exactly like a real one — the form never reveals whether an account exists.
 - **Route guarding**: only the home page and the two auth forms are public. [RequireAuth](webapp/src/components/RequireAuth.tsx) redirects signed-out visitors of any other route to `/signin`, remembering where they were heading and returning them there after sign-in.
 - **App bar**: shows the signed-in user's email and a Sign out button (or a Sign in link). Signing out clears the Cognito session and the Apollo cache.

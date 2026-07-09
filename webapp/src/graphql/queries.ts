@@ -9,6 +9,15 @@ export const LIST_PEOPLE = gql`
   }
 `
 
+export const MY_PERSON = gql`
+  query MyPerson {
+    myPerson {
+      id
+      name
+    }
+  }
+`
+
 export const LIST_ROOMS = gql`
   query ListRooms {
     rooms {

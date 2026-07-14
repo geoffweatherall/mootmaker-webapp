@@ -27,6 +27,7 @@ export const CREATE_BOOKING = gql`
     createBooking(booking: $booking) {
       booking {
         id
+        subject
         startTime
         endTime
         room {

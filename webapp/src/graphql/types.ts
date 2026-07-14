@@ -26,6 +26,7 @@ export interface Booking {
   room: Room
   organiser: Person
   attendees: Person[]
+  subject: string
   startTime: string
   endTime: string
 }
@@ -40,6 +41,7 @@ export type BookingError =
   | 'OrganiserRequired'
   | 'OrganiserNotFound'
   | 'AttendeeNotFound'
+  | 'SubjectRequired'
 
 export interface CreateBookingResult {
   booking: Booking | null
@@ -56,4 +58,5 @@ export const BOOKING_ERROR_MESSAGES: Record<BookingError, string> = {
   OrganiserRequired: 'Please select an organiser.',
   OrganiserNotFound: 'The selected organiser could not be found.',
   AttendeeNotFound: 'One or more selected attendees could not be found.',
+  SubjectRequired: 'Please enter a subject.',
 }

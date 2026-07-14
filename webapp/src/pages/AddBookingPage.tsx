@@ -12,6 +12,7 @@ import {
   Select,
   type SelectChangeEvent,
   Stack,
+  TextField,
   Typography,
 } from '@mui/material'
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'
@@ -58,6 +59,7 @@ export default function AddBookingPage() {
     error: peopleError,
   } = useQuery<{ people: Person[] }>(LIST_PEOPLE)
 
+  const [subject, setSubject] = useState('')
   const [roomId, setRoomId] = useState('')
   const [organiserId, setOrganiserId] = useState('')
   const [attendeeIds, setAttendeeIds] = useState<string[]>([])
@@ -96,6 +98,7 @@ export default function AddBookingPage() {
     const result = await createBooking({
       variables: {
         booking: {
+          subject,
           roomId,
           organiserId,
           attendeeIds,
@@ -132,6 +135,14 @@ export default function AddBookingPage() {
           </Stack>
         ) : (
           <Stack component="form" spacing={3} onSubmit={handleSubmit}>
+            <TextField
+              label="Subject"
+              value={subject}
+              onChange={(event) => setSubject(event.target.value)}
+              autoFocus
+              fullWidth
+            />
+
             <FormControl fullWidth>
               <InputLabel id="room-label">Room</InputLabel>
               <Select

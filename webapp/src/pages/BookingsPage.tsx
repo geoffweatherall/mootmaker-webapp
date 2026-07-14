@@ -62,6 +62,7 @@ export default function BookingsPage() {
           <Table>
             <TableHead>
               <TableRow>
+                <TableCell>Subject</TableCell>
                 <TableCell>Room</TableCell>
                 <TableCell>Organiser</TableCell>
                 <TableCell>Attendees</TableCell>
@@ -72,6 +73,7 @@ export default function BookingsPage() {
             <TableBody>
               {bookings.map((booking) => (
                 <TableRow key={booking.id}>
+                  <TableCell>{booking.subject}</TableCell>
                   <TableCell>{booking.room.name}</TableCell>
                   <TableCell>{booking.organiser.name}</TableCell>
                   <TableCell>{booking.attendees.map((a) => a.name).join(', ') || '—'}</TableCell>

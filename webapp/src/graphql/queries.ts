@@ -32,6 +32,7 @@ export const LIST_BOOKINGS = gql`
   query ListBookings {
     bookings {
       id
+      subject
       startTime
       endTime
       room {

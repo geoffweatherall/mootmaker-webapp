@@ -27,8 +27,8 @@ if [[ ! -f "${api_dir}/authenticate.sh" ]]; then
   exit 1
 fi
 
-# Populates GRAPHQL_API_URL and the COGNITO_* variables from the deployed API's
-# Terraform outputs for this same environment.
+# Populates GRAPHQL_API_URL, the COGNITO_* variables, and the DEMO_* demo-user
+# credentials from the deployed API's Terraform outputs for this same environment.
 source "${api_dir}/authenticate.sh" "${environment}"
 
 # Isolates this environment's Terraform provider cache/backend pointer from
@@ -47,6 +47,8 @@ cat > webapp/.env.production <<EOF
 VITE_GRAPHQL_API_URL=${GRAPHQL_API_URL}
 VITE_COGNITO_USER_POOL_ID=${COGNITO_USER_POOL_ID}
 VITE_COGNITO_CLIENT_ID=${COGNITO_WEBAPP_CLIENT_ID}
+VITE_DEMO_USER_EMAIL=${DEMO_USER_EMAIL}
+VITE_DEMO_USER_PASSWORD=${DEMO_USER_PASSWORD}
 EOF
 
 npm --prefix webapp install

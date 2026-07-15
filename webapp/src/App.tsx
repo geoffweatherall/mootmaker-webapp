@@ -2,13 +2,12 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { RequireAuth } from './components/RequireAuth'
 import AddBookingPage from './pages/AddBookingPage'
-import AddPersonPage from './pages/AddPersonPage'
 import AddRoomPage from './pages/AddRoomPage'
-import BookingsPage from './pages/BookingsPage'
+import BookingDetailsPage from './pages/BookingDetailsPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import HomePage from './pages/HomePage'
-import PersonsPage from './pages/PersonsPage'
-import RoomsPage from './pages/RoomsPage'
+import PersonCalendarPage from './pages/PersonCalendarPage'
+import RoomAvailabilityPage from './pages/RoomAvailabilityPage'
 import SignInPage from './pages/SignInPage'
 import SignUpPage from './pages/SignUpPage'
 
@@ -23,12 +22,11 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         {/* Everything else requires a signed-in user. */}
         <Route element={<RequireAuth />}>
-          <Route path="/persons" element={<PersonsPage />} />
-          <Route path="/persons/add" element={<AddPersonPage />} />
-          <Route path="/rooms" element={<RoomsPage />} />
+          <Route path="/persons/:personId/calendar" element={<PersonCalendarPage />} />
           <Route path="/rooms/add" element={<AddRoomPage />} />
-          <Route path="/bookings" element={<BookingsPage />} />
+          <Route path="/rooms/:date/availability" element={<RoomAvailabilityPage />} />
           <Route path="/bookings/add" element={<AddBookingPage />} />
+          <Route path="/bookings/:bookingId" element={<BookingDetailsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

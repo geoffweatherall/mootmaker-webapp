@@ -1,14 +1,5 @@
 import { gql } from '@apollo/client'
 
-export const CREATE_PERSON = gql`
-  mutation CreatePerson($person: PersonInput!) {
-    createPerson(person: $person) {
-      id
-      name
-    }
-  }
-`
-
 export const CREATE_ROOM = gql`
   mutation CreateRoom($room: RoomInput!) {
     createRoom(room: $room) {

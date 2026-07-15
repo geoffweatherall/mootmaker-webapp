@@ -107,7 +107,7 @@ export default function ForgotPasswordPage() {
               value={newPassword}
               onChange={(event) => setNewPassword(event.target.value)}
               autoComplete="new-password"
-              helperText="At least 8 characters, with upper and lower case letters, a number and a symbol."
+              helperText="At least 10 characters, with a lowercase letter and a number."
               required
               fullWidth
             />

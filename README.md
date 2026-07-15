@@ -4,20 +4,20 @@ A project that is part of my [Claude Code exploration](https://github.com/geoffw
 
 ## Details
 
-A single-page web application for the [room-booking-api](https://github.com/geoffweatherall/room-booking-api) GraphQL API. It lets users view and add persons, rooms, and bookings. The app is a static build hosted on AWS (S3 + CloudFront) and talks directly to the AppSync GraphQL endpoint from the browser.
+A single-page web application for the [room-booking-api](https://github.com/geoffweatherall/room-booking-api) GraphQL API. It lets users add persons, rooms, and bookings, and browse existing bookings through a daily room-availability view and a per-person calendar view. The app is a static build hosted on AWS (S3 + CloudFront) and talks directly to the AppSync GraphQL endpoint from the browser.
 
 This checkout expects the `room-booking-api` project to be a **sibling directory** — the deploy script reads the API's URL and Cognito settings from its Terraform outputs.
 
-Users must **sign in** (or sign up) with an email address and password before they can see any page other than the home page; see [Authentication](#authentication). Signing up also collects the user's name, which the API uses to automatically create a linked Person record once the account is confirmed (see the [room-booking-api README](https://github.com/geoffweatherall/room-booking-api#sign-up-creates-a-linked-person)) — so a new user doesn't need the "Add Person" page just to book something as themselves.
+Users must **sign in** (or sign up) with an email address and password before they can see any page other than the home page; see [Authentication](#authentication). Signing up also collects the user's name, which the API uses to automatically create a linked Person record once the account is confirmed (see the [room-booking-api README](https://github.com/geoffweatherall/room-booking-api#sign-up-creates-a-linked-person)) — so a new user can book something as themselves without needing to be added as a person first. The webapp no longer has a page for adding a guest person (someone without their own account) directly; the API's `createPerson` mutation still supports it for tooling such as [sample-data-generator](https://github.com/geoffweatherall/room-booking-tools/tree/main/sample-data-generator).
 
 ## Directory structure
 
 | Path | Purpose |
 |---|---|
 | [webapp/](webapp/) | The React application (Vite + TypeScript). All frontend source, tests, and build config live here. |
-| [webapp/src/pages/](webapp/src/pages/) | One component per route — the list pages (`PersonsPage`, `RoomsPage`, `BookingsPage`), the add-forms (`AddPersonPage`, `AddRoomPage`, `AddBookingPage`), the auth forms (`SignInPage`, `SignUpPage`, `ForgotPasswordPage`), and `HomePage`. This is where page-level logic lives. |
+| [webapp/src/pages/](webapp/src/pages/) | One component per route — the calendar-style views (`RoomAvailabilityPage`, `PersonCalendarPage`), booking details (`BookingDetailsPage`), the add-forms (`AddRoomPage`, `AddBookingPage`), the auth forms (`SignInPage`, `SignUpPage`, `ForgotPasswordPage`), and `HomePage`. This is where page-level logic lives. |
 | [webapp/src/auth/](webapp/src/auth/) | Everything Cognito: the promise wrappers around `amazon-cognito-identity-js` ([cognito.ts](webapp/src/auth/cognito.ts)), the React auth context/hook ([authContext.ts](webapp/src/auth/authContext.ts)), and its provider ([AuthProvider.tsx](webapp/src/auth/AuthProvider.tsx)). |
-| [webapp/src/components/](webapp/src/components/) | Shared presentational components used across pages: `Layout` (app bar + nav + sign-in/out), `RequireAuth` (route guard), `ErrorBanner`, `SuccessToast`, `SubmitButton`. |
+| [webapp/src/components/](webapp/src/components/) | Shared presentational components used across pages: `Layout` (app bar + nav + sign-in/out), `RequireAuth` (route guard), `SignInForm` (the sign-in fields + submit logic shared by SignInPage and the signed-out home page), `ErrorBanner`, `SuccessToast`, `SubmitButton`. |
 | [webapp/src/graphql/](webapp/src/graphql/) | Everything about talking to the API: query/mutation documents, TypeScript types mirroring the schema, error-code → message maps, and date formatting. |
 | [webapp/src/hooks/](webapp/src/hooks/) | Shared hooks; currently `useLocationToast`, which shows a one-shot success toast after navigation. |
 | [webapp/tests/](webapp/tests/) | Playwright end-to-end tests. |
@@ -31,7 +31,7 @@ The `src/` layout follows the conventional React "group by file type" pattern (p
 - **React 19** with **TypeScript**, built by **Vite**. Strict-mode SPA, no server-side rendering — everything runs in the browser.
 - **MUI (Material UI) v9** provides the design language: `CssBaseline` and standard components — `AppBar` navigation, `Paper`-wrapped forms and tables, `Alert`/`Snackbar` for feedback. **MUI X Date Pickers** (with **dayjs**) provide the booking time pickers.
 - **Branding**: the theme's palette is built from the [room-booking project's brand tokens](https://github.com/geoffweatherall/room-booking/tree/main/branding) ([theme/tokens.ts](webapp/src/theme/tokens.ts), [theme/theme.ts](webapp/src/theme/theme.ts)), with a light/dark toggle in the app bar ([theme/ThemeModeProvider.tsx](webapp/src/theme/ThemeModeProvider.tsx)) that defaults to the OS's `prefers-color-scheme` and otherwise remembers an explicit choice in `localStorage`. The brand mark (`assets/logo.svg`) appears in the app bar next to the app name, and its `icon.svg` variant is the favicon.
-- **React Router v7** does client-side routing. Routes are declared in [App.tsx](webapp/src/App.tsx): `/`, `/signin`, `/signup` and `/forgot-password` are public; `/persons`, `/persons/add`, `/rooms`, `/rooms/add`, `/bookings` and `/bookings/add` are wrapped in the `RequireAuth` guard; unknown paths redirect to `/`.
+- **React Router v7** does client-side routing. Routes are declared in [App.tsx](webapp/src/App.tsx): `/`, `/signin`, `/signup` and `/forgot-password` are public; `/persons/:personId/calendar`, `/rooms/add`, `/rooms/:date/availability`, `/bookings/add` and `/bookings/:bookingId` are wrapped in the `RequireAuth` guard; unknown paths redirect to `/`. There are no top-level list pages for people, rooms, or bookings, and no page for adding a person — the nav bar's "Availability" and "Calendar" items go straight to `RoomAvailabilityPage` and `PersonCalendarPage` instead, the latter defaulting to the signed-in user's own linked Person. If there isn't one, "Calendar" is disabled rather than falling back to someone else's calendar (see [Home page](#home-page) below). `RoomAvailabilityPage` doubles as the entry point for adding a room or a booking (`AddRoomPage`/`AddBookingPage`), since there's no longer a dedicated rooms list to host those buttons.
 - **amazon-cognito-identity-js** talks to the Cognito user pool (SRP sign-in, sign-up, token storage/refresh in `localStorage`).
 - **Apollo Client v4** handles all GraphQL communication and caching (`InMemoryCache`).
 - **oxlint** for linting, **Playwright** for end-to-end tests.
@@ -48,19 +48,27 @@ There is deliberately little logic in the frontend; the backend owns the rules.
 
 ## Calling the API
 
-The browser calls the AppSync GraphQL endpoint directly via Apollo Client. Every request carries the signed-in user's Cognito **JWT id token** in the `Authorization` header (attached by the `SetContextLink` in [apolloClient.ts](webapp/src/apolloClient.ts)); AppSync rejects requests without a valid token with HTTP 401. The endpoint URL and Cognito ids are baked into the bundle at build time from the Vite environment variables `VITE_GRAPHQL_API_URL`, `VITE_COGNITO_USER_POOL_ID` and `VITE_COGNITO_CLIENT_ID` (see [.env.example](webapp/.env.example)); `deploy.sh` generates `webapp/.env.production` from the deployed API's Terraform outputs. These values are public identifiers, not secrets — the security lives in Cognito's password authentication and JWT signatures.
+The browser calls the AppSync GraphQL endpoint directly via Apollo Client. Every request carries the signed-in user's Cognito **JWT id token** in the `Authorization` header (attached by the `SetContextLink` in [apolloClient.ts](webapp/src/apolloClient.ts)); AppSync rejects requests without a valid token with HTTP 401. The endpoint URL, Cognito ids, and demo user credentials are baked into the bundle at build time from the Vite environment variables `VITE_GRAPHQL_API_URL`, `VITE_COGNITO_USER_POOL_ID`, `VITE_COGNITO_CLIENT_ID`, `VITE_DEMO_USER_EMAIL` and `VITE_DEMO_USER_PASSWORD` (see [.env.example](webapp/.env.example)); `deploy.sh` generates `webapp/.env.production` from the deployed API's Terraform outputs. None of these are secrets — the Cognito ids are public identifiers (the security lives in Cognito's password authentication and JWT signatures), and the demo credentials are *meant* to be public: this is a demo system, so the home page shows them to every signed-out visitor (see [Home page](#home-page) below).
 
 ### Authentication
 
 Authentication is an **Amazon Cognito user pool** owned by the API project (see the [API README](../room-booking-api/README.md)); this app uses the pool's public `room-booking-webapp` app client via `amazon-cognito-identity-js`.
 
-- **Sign up** ([SignUpPage](webapp/src/pages/SignUpPage.tsx)) is two steps: register a name, email + password (at least 8 characters with upper/lower case, a number and a symbol), then enter the verification code Cognito emails. The name is sent to Cognito as the standard `name` user attribute. On confirmation the user is signed in automatically, and the API's PostConfirmation trigger creates a Person record for them in the background.
-- **Sign in** ([SignInPage](webapp/src/pages/SignInPage.tsx)) authenticates with SRP (the password never leaves the browser in plain form). Tokens are cached in `localStorage` and refreshed transparently, so sessions survive page reloads.
-- **Signed-in display name** ([AuthProvider](webapp/src/auth/AuthProvider.tsx)): the toolbar shows the caller's own `Person.name` (fetched via the API's `myPerson` query, which resolves it server-side from the JWT's `sub` claim), not the JWT's own `name` claim — the Person record is the single source of truth a future "change my name" feature would update, so reading it live avoids the two ever drifting apart. Falls back to the Cognito `name`/email attributes (read straight from the ID token, no round trip) until that query resolves, and permanently for accounts with no linked Person (e.g. the e2e test user).
+- **Sign up** ([SignUpPage](webapp/src/pages/SignUpPage.tsx)) is two steps: register a name, email + password (at least 10 characters with a lowercase letter and a number — deliberately loose, since this is a demo system, see the [API README](../room-booking-api/README.md#demo-user)), then enter the verification code Cognito emails. The name is sent to Cognito as the standard `name` user attribute. On confirmation the user is signed in automatically, and the API's PostConfirmation trigger creates a Person record for them in the background.
+- **Sign in** ([SignInPage](webapp/src/pages/SignInPage.tsx), and the embedded [SignInForm](webapp/src/components/SignInForm.tsx) on the signed-out home page) authenticates with SRP (the password never leaves the browser in plain form). Tokens are cached in `localStorage` and refreshed transparently, so sessions survive page reloads.
+- **Signed-in display name** ([AuthProvider](webapp/src/auth/AuthProvider.tsx)): the toolbar shows the caller's own `Person.name` (fetched via the API's `myPerson` query, which resolves it server-side from the JWT's `sub` claim), not the JWT's own `name` claim — the Person record is the single source of truth a future "change my name" feature would update, so reading it live avoids the two ever drifting apart. Falls back to the Cognito `name`/email attributes (read straight from the ID token, no round trip) until that query resolves, and permanently for accounts with no linked Person (e.g. the e2e test user and the demo user).
 - **Forgot password** ([ForgotPasswordPage](webapp/src/pages/ForgotPasswordPage.tsx), linked from the sign-in form) is two steps: request a verification code for an email address, then enter the emailed code with a new password. On success the user is signed in with the new password automatically. Cognito's *prevent user existence errors* setting is enabled, so requesting a code for an unknown address behaves exactly like a real one — the form never reveals whether an account exists.
 - **Route guarding**: only the home page and the two auth forms are public. [RequireAuth](webapp/src/components/RequireAuth.tsx) redirects signed-out visitors of any other route to `/signin`, remembering where they were heading and returning them there after sign-in.
 - **App bar**: shows the signed-in user's email and a Sign out button (or a Sign in link). Signing out clears the Cognito session and the Apollo cache.
 - The auth state (current user's email + sign-in/out functions) is provided by [AuthProvider](webapp/src/auth/AuthProvider.tsx) and read with the `useAuth()` hook; the promise-based Cognito wrappers live in [cognito.ts](webapp/src/auth/cognito.ts).
+
+### Home page
+
+[HomePage](webapp/src/pages/HomePage.tsx) shows entirely different content depending on sign-in state:
+
+- **Signed out**: since every other page requires sign-in, there's nothing of the user's own to show yet. Instead the page leads with an embedded [SignInForm](webapp/src/components/SignInForm.tsx) pre-filled with the demo user's email and password (both shown as plain text alongside it, from `VITE_DEMO_USER_EMAIL`/`VITE_DEMO_USER_PASSWORD` — see [Calling the API](#calling-the-api) above) so a first-time visitor can sign in with one click, and a second section spelling out the three steps to sign up for a real account before the sign-up button. If those two env vars aren't set (e.g. a `.env` predating this feature), the credential display and pre-fill are skipped and the form is just left blank.
+- **Signed in, with a linked Person**: "My Calendar" (the signed-in user's own [PersonCalendarPage](webapp/src/pages/PersonCalendarPage.tsx)) and "Rooms available today" buttons, plus two agenda lists — "Today" and "Tomorrow" — of the meetings the user is organising or attending, sorted by start time and linking to [BookingDetailsPage](webapp/src/pages/BookingDetailsPage.tsx).
+- **Signed in, with no linked Person** (e.g. the demo user or the e2e test user, both created directly rather than through sign-up): an error `Alert` — "Your account hasn't been set up properly" — in place of "My Calendar" and the agenda lists, rather than guessing by falling back to some other person's data. [AuthProvider](webapp/src/auth/AuthProvider.tsx) exposes a `personLoading` flag alongside `personId` so this only renders once the `myPerson` lookup has actually finished, not during the brief window right after sign-in before it resolves. "Rooms available today" is unaffected, since it isn't tied to a Person.
 
 ### Error handling
 
@@ -69,11 +77,11 @@ Two kinds of errors reach the user, both rendered by the dismissible [ErrorBanne
 1. **Transport/GraphQL errors** (network failure, missing/expired token, server fault) surface through Apollo's `error` result and are flattened to messages by `errorMessages()`.
 2. **Validation failures** are *not* GraphQL errors — the API returns a structured result (`CreateRoomResult` / `CreateBookingResult`) whose `errors` field lists broken-rule enum codes. The form pages map each code through `ROOM_ERROR_MESSAGES` / `BOOKING_ERROR_MESSAGES` to a human-readable message, so a rejected submission shows the complete list of problems in one banner.
 
-On success, forms navigate to the relevant list page and pass a message via router state; `useLocationToast` shows it as an auto-hiding `Snackbar` and clears the state so it doesn't reappear on refresh.
+On success, forms navigate to a relevant view (e.g. the day or person the new booking/room affects) and pass a message via router state; `useLocationToast` shows it as an auto-hiding `Snackbar` and clears the state so it doesn't reappear on refresh.
 
 ### Progress indicators
 
-- List pages show a centred `CircularProgress` on first load, and a slim `LinearProgress` above the table when refetching with cached data already on screen (`cache-and-network` fetch policy).
+- Views show a centred `CircularProgress` on first load, and a slim `LinearProgress` above the content when refetching with cached data already on screen. Bookings change constantly, so booking queries use `cache-and-network` and refetch every visit; rooms and people change rarely, so those queries use `cache-first` and are fetched once per session (from the Apollo `InMemoryCache` on every visit after the first) — a full page refresh resets that in-memory cache and picks up any changes.
 - [SubmitButton](webapp/src/components/SubmitButton.tsx) disables itself and shows an inline spinner while a mutation is in flight (Cancel is disabled too), preventing double submits.
 - The booking form shows a spinner while loading the room/people reference data its dropdowns need.
 
@@ -106,8 +114,9 @@ for the full multi-environment how-to.
 cd webapp
 cp .env.example .env        # then fill in real values: source the API project's
                             # authenticate.sh <environment> and copy GRAPHQL_API_URL,
-                            # COGNITO_USER_POOL_ID and COGNITO_WEBAPP_CLIENT_ID
-                            # into the three VITE_ variables.
+                            # COGNITO_USER_POOL_ID, COGNITO_WEBAPP_CLIENT_ID,
+                            # DEMO_USER_EMAIL and DEMO_USER_PASSWORD into the
+                            # five VITE_ variables.
 npm install
 npm run dev                 # Vite dev server on http://localhost:5173
 npm run lint                # oxlint
@@ -118,9 +127,9 @@ npm run build               # type-check (tsc -b) + production build into dist/
 
 `./deploy.sh <environment>` performs, in order:
 
-1. Sources the API project's `authenticate.sh <environment>` to obtain `GRAPHQL_API_URL` and the `COGNITO_*` variables from that environment's Terraform outputs (fails fast if the API checkout or that environment's deployment is missing).
+1. Sources the API project's `authenticate.sh <environment>` to obtain `GRAPHQL_API_URL`, the `COGNITO_*` variables, and the `DEMO_*` demo-user credentials from that environment's Terraform outputs (fails fast if the API checkout or that environment's deployment is missing).
 2. `terraform init` (state key `<environment>/room-booking-webapp/terraform.tfstate`) + `terraform apply -auto-approve -var="environment=<environment>"` in [deploy/terraform](deploy/terraform) to create/update the S3 bucket and CloudFront distribution.
-3. Writes `webapp/.env.production` with the API URL, Cognito user pool id, and webapp client id.
+3. Writes `webapp/.env.production` with the API URL, Cognito user pool id, webapp client id, and demo user email/password.
 4. `npm install` and `npm run build` to produce `webapp/dist/`.
 5. `aws s3 sync webapp/dist s3://<bucket> --delete` to upload the build and remove stale files.
 6. Creates a CloudFront invalidation for `/*` so the new version is served immediately, then prints the site URL.

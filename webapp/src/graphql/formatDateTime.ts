@@ -7,3 +7,10 @@ export function formatLocalDateTime(isoLocalDateTime: string): string {
   if (!time) return isoLocalDateTime
   return `${date} ${time.slice(0, 5)}`
 }
+
+// Same no-timezone-conversion rationale as formatLocalDateTime, but returning
+// just the "HH:mm" portion for compact display (e.g. calendar/timeline views).
+export function formatLocalTime(isoLocalDateTime: string): string {
+  const [, time] = isoLocalDateTime.split('T')
+  return time ? time.slice(0, 5) : isoLocalDateTime
+}

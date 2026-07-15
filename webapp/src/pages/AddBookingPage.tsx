@@ -114,7 +114,9 @@ export default function AddBookingPage() {
       return
     }
     if (payload?.booking) {
-      navigate('/bookings', { state: { toast: 'Booking was successfully created.' } })
+      navigate(`/rooms/${payload.booking.startTime.slice(0, 10)}/availability`, {
+        state: { toast: 'Booking was successfully created.' },
+      })
     }
   }
 
@@ -216,7 +218,7 @@ export default function AddBookingPage() {
 
             <Stack direction="row" spacing={2}>
               <SubmitButton loading={submitting}>Save</SubmitButton>
-              <Button variant="outlined" onClick={() => navigate('/bookings')} disabled={submitting}>
+              <Button variant="outlined" onClick={() => navigate(-1)} disabled={submitting}>
                 Cancel
               </Button>
             </Stack>

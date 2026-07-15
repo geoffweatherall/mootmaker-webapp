@@ -1,5 +1,6 @@
 import { useMutation } from '@apollo/client/react'
 import { Button, Paper, Stack, TextField, Typography } from '@mui/material'
+import dayjs from 'dayjs'
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ErrorBanner } from '../components/ErrorBanner'
@@ -39,7 +40,9 @@ export default function AddRoomPage() {
       return
     }
     if (payload?.room) {
-      navigate('/rooms', { state: { toast: `${payload.room.name} was successfully added.` } })
+      navigate(`/rooms/${dayjs().format('YYYY-MM-DD')}/availability`, {
+        state: { toast: `${payload.room.name} was successfully added.` },
+      })
     }
   }
 
@@ -70,7 +73,7 @@ export default function AddRoomPage() {
           />
           <Stack direction="row" spacing={2}>
             <SubmitButton loading={loading}>Save</SubmitButton>
-            <Button variant="outlined" onClick={() => navigate('/rooms')} disabled={loading}>
+            <Button variant="outlined" onClick={() => navigate(-1)} disabled={loading}>
               Cancel
             </Button>
           </Stack>

@@ -21,7 +21,7 @@ export const ROOM_ERROR_MESSAGES: Record<RoomError, string> = {
   CapacityTooLow: 'Room capacity must be at least 2.',
 }
 
-export interface Booking {
+export interface Meeting {
   id: string
   room: Room
   organiser: Person
@@ -32,13 +32,13 @@ export interface Booking {
 }
 
 // fromStartTime/toEndTime must be supplied together (or both omitted); personId is independent.
-export interface BookingsFilter {
+export interface MeetingsFilter {
   fromStartTime?: string
   toEndTime?: string
   personId?: string
 }
 
-export type BookingError =
+export type MeetingError =
   | 'StartMissaligned'
   | 'EndMissaligned'
   | 'SpansMultipleDays'
@@ -51,17 +51,17 @@ export type BookingError =
   | 'AttendeeNotFound'
   | 'SubjectRequired'
 
-export interface CreateBookingResult {
-  booking: Booking | null
-  errors: BookingError[]
+export interface CreateMeetingResult {
+  meeting: Meeting | null
+  errors: MeetingError[]
 }
 
-export const BOOKING_ERROR_MESSAGES: Record<BookingError, string> = {
+export const MEETING_ERROR_MESSAGES: Record<MeetingError, string> = {
   StartMissaligned: 'Start time must fall on a 5 minute boundary.',
   EndMissaligned: 'End time must fall on a 5 minute boundary.',
-  SpansMultipleDays: 'A booking cannot span midnight - start and end time must be on the same day.',
+  SpansMultipleDays: 'A meeting cannot span midnight - start and end time must be on the same day.',
   InsufficientCapacity: 'The room does not have enough capacity for all attendees.',
-  TimeRangeUnavailable: 'The room is already booked during that time range.',
+  TimeRangeUnavailable: 'The room already has a meeting scheduled during that time range.',
   RoomRequired: 'Please select a room.',
   RoomNotFound: 'The selected room could not be found.',
   OrganiserRequired: 'Please select an organiser.',

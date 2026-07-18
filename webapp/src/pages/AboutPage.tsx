@@ -9,7 +9,7 @@ export default function AboutPage() {
       <Paper sx={{ p: 3 }}>
         <Stack spacing={2}>
           <Typography variant="body1">
-            Room Booking is a meeting-room booking system: book a room, see which rooms are free
+            Mootmaker is a meeting scheduling system: reserve a room, see which rooms are free
             and when, and keep track of your own meetings — all from one place.
           </Typography>
           <Typography variant="body1" color="text.secondary">

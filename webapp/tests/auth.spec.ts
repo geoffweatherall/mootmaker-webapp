@@ -7,7 +7,7 @@ test.describe('Authentication', () => {
   test('home page is visible without signing in', async ({ page }) => {
     await page.goto('/')
 
-    await expect(page.getByRole('heading', { name: 'Welcome to Room Booking' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Welcome to Mootmaker' })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Sign in' })).toBeVisible()
   })
 
@@ -38,8 +38,8 @@ test.describe('Authentication', () => {
     '/persons/some-id/calendar',
     '/rooms/add',
     '/rooms/2026-01-01/availability',
-    '/bookings/add',
-    '/bookings/some-id',
+    '/meetings/add',
+    '/meetings/some-id',
   ]) {
     test(`visiting ${path} while signed out redirects to the sign-in form`, async ({ page }) => {
       await page.goto(path)

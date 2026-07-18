@@ -1,4 +1,4 @@
-// Brand tokens, mirrored from the room-booking project's branding/tokens.css.
+// Brand tokens, mirrored from the mootmaker project's branding/tokens.css.
 // Keep in sync with that file if the palette there changes.
 
 export const lightTokens = {

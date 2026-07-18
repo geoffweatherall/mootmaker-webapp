@@ -14,9 +14,9 @@ if [[ -z "${environment}" ]]; then
   exit 1
 fi
 
-echo "Undeploying room-booking-webapp environment '${environment}'..."
+echo "Undeploying mootmaker-webapp environment '${environment}'..."
 
 export TF_DATA_DIR=".terraform-${environment}"
 
-terraform -chdir=deploy/terraform init -backend-config=backend.hcl -backend-config="key=${environment}/room-booking-webapp/terraform.tfstate"
+terraform -chdir=deploy/terraform init -backend-config=backend.hcl -backend-config="key=${environment}/mootmaker-webapp/terraform.tfstate"
 terraform -chdir=deploy/terraform destroy -var="environment=${environment}"

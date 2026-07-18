@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test'
 
-test.describe('Add Booking form - time picker minute options', () => {
+test.describe('Schedule Meeting form - time picker minute options', () => {
   test('start time minute picker excludes 13 and only offers 5-minute boundaries', async ({
     page,
   }) => {
-    await page.goto('/bookings/add')
-    await expect(page.getByRole('heading', { name: 'Add Booking' })).toBeVisible()
+    await page.goto('/meetings/add')
+    await expect(page.getByRole('heading', { name: 'Schedule Meeting' })).toBeVisible()
 
     const startTimeGroup = page.getByRole('group', { name: 'Start time' })
     await startTimeGroup.getByRole('button', { name: /Choose time/i }).click()
@@ -25,8 +25,8 @@ test.describe('Add Booking form - time picker minute options', () => {
   test('end time minute picker excludes 13 and only offers 5-minute boundaries', async ({
     page,
   }) => {
-    await page.goto('/bookings/add')
-    await expect(page.getByRole('heading', { name: 'Add Booking' })).toBeVisible()
+    await page.goto('/meetings/add')
+    await expect(page.getByRole('heading', { name: 'Schedule Meeting' })).toBeVisible()
 
     const endTimeGroup = page.getByRole('group', { name: 'End time' })
     await endTimeGroup.getByRole('button', { name: /Choose time/i }).click()
@@ -44,12 +44,12 @@ test.describe('Add Booking form - time picker minute options', () => {
   })
 })
 
-test.describe('Add Booking form - single date field', () => {
+test.describe('Schedule Meeting form - single date field', () => {
   test('offers one date field shared by start and end time, with no date field on the time pickers', async ({
     page,
   }) => {
-    await page.goto('/bookings/add')
-    await expect(page.getByRole('heading', { name: 'Add Booking' })).toBeVisible()
+    await page.goto('/meetings/add')
+    await expect(page.getByRole('heading', { name: 'Schedule Meeting' })).toBeVisible()
 
     await expect(page.getByRole('group', { name: 'Date' })).toBeVisible()
 

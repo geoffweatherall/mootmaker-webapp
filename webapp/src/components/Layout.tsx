@@ -24,7 +24,7 @@ export function Layout() {
       <Toolbar sx={{ gap: 1.5 }}>
         <Box component="img" src={logo} alt="" sx={{ width: 32, height: 32 }} />
         <Typography variant="h6" component="div" noWrap>
-          Room Booking
+          Mootmaker
         </Typography>
       </Toolbar>
       <MenuContent onNavigate={closeMobileMenu} />
@@ -43,7 +43,7 @@ export function Layout() {
           </IconButton>
           <Box component="img" src={logo} alt="" sx={{ width: 28, height: 28, ml: 1.5, mr: 1 }} />
           <Typography variant="h6" component="div" noWrap>
-            Room Booking
+            Mootmaker
           </Typography>
         </Toolbar>
       </AppBar>

@@ -15,9 +15,9 @@ import { useAuth } from '../auth/authContext'
 const AVAILABILITY_PATH_PATTERN = /^\/rooms\/[^/]+\/availability$/
 const CALENDAR_PATH_PATTERN = /^\/persons\/[^/]+\/calendar$/
 
-// Room Booking has no feedback form/backend of its own, so this goes to the project's own issue
+// Mootmaker has no feedback form/backend of its own, so this goes to the project's own issue
 // tracker instead - the same URL this project's other READMEs already point to.
-const FEEDBACK_URL = 'https://github.com/geoffweatherall/room-booking/issues'
+const FEEDBACK_URL = 'https://github.com/geoffweatherall/mootmaker/issues'
 
 interface MenuContentProps {
   /** Called after navigating via a link in this menu - used to close the mobile flyout. */

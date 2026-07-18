@@ -17,8 +17,8 @@ import { useAuth } from '../auth/authContext'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { errorMessages } from '../graphql/errorMessages'
 import { formatLocalTime } from '../graphql/formatDateTime'
-import { LIST_BOOKINGS, LIST_PEOPLE } from '../graphql/queries'
-import type { Booking, BookingsFilter, Person } from '../graphql/types'
+import { LIST_MEETINGS, LIST_PEOPLE } from '../graphql/queries'
+import type { Meeting, MeetingsFilter, Person } from '../graphql/types'
 
 const WEEKS_SHOWN = 6
 const WORK_DAYS_PER_WEEK = 5
@@ -78,10 +78,10 @@ export default function PersonCalendarPage() {
     [firstMonday],
   )
 
-  // This person's bookings across the full visible window (first Monday through the last
+  // This person's meetings across the full visible window (first Monday through the last
   // Friday shown) - the API filters server-side (organiser-or-attendee match, date range) so
-  // this page never fetches another person's bookings or bookings outside the weeks shown.
-  const bookingsFilter = useMemo<BookingsFilter>(() => {
+  // this page never fetches another person's meetings or meetings outside the weeks shown.
+  const meetingsFilter = useMemo<MeetingsFilter>(() => {
     const lastFriday = firstMonday.add((WEEKS_SHOWN - 1) * 7 + (WORK_DAYS_PER_WEEK - 1), 'day')
     return {
       fromStartTime: firstMonday.format(DATE_TIME_FORMAT),
@@ -90,28 +90,28 @@ export default function PersonCalendarPage() {
     }
   }, [firstMonday, personId])
   const {
-    data: bookingsData,
-    loading: bookingsLoading,
-    error: bookingsError,
-  } = useQuery<{ bookings: Booking[] }, { filter: BookingsFilter }>(LIST_BOOKINGS, {
-    variables: { filter: bookingsFilter },
+    data: meetingsData,
+    loading: meetingsLoading,
+    error: meetingsError,
+  } = useQuery<{ meetings: Meeting[] }, { filter: MeetingsFilter }>(LIST_MEETINGS, {
+    variables: { filter: meetingsFilter },
     skip: !personId,
     fetchPolicy: 'cache-and-network',
   })
 
-  const bookingsByDate = useMemo(() => {
-    const map = new Map<string, Booking[]>()
-    for (const booking of bookingsData?.bookings ?? []) {
-      const dateKey = booking.startTime.slice(0, 10)
+  const meetingsByDate = useMemo(() => {
+    const map = new Map<string, Meeting[]>()
+    for (const meeting of meetingsData?.meetings ?? []) {
+      const dateKey = meeting.startTime.slice(0, 10)
       const list = map.get(dateKey) ?? []
-      list.push(booking)
+      list.push(meeting)
       map.set(dateKey, list)
     }
     for (const list of map.values()) {
       list.sort((a, b) => a.startTime.localeCompare(b.startTime))
     }
     return map
-  }, [bookingsData])
+  }, [meetingsData])
 
   function handlePersonChange(selected: Person | null) {
     if (selected) {
@@ -119,12 +119,12 @@ export default function PersonCalendarPage() {
     }
   }
 
-  const loading = peopleLoading || bookingsLoading
-  // True only on a genuine first load - no cached people, or no cached bookings for the currently
+  const loading = peopleLoading || meetingsLoading
+  // True only on a genuine first load - no cached people, or no cached meetings for the currently
   // selected person - not on a cache-and-network background revalidation of data we already have
-  // (bookingsLoading stays true then too, but bookingsData is already populated from the cache).
-  const showSpinner = (peopleLoading && !peopleData) || (bookingsLoading && !bookingsData)
-  const bannerMessages = [...errorMessages(peopleError), ...errorMessages(bookingsError)]
+  // (meetingsLoading stays true then too, but meetingsData is already populated from the cache).
+  const showSpinner = (peopleLoading && !peopleData) || (meetingsLoading && !meetingsData)
+  const bannerMessages = [...errorMessages(peopleError), ...errorMessages(meetingsError)]
   const today = dayjs().format(DATE_KEY_FORMAT)
 
   return (
@@ -195,7 +195,7 @@ export default function PersonCalendarPage() {
                 >
                   {week.map((date) => {
                     const dateKey = date.format(DATE_KEY_FORMAT)
-                    const dayBookings = bookingsByDate.get(dateKey) ?? []
+                    const dayMeetings = meetingsByDate.get(dateKey) ?? []
                     return (
                       <Paper
                         key={dateKey}
@@ -212,11 +212,11 @@ export default function PersonCalendarPage() {
                         <Typography variant="caption" color="text.secondary">
                           {date.format('D MMM')}
                         </Typography>
-                        {dayBookings.map((booking) => (
+                        {dayMeetings.map((meeting) => (
                           <ButtonBase
-                            key={booking.id}
+                            key={meeting.id}
                             component={Link}
-                            to={`/bookings/${booking.id}`}
+                            to={`/meetings/${meeting.id}`}
                             focusRipple
                             sx={{
                               display: 'block',
@@ -228,8 +228,8 @@ export default function PersonCalendarPage() {
                             }}
                           >
                             <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
-                              {formatLocalTime(booking.startTime)}–{formatLocalTime(booking.endTime)}{' '}
-                              {booking.subject} – {booking.room.name}
+                              {formatLocalTime(meeting.startTime)}–{formatLocalTime(meeting.endTime)}{' '}
+                              {meeting.subject} – {meeting.room.name}
                             </Typography>
                           </ButtonBase>
                         ))}

@@ -13,10 +13,10 @@ export const CREATE_ROOM = gql`
   }
 `
 
-export const CREATE_BOOKING = gql`
-  mutation CreateBooking($booking: BookingInput!) {
-    createBooking(booking: $booking) {
-      booking {
+export const CREATE_MEETING = gql`
+  mutation CreateMeeting($meeting: MeetingInput!) {
+    createMeeting(meeting: $meeting) {
+      meeting {
         id
         subject
         startTime

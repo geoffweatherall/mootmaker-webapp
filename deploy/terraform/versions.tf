@@ -9,6 +9,6 @@ terraform {
   }
 
   # Bucket/key/region/locking are supplied via backend.hcl (see
-  # room-booking-bootstrap-terraform's README for how remote state works).
+  # mootmaker-bootstrap-terraform's README for how remote state works).
   backend "s3" {}
 }

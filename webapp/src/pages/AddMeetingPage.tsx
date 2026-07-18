@@ -23,14 +23,14 @@ import { useNavigate } from 'react-router-dom'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { SubmitButton } from '../components/SubmitButton'
 import { errorMessages } from '../graphql/errorMessages'
-import { CREATE_BOOKING } from '../graphql/mutations'
+import { CREATE_MEETING } from '../graphql/mutations'
 import { LIST_PEOPLE, LIST_ROOMS } from '../graphql/queries'
-import { BOOKING_ERROR_MESSAGES } from '../graphql/types'
-import type { CreateBookingResult, Person, Room } from '../graphql/types'
+import { MEETING_ERROR_MESSAGES } from '../graphql/types'
+import type { CreateMeetingResult, Person, Room } from '../graphql/types'
 
 // Only offer minutes on a 5-minute boundary in the time picker, matching the
-// API's requirement that booking start/end times fall on a 5 minute boundary.
-const BOOKING_TIME_STEPS = { minutes: 5 }
+// API's requirement that meeting start/end times fall on a 5 minute boundary.
+const MEETING_TIME_STEPS = { minutes: 5 }
 
 function nextFiveMinuteBoundary(from: Dayjs): Dayjs {
   const rounded = from.second(0).millisecond(0)
@@ -46,7 +46,7 @@ function defaultStartTime(): Dayjs {
   return nextFiveMinuteBoundary(dayjs())
 }
 
-// A booking cannot span midnight (see BookingError.SpansMultipleDays), so the default end time
+// A meeting cannot span midnight (see MeetingError.SpansMultipleDays), so the default end time
 // never rolls past 23:55 even if the default start time falls late in the day.
 function defaultEndTime(start: Dayjs): Dayjs {
   const candidate = start.add(30, 'minute')
@@ -55,7 +55,7 @@ function defaultEndTime(start: Dayjs): Dayjs {
 
 // Combines a calendar date with a time-of-day into the ISO-8601 local date-time string the API
 // expects, e.g. "2026-07-01T14:30:00" - both startTime and endTime are built from the same date
-// value, so a booking can never span midnight from this form.
+// value, so a meeting can never span midnight from this form.
 function combineDateAndTime(date: Dayjs | null, time: Dayjs | null): string {
   if (!date || !time) {
     return ''
@@ -63,7 +63,7 @@ function combineDateAndTime(date: Dayjs | null, time: Dayjs | null): string {
   return date.hour(time.hour()).minute(time.minute()).second(0).millisecond(0).format('YYYY-MM-DDTHH:mm:ss')
 }
 
-export default function AddBookingPage() {
+export default function AddMeetingPage() {
   const navigate = useNavigate()
 
   const {
@@ -84,11 +84,11 @@ export default function AddBookingPage() {
   const [date, setDate] = useState<Dayjs | null>(defaultDate)
   const [startTime, setStartTime] = useState<Dayjs | null>(defaultStartTime)
   const [endTime, setEndTime] = useState<Dayjs | null>(() => defaultEndTime(defaultStartTime()))
-  const [bookingErrors, setBookingErrors] = useState<string[]>([])
+  const [meetingErrors, setMeetingErrors] = useState<string[]>([])
 
-  const [createBooking, { loading: submitting, error: mutationError, reset }] = useMutation<{
-    createBooking: CreateBookingResult
-  }>(CREATE_BOOKING)
+  const [createMeeting, { loading: submitting, error: mutationError, reset }] = useMutation<{
+    createMeeting: CreateMeetingResult
+  }>(CREATE_MEETING)
 
   const rooms = roomsData?.rooms ?? []
   const people = peopleData?.people ?? []
@@ -96,12 +96,12 @@ export default function AddBookingPage() {
   const bannerMessages = [
     ...errorMessages(roomsError),
     ...errorMessages(peopleError),
-    ...bookingErrors,
+    ...meetingErrors,
     ...errorMessages(mutationError),
   ]
 
   function dismissBanner() {
-    setBookingErrors([])
+    setMeetingErrors([])
     reset()
   }
 
@@ -112,11 +112,11 @@ export default function AddBookingPage() {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    setBookingErrors([])
+    setMeetingErrors([])
 
-    const result = await createBooking({
+    const result = await createMeeting({
       variables: {
-        booking: {
+        meeting: {
           subject,
           roomId,
           organiserId,
@@ -127,14 +127,14 @@ export default function AddBookingPage() {
       },
     })
 
-    const payload = result.data?.createBooking
+    const payload = result.data?.createMeeting
     if (payload?.errors.length) {
-      setBookingErrors(payload.errors.map((code) => BOOKING_ERROR_MESSAGES[code]))
+      setMeetingErrors(payload.errors.map((code) => MEETING_ERROR_MESSAGES[code]))
       return
     }
-    if (payload?.booking) {
-      navigate(`/rooms/${payload.booking.startTime.slice(0, 10)}/availability`, {
-        state: { toast: 'Booking was successfully created.' },
+    if (payload?.meeting) {
+      navigate(`/rooms/${payload.meeting.startTime.slice(0, 10)}/availability`, {
+        state: { toast: 'Meeting was successfully scheduled.' },
       })
     }
   }
@@ -144,7 +144,7 @@ export default function AddBookingPage() {
   return (
     <Stack spacing={3}>
       <Typography variant="h4" component="h1">
-        Add Booking
+        Schedule Meeting
       </Typography>
 
       <ErrorBanner messages={bannerMessages} onDismiss={dismissBanner} />
@@ -230,14 +230,14 @@ export default function AddBookingPage() {
               label="Start time"
               value={startTime}
               onChange={(value) => setStartTime(value)}
-              timeSteps={BOOKING_TIME_STEPS}
+              timeSteps={MEETING_TIME_STEPS}
               slotProps={{ textField: { fullWidth: true } }}
             />
             <TimePicker
               label="End time"
               value={endTime}
               onChange={(value) => setEndTime(value)}
-              timeSteps={BOOKING_TIME_STEPS}
+              timeSteps={MEETING_TIME_STEPS}
               slotProps={{ textField: { fullWidth: true } }}
             />
 

@@ -17,8 +17,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/authContext'
 import { SignInForm } from '../components/SignInForm'
 import { formatLocalTime } from '../graphql/formatDateTime'
-import { LIST_BOOKINGS } from '../graphql/queries'
-import type { Booking, BookingsFilter } from '../graphql/types'
+import { LIST_MEETINGS } from '../graphql/queries'
+import type { Meeting, MeetingsFilter } from '../graphql/types'
 
 const SIGN_UP_STEPS = [
   'Enter your name, email address, and password.',
@@ -31,11 +31,11 @@ const DATE_TIME_FORMAT = 'YYYY-MM-DDTHH:mm:ss'
 
 interface AgendaListProps {
   title: string
-  bookings: Booking[]
+  meetings: Meeting[]
   loading: boolean
 }
 
-function AgendaList({ title, bookings, loading }: AgendaListProps) {
+function AgendaList({ title, meetings, loading }: AgendaListProps) {
   return (
     <Paper sx={{ p: 2, flex: 1 }}>
       <Typography variant="h6" component="h2" sx={{ mb: 1 }}>
@@ -45,15 +45,15 @@ function AgendaList({ title, bookings, loading }: AgendaListProps) {
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
           <CircularProgress size={24} />
         </Box>
-      ) : bookings.length === 0 ? (
+      ) : meetings.length === 0 ? (
         <Typography color="text.secondary">No meetings.</Typography>
       ) : (
         <List disablePadding>
-          {bookings.map((booking) => (
-            <ListItemButton key={booking.id} component={Link} to={`/bookings/${booking.id}`} sx={{ borderRadius: 1 }}>
+          {meetings.map((meeting) => (
+            <ListItemButton key={meeting.id} component={Link} to={`/meetings/${meeting.id}`} sx={{ borderRadius: 1 }}>
               <ListItemText
-                primary={booking.subject}
-                secondary={`${formatLocalTime(booking.startTime)}–${formatLocalTime(booking.endTime)} · ${booking.room.name}`}
+                primary={meeting.subject}
+                secondary={`${formatLocalTime(meeting.startTime)}–${formatLocalTime(meeting.endTime)} · ${meeting.room.name}`}
               />
             </ListItemButton>
           ))}
@@ -68,13 +68,13 @@ export default function HomePage() {
   const { email, personId, personLoading } = useAuth()
 
   // Today through the end of tomorrow, for the signed-in person - the API filters server-side so
-  // this only ever fetches the two days' worth of bookings the agenda actually shows. Kept as its
+  // this only ever fetches the two days' worth of meetings the agenda actually shows. Kept as its
   // own filtered query rather than reusing PersonCalendarPage's broader one: Apollo's cache keys
   // a list field by its exact arguments, so a 2-day window isn't served from a cached 6-week one
   // even when it's a subset, and this is the landing route - it usually runs before that page has
   // ever been visited in the session anyway. Skipped until both the caller is signed in and their
   // Person id has resolved, since that's what the filter needs.
-  const bookingsFilter = useMemo<BookingsFilter>(() => {
+  const meetingsFilter = useMemo<MeetingsFilter>(() => {
     const todayStart = dayjs().startOf('day')
     return {
       fromStartTime: todayStart.format(DATE_TIME_FORMAT),
@@ -82,11 +82,11 @@ export default function HomePage() {
       personId: personId ?? undefined,
     }
   }, [personId])
-  const { data: bookingsData, loading: bookingsLoading } = useQuery<
-    { bookings: Booking[] },
-    { filter: BookingsFilter }
-  >(LIST_BOOKINGS, {
-    variables: { filter: bookingsFilter },
+  const { data: meetingsData, loading: meetingsLoading } = useQuery<
+    { meetings: Meeting[] },
+    { filter: MeetingsFilter }
+  >(LIST_MEETINGS, {
+    variables: { filter: meetingsFilter },
     fetchPolicy: 'cache-and-network',
     skip: !email || !personId,
   })
@@ -94,17 +94,17 @@ export default function HomePage() {
   const today = dayjs().format(DATE_KEY_FORMAT)
   const tomorrow = dayjs().add(1, 'day').format(DATE_KEY_FORMAT)
 
-  function agendaFor(dateKey: string): Booking[] {
-    return (bookingsData?.bookings ?? [])
-      .filter((booking) => booking.startTime.startsWith(dateKey))
+  function agendaFor(dateKey: string): Meeting[] {
+    return (meetingsData?.meetings ?? [])
+      .filter((meeting) => meeting.startTime.startsWith(dateKey))
       .sort((a, b) => a.startTime.localeCompare(b.startTime))
   }
 
-  const agendaLoading = personLoading || (bookingsLoading && !bookingsData)
+  const agendaLoading = personLoading || (meetingsLoading && !meetingsData)
 
   if (!email) {
     // Not secrets - this is a demo system, so the whole point is that these are shown here for
-    // anyone to use without signing up. See room-booking-api's aws_cognito_user.demo.
+    // anyone to use without signing up. See mootmaker-api's aws_cognito_user.demo.
     const demoEmail = import.meta.env.VITE_DEMO_USER_EMAIL
     const demoPassword = import.meta.env.VITE_DEMO_USER_PASSWORD
     const hasDemoUser = Boolean(demoEmail && demoPassword)
@@ -112,7 +112,7 @@ export default function HomePage() {
     return (
       <Stack spacing={3}>
         <Typography variant="h3" component="h1">
-          Welcome to Room Booking
+          Welcome to Mootmaker
         </Typography>
 
         <Paper sx={{ p: 3 }}>
@@ -168,13 +168,13 @@ export default function HomePage() {
 
   // personId is only null here once personLoading has settled - i.e. we've confirmed there's no
   // Person linked to this account (e.g. the demo user, or the e2e test user), not just that the
-  // lookup hasn't finished yet. Showing someone else's calendar/bookings in that case would be
+  // lookup hasn't finished yet. Showing someone else's calendar/meetings in that case would be
   // showing the wrong person's data, so this shows an explicit error instead.
   if (!personId && !personLoading) {
     return (
       <Stack spacing={3}>
         <Typography variant="h3" component="h1">
-          Welcome to Room Booking
+          Welcome to Mootmaker
         </Typography>
         <Alert severity="error">
           Your account hasn't been set up properly — no profile could be found for your sign-in.
@@ -189,10 +189,10 @@ export default function HomePage() {
   return (
     <Stack spacing={3}>
       <Typography variant="h3" component="h1">
-        Welcome to Room Booking
+        Welcome to Mootmaker
       </Typography>
       <Typography variant="body1" color="text.secondary">
-        Book meeting rooms and keep track of who's using them, all in one place.
+        Schedule meetings and keep track of who's using each room, all in one place.
       </Typography>
       <Stack direction="row" spacing={2}>
         <Button
@@ -209,8 +209,8 @@ export default function HomePage() {
       </Stack>
 
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3}>
-        <AgendaList title="Today" bookings={agendaFor(today)} loading={agendaLoading} />
-        <AgendaList title="Tomorrow" bookings={agendaFor(tomorrow)} loading={agendaLoading} />
+        <AgendaList title="Today" meetings={agendaFor(today)} loading={agendaLoading} />
+        <AgendaList title="Tomorrow" meetings={agendaFor(tomorrow)} loading={agendaLoading} />
       </Stack>
     </Stack>
   )

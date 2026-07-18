@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Builds the React webapp and deploys it to AWS (S3 + CloudFront) via Terraform,
 # into the given environment (e.g. "test", "production", or a developer's own
-# name for a personal sandbox - see the room-booking project README for the
-# full multi-environment how-to). Talks to the room-booking-api deployment of
+# name for a personal sandbox - see the mootmaker project README for the
+# full multi-environment how-to). Talks to the mootmaker-api deployment of
 # the SAME environment name in the sibling checkout.
 # NOTE: `terraform apply -auto-approve` creates real AWS resources in whatever
 # account/credentials are active. Run this deliberately, not from automation.
@@ -19,11 +19,11 @@ if [[ ! "${environment}" =~ ^[a-z0-9-]+$ ]]; then
   exit 1
 fi
 
-echo "Deploying room-booking-webapp to '${environment}'..."
+echo "Deploying mootmaker-webapp to '${environment}'..."
 
-api_dir="../room-booking-api"
+api_dir="../mootmaker-api"
 if [[ ! -f "${api_dir}/authenticate.sh" ]]; then
-  echo "Expected to find the room-booking-api checkout at ${api_dir} (as a sibling of this directory)." >&2
+  echo "Expected to find the mootmaker-api checkout at ${api_dir} (as a sibling of this directory)." >&2
   exit 1
 fi
 
@@ -36,7 +36,7 @@ source "${api_dir}/authenticate.sh" "${environment}"
 # checkout (even concurrently) can't cross-contaminate each other.
 export TF_DATA_DIR=".terraform-${environment}"
 
-terraform -chdir=deploy/terraform init -backend-config=backend.hcl -backend-config="key=${environment}/room-booking-webapp/terraform.tfstate"
+terraform -chdir=deploy/terraform init -backend-config=backend.hcl -backend-config="key=${environment}/mootmaker-webapp/terraform.tfstate"
 terraform -chdir=deploy/terraform apply -auto-approve -var="environment=${environment}"
 
 site_bucket="$(terraform -chdir=deploy/terraform output -raw site_bucket_name)"

@@ -1,5 +1,5 @@
 variable "aws_region" {
-  description = "AWS region to deploy the room-booking webapp into."
+  description = "AWS region to deploy the mootmaker webapp into."
   type        = string
   default     = "us-east-1"
 }
@@ -7,7 +7,7 @@ variable "aws_region" {
 variable "project_name" {
   description = "Prefix used to name AWS resources for this project."
   type        = string
-  default     = "room-booking-webapp"
+  default     = "mootmaker-webapp"
 }
 
 variable "environment" {

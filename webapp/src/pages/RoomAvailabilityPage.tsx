@@ -22,8 +22,8 @@ import { ErrorBanner } from '../components/ErrorBanner'
 import { BUSINESS_END_HOUR, BUSINESS_START_HOUR } from '../constants/businessHours'
 import { errorMessages } from '../graphql/errorMessages'
 import { formatLocalTime } from '../graphql/formatDateTime'
-import { LIST_BOOKINGS, LIST_ROOMS } from '../graphql/queries'
-import type { Booking, BookingsFilter, Room } from '../graphql/types'
+import { LIST_MEETINGS, LIST_ROOMS } from '../graphql/queries'
+import type { Meeting, MeetingsFilter, Room } from '../graphql/types'
 
 const DATE_PARAM_FORMAT = 'YYYY-MM-DD'
 const DATE_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/
@@ -79,7 +79,7 @@ export default function RoomAvailabilityPage() {
   }
 
   // Rooms change rarely, so `cache-first` fetches once and reuses the cache from then on; a full
-  // page refresh resets the in-memory cache and picks up any changes. Bookings change constantly,
+  // page refresh resets the in-memory cache and picks up any changes. Meetings change constantly,
   // so that query below still refetches whenever the selected date (and so the filter) changes.
   const {
     data: roomsData,
@@ -87,9 +87,9 @@ export default function RoomAvailabilityPage() {
     error: roomsError,
   } = useQuery<{ rooms: Room[] }>(LIST_ROOMS, { fetchPolicy: 'cache-first' })
 
-  // Only the selected day's bookings, across every room - the API filters server-side so this
-  // page never fetches more than one day's worth of bookings.
-  const bookingsFilter = useMemo<BookingsFilter>(() => {
+  // Only the selected day's meetings, across every room - the API filters server-side so this
+  // page never fetches more than one day's worth of meetings.
+  const meetingsFilter = useMemo<MeetingsFilter>(() => {
     const dayStart = selectedDate.startOf('day')
     return {
       fromStartTime: dayStart.format(DATE_TIME_FORMAT),
@@ -97,11 +97,11 @@ export default function RoomAvailabilityPage() {
     }
   }, [selectedDate])
   const {
-    data: bookingsData,
-    loading: bookingsLoading,
-    error: bookingsError,
-  } = useQuery<{ bookings: Booking[] }, { filter: BookingsFilter }>(LIST_BOOKINGS, {
-    variables: { filter: bookingsFilter },
+    data: meetingsData,
+    loading: meetingsLoading,
+    error: meetingsError,
+  } = useQuery<{ meetings: Meeting[] }, { filter: MeetingsFilter }>(LIST_MEETINGS, {
+    variables: { filter: meetingsFilter },
     fetchPolicy: 'cache-and-network',
   })
 
@@ -110,25 +110,25 @@ export default function RoomAvailabilityPage() {
     [roomsData],
   )
 
-  const bookingsByRoom = useMemo(() => {
-    const map = new Map<string, Booking[]>()
-    for (const booking of bookingsData?.bookings ?? []) {
-      const list = map.get(booking.room.id) ?? []
-      list.push(booking)
-      map.set(booking.room.id, list)
+  const meetingsByRoom = useMemo(() => {
+    const map = new Map<string, Meeting[]>()
+    for (const meeting of meetingsData?.meetings ?? []) {
+      const list = map.get(meeting.room.id) ?? []
+      list.push(meeting)
+      map.set(meeting.room.id, list)
     }
     for (const list of map.values()) {
       list.sort((a, b) => a.startTime.localeCompare(b.startTime))
     }
     return map
-  }, [bookingsData])
+  }, [meetingsData])
 
-  const loading = roomsLoading || bookingsLoading
-  // True only on a genuine first load - no cached rooms, or no cached bookings for the currently
+  const loading = roomsLoading || meetingsLoading
+  // True only on a genuine first load - no cached rooms, or no cached meetings for the currently
   // selected date - not on a cache-and-network background revalidation of data we already have
-  // (bookingsLoading stays true then too, but bookingsData is already populated from the cache).
-  const showSpinner = (roomsLoading && !roomsData) || (bookingsLoading && !bookingsData)
-  const bannerMessages = [...errorMessages(roomsError), ...errorMessages(bookingsError)]
+  // (meetingsLoading stays true then too, but meetingsData is already populated from the cache).
+  const showSpinner = (roomsLoading && !roomsData) || (meetingsLoading && !meetingsData)
+  const bannerMessages = [...errorMessages(roomsError), ...errorMessages(meetingsError)]
 
   return (
     <Stack spacing={3}>
@@ -158,8 +158,8 @@ export default function RoomAvailabilityPage() {
           <Button component={Link} to="/rooms/add" variant="outlined" startIcon={<AddIcon />}>
             Add Room
           </Button>
-          <Button component={Link} to="/bookings/add" variant="contained" startIcon={<AddIcon />}>
-            New Booking
+          <Button component={Link} to="/meetings/add" variant="contained" startIcon={<AddIcon />}>
+            New Meeting
           </Button>
         </Stack>
       </Stack>
@@ -257,18 +257,18 @@ export default function RoomAvailabilityPage() {
                       }}
                     />
                   ))}
-                  {(bookingsByRoom.get(room.id) ?? []).map((booking) => {
-                    const left = percentThroughBusinessDay(minutesSinceMidnight(booking.startTime))
-                    const right = percentThroughBusinessDay(minutesSinceMidnight(booking.endTime))
+                  {(meetingsByRoom.get(room.id) ?? []).map((meeting) => {
+                    const left = percentThroughBusinessDay(minutesSinceMidnight(meeting.startTime))
+                    const right = percentThroughBusinessDay(minutesSinceMidnight(meeting.endTime))
                     if (right <= left) return null
                     return (
                       <Tooltip
-                        key={booking.id}
-                        title={`${booking.subject}: ${formatLocalTime(booking.startTime)}–${formatLocalTime(booking.endTime)}`}
+                        key={meeting.id}
+                        title={`${meeting.subject}: ${formatLocalTime(meeting.startTime)}–${formatLocalTime(meeting.endTime)}`}
                       >
                         <ButtonBase
                           component={Link}
-                          to={`/bookings/${booking.id}`}
+                          to={`/meetings/${meeting.id}`}
                           focusRipple
                           sx={{
                             position: 'absolute',
@@ -286,7 +286,7 @@ export default function RoomAvailabilityPage() {
                           }}
                         >
                           <Typography variant="caption" noWrap component="span">
-                            {booking.subject}
+                            {meeting.subject}
                           </Typography>
                         </ButtonBase>
                       </Tooltip>

@@ -11,7 +11,7 @@ setup('sign in as the e2e test user', async ({ page }) => {
   if (!email || !password) {
     throw new Error(
       'E2E_USER_EMAIL and E2E_USER_PASSWORD are required to run the e2e tests. ' +
-        'Export them from the deployed API with `source ../../room-booking-api/authenticate.sh`.',
+        'Export them from the deployed API with `source ../../mootmaker-api/authenticate.sh`.',
     )
   }
 

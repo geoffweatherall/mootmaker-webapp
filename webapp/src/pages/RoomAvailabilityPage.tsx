@@ -169,7 +169,7 @@ export default function RoomAvailabilityPage() {
         {BUSINESS_END_HOUR.toString().padStart(2, '0')}:00).
       </Typography>
 
-      {loading && !showSpinner && <LinearProgress />}
+      <Box sx={{ height: 4 }}>{loading && !showSpinner && <LinearProgress />}</Box>
 
       {!dismissedError && (
         <ErrorBanner messages={bannerMessages} onDismiss={() => setDismissedError(true)} />

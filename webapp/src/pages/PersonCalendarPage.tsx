@@ -148,7 +148,7 @@ export default function PersonCalendarPage() {
         renderInput={(params) => <TextField {...params} label="Person" />}
       />
 
-      {loading && !showSpinner && <LinearProgress />}
+      <Box sx={{ height: 4 }}>{loading && !showSpinner && <LinearProgress />}</Box>
 
       {!dismissedError && (
         <ErrorBanner messages={bannerMessages} onDismiss={() => setDismissedError(true)} />

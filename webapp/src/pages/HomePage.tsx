@@ -15,6 +15,7 @@ import dayjs from 'dayjs'
 import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/authContext'
+import homeHero from '../assets/home-hero.svg'
 import { SignInForm } from '../components/SignInForm'
 import { formatLocalTime } from '../graphql/formatDateTime'
 import { LIST_MEETINGS } from '../graphql/queries'
@@ -111,9 +112,24 @@ export default function HomePage() {
 
     return (
       <Stack spacing={3}>
-        <Typography variant="h3" component="h1">
-          Welcome to Mootmaker
-        </Typography>
+        <Paper sx={{ p: 3 }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} sx={{ alignItems: 'center' }}>
+            <Box
+              component="img"
+              src={homeHero}
+              alt=""
+              sx={{ width: { xs: '100%', sm: 280 }, maxWidth: 360, flexShrink: 0 }}
+            />
+            <Stack spacing={1}>
+              <Typography variant="h3" component="h1">
+                Welcome to Mootmaker
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                Schedule meetings and keep track of who's using each room, all in one place.
+              </Typography>
+            </Stack>
+          </Stack>
+        </Paper>
 
         <Paper sx={{ p: 3 }}>
           <Typography variant="h6" component="h2" gutterBottom>

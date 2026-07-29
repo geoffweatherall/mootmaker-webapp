@@ -155,9 +155,6 @@ export default function RoomAvailabilityPage() {
           <IconButton onClick={() => goToDate(selectedDate.add(1, 'day'))} aria-label="Next day">
             <ChevronRightIcon />
           </IconButton>
-          <Button component={Link} to="/rooms/add" variant="outlined" startIcon={<AddIcon />}>
-            Add Room
-          </Button>
           <Button component={Link} to="/meetings/add" variant="contained" startIcon={<AddIcon />}>
             New Meeting
           </Button>

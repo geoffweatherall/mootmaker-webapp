@@ -45,6 +45,21 @@ export async function currentUserName(): Promise<string | null> {
   return (session?.getIdToken().payload.name as string | undefined) ?? null
 }
 
+/**
+ * The signed-in user's class ("standard" or "admin"), read directly from the ID token - no API
+ * call needed, the JWT already carries it (see the API README's "Standard/admin user classes"
+ * section). Null for a signed-out user, or an account that predates this attribute; both cases
+ * must be treated as "standard" (fail-safe, never fail-open to admin).
+ *
+ * This is presentation-only, used to decide what the Settings page shows - every admin mutation
+ * is still enforced server-side regardless of what this returns, so there's no security
+ * requirement on this value being tamper-proof on the client.
+ */
+export async function currentUserClass(): Promise<string | null> {
+  const session = await currentSession()
+  return (session?.getIdToken().payload['custom:class'] as string | undefined) ?? null
+}
+
 export function signIn(email: string, password: string): Promise<void> {
   const user = new CognitoUser({ Username: email, Pool: userPool })
   return new Promise((resolve, reject) => {

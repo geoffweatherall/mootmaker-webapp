@@ -11,22 +11,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [personId, setPersonId] = useState<string | null>(null)
   const [personLoading, setPersonLoading] = useState(false)
   const [initialising, setInitialising] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   async function loadSession() {
-    const [userEmail, name] = await Promise.all([cognito.currentUserEmail(), cognito.currentUserName()])
+    const [userEmail, name, userClass] = await Promise.all([
+      cognito.currentUserEmail(),
+      cognito.currentUserName(),
+      cognito.currentUserClass(),
+    ])
     setEmail(userEmail)
     setDisplayName(name ?? userEmail)
-    // The Person record is the source of truth for the display name (it's what a future
-    // "change my name" feature would update), but it may not exist yet - e.g. the
-    // PostConfirmation trigger that creates it hasn't caught up, or this account predates
-    // automatic Person creation - so the Cognito-derived name/email set above is what shows
-    // until/unless this resolves.
+    setIsAdmin(userClass === 'admin')
+    // The Person record is the source of truth for the display name (it's what the Settings
+    // page's "Your name" section updates), but it may not exist yet - e.g. the PostConfirmation
+    // trigger that creates it hasn't caught up, or this account predates automatic Person
+    // creation - so the Cognito-derived name/email set above is what shows until/unless this
+    // resolves.
     if (userEmail) {
-      refreshDisplayNameFromPerson()
+      refreshPerson()
     }
   }
 
-  function refreshDisplayNameFromPerson() {
+  function refreshPerson() {
     setPersonLoading(true)
     apolloClient
       .query<{ myPerson: Person | null }>({ query: MY_PERSON, fetchPolicy: 'network-only' })
@@ -57,12 +63,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setDisplayName(null)
     setPersonId(null)
     setPersonLoading(false)
+    setIsAdmin(false)
     apolloClient.clearStore() // don't keep the signed-out user's data cached
   }
 
   return (
     <AuthContext.Provider
-      value={{ email, displayName, personId, personLoading, initialising, signIn, signOut }}
+      value={{ email, displayName, personId, personLoading, initialising, isAdmin, signIn, signOut, refreshPerson }}
     >
       {children}
     </AuthContext.Provider>

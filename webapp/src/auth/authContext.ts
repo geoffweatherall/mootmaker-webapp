@@ -14,8 +14,14 @@ export interface AuthContextValue {
   personLoading: boolean
   /** True until the initial session check completes on page load. */
   initialising: boolean
+  /** True if the signed-in user's class (from the ID token) is "admin". Presentation only - see
+   * cognito.ts's currentUserClass() for why this is never the actual security boundary. */
+  isAdmin: boolean
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => void
+  /** Re-reads the signed-in user's own Person record, e.g. after a self-rename, so the sidebar
+   * reflects it immediately without a page refresh. */
+  refreshPerson: () => void
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)

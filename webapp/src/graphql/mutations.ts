@@ -13,6 +13,40 @@ export const CREATE_ROOM = gql`
   }
 `
 
+export const UPDATE_ROOM = gql`
+  mutation UpdateRoom($id: ID!, $room: RoomInput!) {
+    updateRoom(id: $id, room: $room) {
+      room {
+        id
+        name
+        capacity
+      }
+      errors
+    }
+  }
+`
+
+export const CREATE_PERSON = gql`
+  mutation CreatePerson($person: PersonInput!) {
+    createPerson(person: $person) {
+      id
+      name
+    }
+  }
+`
+
+export const UPDATE_PERSON = gql`
+  mutation UpdatePerson($id: ID!, $person: PersonInput!) {
+    updatePerson(id: $id, person: $person) {
+      person {
+        id
+        name
+      }
+      errors
+    }
+  }
+`
+
 export const CREATE_MEETING = gql`
   mutation CreateMeeting($meeting: MeetingInput!) {
     createMeeting(meeting: $meeting) {

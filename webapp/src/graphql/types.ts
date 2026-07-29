@@ -9,9 +9,14 @@ export interface Room {
   capacity: number
 }
 
-export type RoomError = 'NameRequired' | 'CapacityTooLow'
+export type RoomError = 'NameRequired' | 'CapacityTooLow' | 'RoomNotFound'
 
 export interface CreateRoomResult {
+  room: Room | null
+  errors: RoomError[]
+}
+
+export interface UpdateRoomResult {
   room: Room | null
   errors: RoomError[]
 }
@@ -19,6 +24,19 @@ export interface CreateRoomResult {
 export const ROOM_ERROR_MESSAGES: Record<RoomError, string> = {
   NameRequired: 'Name must not be blank.',
   CapacityTooLow: 'Room capacity must be at least 2.',
+  RoomNotFound: 'This room no longer exists - it may have been deleted.',
+}
+
+export type PersonError = 'NameRequired' | 'PersonNotFound'
+
+export interface UpdatePersonResult {
+  person: Person | null
+  errors: PersonError[]
+}
+
+export const PERSON_ERROR_MESSAGES: Record<PersonError, string> = {
+  NameRequired: 'Name must not be blank.',
+  PersonNotFound: 'This person no longer exists - it may have been deleted.',
 }
 
 export interface Meeting {

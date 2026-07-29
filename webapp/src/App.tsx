@@ -3,7 +3,6 @@ import { Layout } from './components/Layout'
 import { RequireAuth } from './components/RequireAuth'
 import AboutPage from './pages/AboutPage'
 import AddMeetingPage from './pages/AddMeetingPage'
-import AddRoomPage from './pages/AddRoomPage'
 import MeetingDetailsPage from './pages/MeetingDetailsPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import HomePage from './pages/HomePage'
@@ -26,7 +25,6 @@ function App() {
         {/* Everything else requires a signed-in user. */}
         <Route element={<RequireAuth />}>
           <Route path="/persons/:personId/calendar" element={<PersonCalendarPage />} />
-          <Route path="/rooms/add" element={<AddRoomPage />} />
           <Route path="/rooms/:date/availability" element={<RoomAvailabilityPage />} />
           <Route path="/meetings/add" element={<AddMeetingPage />} />
           <Route path="/meetings/:meetingId" element={<MeetingDetailsPage />} />

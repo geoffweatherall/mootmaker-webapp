@@ -1,4 +1,5 @@
 import { useQuery } from '@apollo/client/react'
+import AddIcon from '@mui/icons-material/Add'
 import {
   Alert,
   Box,
@@ -195,9 +196,14 @@ export default function HomePage() {
         <Alert severity="error">
           Your account hasn't been set up properly — no profile could be found for your sign-in.
         </Alert>
-        <Button variant="contained" onClick={() => navigate(`/rooms/${today}/availability`)}>
-          Rooms available today
-        </Button>
+        <Stack direction="row" spacing={2}>
+          <Button variant="contained" component={Link} to="/meetings/add" startIcon={<AddIcon />}>
+            Add Meeting
+          </Button>
+          <Button variant="contained" onClick={() => navigate(`/rooms/${today}/availability`)}>
+            Rooms available today
+          </Button>
+        </Stack>
       </Stack>
     )
   }
@@ -221,6 +227,9 @@ export default function HomePage() {
         </Button>
         <Button variant="contained" onClick={() => navigate(`/rooms/${today}/availability`)}>
           Rooms available today
+        </Button>
+        <Button variant="contained" component={Link} to="/meetings/add" startIcon={<AddIcon />}>
+          Add Meeting
         </Button>
       </Stack>
 

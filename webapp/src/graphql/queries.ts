@@ -28,6 +28,16 @@ export const LIST_ROOMS = gql`
   }
 `
 
+export const SUGGEST_ROOM = gql`
+  query SuggestRoom($startTime: String!, $endTime: String!, $requiredCapacity: Int!) {
+    suggestRoom(startTime: $startTime, endTime: $endTime, requiredCapacity: $requiredCapacity) {
+      id
+      name
+      capacity
+    }
+  }
+`
+
 export const LIST_MEETINGS = gql`
   query ListMeetings($filter: MeetingsFilter) {
     meetings(filter: $filter) {

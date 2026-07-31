@@ -45,7 +45,7 @@ export function MenuContent({ onNavigate }: MenuContentProps) {
 
   const todayAvailabilityPath = `/rooms/${dayjs().format('YYYY-MM-DD')}/availability`
   const isHomeActive = pathname === '/'
-  const isAvailabilityActive = AVAILABILITY_PATH_PATTERN.test(pathname) || pathname === '/rooms/add'
+  const isAvailabilityActive = AVAILABILITY_PATH_PATTERN.test(pathname)
   const isCalendarActive = CALENDAR_PATH_PATTERN.test(pathname)
 
   // Navigate as soon as a personId shows up for a click that arrived while it was still

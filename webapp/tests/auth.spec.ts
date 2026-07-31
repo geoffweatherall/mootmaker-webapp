@@ -36,7 +36,6 @@ test.describe('Authentication', () => {
 
   for (const path of [
     '/persons/some-id/calendar',
-    '/rooms/add',
     '/rooms/2026-01-01/availability',
     '/meetings/add',
     '/meetings/some-id',
@@ -54,14 +53,14 @@ test.describe('Authentication', () => {
     const password = process.env.E2E_USER_PASSWORD
     test.skip(!email || !password, 'E2E_USER_EMAIL / E2E_USER_PASSWORD not set')
 
-    await page.goto('/rooms/add')
+    await page.goto('/meetings/add')
     await expect(page.getByRole('heading', { name: 'Sign In' })).toBeVisible()
 
     await page.getByLabel('Email').fill(email!)
     await page.getByLabel('Password').fill(password!)
     await page.getByRole('button', { name: 'Sign in' }).click()
 
-    await expect(page).toHaveURL('/rooms/add')
+    await expect(page).toHaveURL('/meetings/add')
     await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
   })
 
@@ -81,7 +80,7 @@ test.describe('Authentication', () => {
     await expect(page).toHaveURL('/')
     await expect(page.getByRole('link', { name: 'Sign in' })).toBeVisible()
 
-    await page.goto('/rooms/add')
+    await page.goto('/meetings/add')
     await expect(page.getByRole('heading', { name: 'Sign In' })).toBeVisible()
   })
 

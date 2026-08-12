@@ -50,6 +50,16 @@ export function buildTheme(mode: ThemeMode): Theme {
       button: { fontFamily: headingFont, fontWeight: 600, textTransform: 'none', letterSpacing: 0 },
     },
     components: {
+      // MUI's default (margin-based) Stack spacing only pushes items apart along the main axis,
+      // so a row Stack that wraps (sx={{ flexWrap: 'wrap' }}, e.g. HomePage's button row) gets no
+      // vertical gap between the wrapped lines - `useFlexGap` switches Stack to a real CSS `gap`,
+      // which applies in both directions whenever the browser actually wraps a line, wherever
+      // Stack is used.
+      MuiStack: {
+        defaultProps: {
+          useFlexGap: true,
+        },
+      },
       MuiAppBar: {
         styleOverrides: {
           root: {

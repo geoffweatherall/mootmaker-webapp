@@ -35,7 +35,7 @@ export function SignInForm({ defaultEmail = '', defaultPassword = '', onSuccess 
   return (
     <Stack spacing={2}>
       <ErrorBanner messages={error ? [error] : []} onDismiss={() => setError(null)} />
-      <Stack component="form" spacing={2} onSubmit={handleSubmit}>
+      <Stack component="form" spacing={2} onSubmit={handleSubmit} sx={{ alignItems: 'flex-start' }}>
         <TextField
           label="Email"
           type="email"

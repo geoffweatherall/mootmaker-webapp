@@ -161,7 +161,16 @@ export default function RoomAvailabilityPage() {
           <IconButton onClick={() => goToDate(selectedDate.add(1, 'day'))} aria-label="Next day">
             <ChevronRightIcon />
           </IconButton>
-          <Button component={Link} to="/meetings/add" variant="contained" startIcon={<AddIcon />}>
+          {/* Hidden below "sm" - the header row has no room to wrap this in sensibly alongside
+              the date-nav controls without it overflowing the viewport, so on narrow screens it
+              moves to its own full-width copy at the foot of the page instead (see below). */}
+          <Button
+            component={Link}
+            to="/meetings/add"
+            variant="contained"
+            startIcon={<AddIcon />}
+            sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+          >
             Add Meeting
           </Button>
         </Stack>
@@ -319,6 +328,20 @@ export default function RoomAvailabilityPage() {
           </Box>
         </Paper>
       )}
+
+      {/* The header row's own "Add Meeting" button (see above) is hidden below "sm" - this is
+          its narrow-screen replacement, full-width at the foot of the page rather than crammed
+          into the header alongside the date-nav controls. */}
+      <Button
+        component={Link}
+        to="/meetings/add"
+        variant="contained"
+        startIcon={<AddIcon />}
+        fullWidth
+        sx={{ display: { xs: 'inline-flex', sm: 'none' } }}
+      >
+        Add Meeting
+      </Button>
     </Stack>
   )
 }

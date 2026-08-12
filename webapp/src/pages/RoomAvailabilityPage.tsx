@@ -13,17 +13,22 @@ import {
   Stack,
   Tooltip,
   Typography,
+  useTheme,
 } from '@mui/material'
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import emptyRooms from '../assets/empty-rooms.svg'
+import { EmptyState } from '../components/EmptyState'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { BUSINESS_END_HOUR, BUSINESS_START_HOUR } from '../constants/businessHours'
 import { errorMessages } from '../graphql/errorMessages'
 import { formatLocalTime } from '../graphql/formatDateTime'
 import { LIST_MEETINGS, LIST_ROOMS } from '../graphql/queries'
 import type { Meeting, MeetingsFilter, Room } from '../graphql/types'
+import { alpha } from '@mui/material/styles'
+import { readableTextOn, roomColorAt } from '../theme/roomColor'
 
 const DATE_PARAM_FORMAT = 'YYYY-MM-DD'
 const DATE_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/
@@ -61,6 +66,7 @@ export default function RoomAvailabilityPage() {
   const { date } = useParams<{ date: string }>()
   const navigate = useNavigate()
   const [dismissedError, setDismissedError] = useState(false)
+  const theme = useTheme()
 
   const parsedDate = parseDateParam(date)
 
@@ -156,7 +162,7 @@ export default function RoomAvailabilityPage() {
             <ChevronRightIcon />
           </IconButton>
           <Button component={Link} to="/meetings/add" variant="contained" startIcon={<AddIcon />}>
-            New Meeting
+            Add Meeting
           </Button>
         </Stack>
       </Stack>
@@ -177,7 +183,7 @@ export default function RoomAvailabilityPage() {
           <CircularProgress />
         </Box>
       ) : rooms.length === 0 ? (
-        !roomsError && <Typography color="text.secondary">No rooms exist yet.</Typography>
+        !roomsError && <EmptyState message="No rooms exist yet." illustration={emptyRooms} />
       ) : (
         <Paper sx={{ p: 2, overflowX: 'auto' }}>
           <Box sx={{ minWidth: 720 }}>
@@ -206,92 +212,110 @@ export default function RoomAvailabilityPage() {
               </Box>
             </Box>
 
-            {rooms.map((room) => (
-              <Box
-                key={room.id}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'stretch',
-                  borderTop: '1px solid',
-                  borderColor: 'divider',
-                  py: 1.5,
-                }}
-              >
+            {rooms.map((room, roomIndex) => {
+              // See theme/roomColor.ts - a room's colour is a secondary scan aid, not its only
+              // identity: the room name is always shown as text alongside it too.
+              const roomColor = roomColorAt(roomIndex, theme.palette.mode)
+              const meetingTextColor = readableTextOn(roomColor, theme.palette.text.primary)
+              return (
                 <Box
+                  key={room.id}
                   sx={{
-                    width: 200,
-                    flexShrink: 0,
-                    pr: 2,
                     display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
+                    alignItems: 'stretch',
+                    borderTop: '1px solid',
+                    borderColor: 'divider',
+                    py: 1.5,
                   }}
                 >
-                  <Typography variant="subtitle2">{room.name}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Capacity {room.capacity}
-                  </Typography>
-                </Box>
-                <Box
-                  sx={{
-                    position: 'relative',
-                    flexGrow: 1,
-                    height: 48,
-                    bgcolor: 'action.hover',
-                    borderRadius: 1,
-                  }}
-                >
-                  {HOUR_MARKS.slice(1, -1).map((hour, i) => (
-                    <Box
-                      key={hour}
-                      sx={{
-                        position: 'absolute',
-                        top: 0,
-                        bottom: 0,
-                        left: `${((i + 1) / (HOUR_MARKS.length - 1)) * 100}%`,
-                        borderLeft: '1px solid',
-                        borderColor: 'divider',
-                      }}
-                    />
-                  ))}
-                  {(meetingsByRoom.get(room.id) ?? []).map((meeting) => {
-                    const left = percentThroughBusinessDay(minutesSinceMidnight(meeting.startTime))
-                    const right = percentThroughBusinessDay(minutesSinceMidnight(meeting.endTime))
-                    if (right <= left) return null
-                    return (
-                      <Tooltip
-                        key={meeting.id}
-                        title={`${meeting.subject}: ${formatLocalTime(meeting.startTime)}–${formatLocalTime(meeting.endTime)}`}
-                      >
-                        <ButtonBase
-                          component={Link}
-                          to={`/meetings/${meeting.id}`}
-                          focusRipple
-                          sx={{
-                            position: 'absolute',
-                            top: 4,
-                            bottom: 4,
-                            left: `${left}%`,
-                            width: `${right - left}%`,
-                            bgcolor: 'primary.main',
-                            color: 'primary.contrastText',
-                            borderRadius: 1,
-                            px: 0.75,
-                            overflow: 'hidden',
-                            justifyContent: 'flex-start',
-                            '&:hover': { bgcolor: 'primary.dark' },
-                          }}
+                  <Box
+                    sx={{
+                      width: 200,
+                      flexShrink: 0,
+                      pr: 2,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                      <Box
+                        sx={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: '50%',
+                          bgcolor: roomColor,
+                          flexShrink: 0,
+                        }}
+                      />
+                      <Typography variant="subtitle2">{room.name}</Typography>
+                    </Stack>
+                    <Typography variant="caption" color="text.secondary">
+                      Capacity {room.capacity}
+                    </Typography>
+                  </Box>
+                  <Box
+                    sx={{
+                      position: 'relative',
+                      flexGrow: 1,
+                      height: 48,
+                      bgcolor: alpha(roomColor, 0.14),
+                      borderRadius: 1,
+                    }}
+                  >
+                    {HOUR_MARKS.slice(1, -1).map((hour, i) => (
+                      <Box
+                        key={hour}
+                        sx={{
+                          position: 'absolute',
+                          top: 0,
+                          bottom: 0,
+                          left: `${((i + 1) / (HOUR_MARKS.length - 1)) * 100}%`,
+                          borderLeft: '1px solid',
+                          borderColor: 'divider',
+                        }}
+                      />
+                    ))}
+                    {(meetingsByRoom.get(room.id) ?? []).map((meeting) => {
+                      const left = percentThroughBusinessDay(minutesSinceMidnight(meeting.startTime))
+                      const right = percentThroughBusinessDay(minutesSinceMidnight(meeting.endTime))
+                      if (right <= left) return null
+                      return (
+                        <Tooltip
+                          key={meeting.id}
+                          title={`${meeting.subject}: ${formatLocalTime(meeting.startTime)}–${formatLocalTime(meeting.endTime)}`}
                         >
-                          <Typography variant="caption" noWrap component="span">
-                            {meeting.subject}
-                          </Typography>
-                        </ButtonBase>
-                      </Tooltip>
-                    )
-                  })}
+                          <ButtonBase
+                            component={Link}
+                            to={`/meetings/${meeting.id}`}
+                            focusRipple
+                            sx={{
+                              position: 'absolute',
+                              top: 4,
+                              bottom: 4,
+                              left: `${left}%`,
+                              width: `${right - left}%`,
+                              bgcolor: roomColor,
+                              color: meetingTextColor,
+                              borderRadius: 1,
+                              px: 0.75,
+                              overflow: 'hidden',
+                              justifyContent: 'flex-start',
+                              transition: 'filter 120ms ease',
+                              '&:hover': { filter: 'brightness(0.92)' },
+                            }}
+                          >
+                            <Typography variant="caption" noWrap component="span">
+                              {meeting.subject}
+                            </Typography>
+                          </ButtonBase>
+                        </Tooltip>
+                      )
+                    })}
+                  </Box>
                 </Box>
-              </Box>
-            ))}
+              )
+            })}
           </Box>
         </Paper>
       )}

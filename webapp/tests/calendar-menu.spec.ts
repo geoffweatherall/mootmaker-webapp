@@ -36,7 +36,11 @@ test.describe('Calendar nav item while personId is still resolving', () => {
 
     await page.goto('/')
 
-    const calendarItem = page.getByRole('button', { name: 'Calendar', exact: true })
+    // Scoped to the sidebar's <nav> landmark - HomePage's own main-content area also has a
+    // "Calendar" button once signed in with a linked Person (see the other describe block below),
+    // so an unscoped query would be ambiguous there even though this particular test (the e2e
+    // user has no linked Person) never renders that second one.
+    const calendarItem = page.getByRole('navigation').getByRole('button', { name: 'Calendar', exact: true })
     await expect(calendarItem).toBeVisible()
     await expect(calendarItem).toBeEnabled()
 
@@ -72,7 +76,8 @@ test.describe('Calendar nav item once personId resolves', () => {
     await page.getByRole('button', { name: 'Sign in' }).click()
     await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
 
-    const calendarItem = page.getByRole('button', { name: 'Calendar', exact: true })
+    // Scoped to the sidebar's <nav> landmark - see the comment in the describe block above.
+    const calendarItem = page.getByRole('navigation').getByRole('button', { name: 'Calendar', exact: true })
     await expect(calendarItem).toBeEnabled()
 
     await calendarItem.click()
@@ -84,6 +89,6 @@ test.describe('Calendar nav item once personId resolves', () => {
     releaseMyPerson()
 
     await expect(page).toHaveURL(CALENDAR_PATH_PATTERN)
-    await expect(page.getByRole('heading', { name: 'Person Calendar' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Calendar', exact: true })).toBeVisible()
   })
 })

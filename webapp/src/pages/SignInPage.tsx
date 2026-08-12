@@ -1,5 +1,6 @@
-import { Link as MuiLink, Paper, Stack, Typography } from '@mui/material'
+import { Box, Link as MuiLink, Paper, Stack, Typography } from '@mui/material'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import signInHero from '../assets/signin-hero.svg'
 import { SignInForm } from '../components/SignInForm'
 
 export default function SignInPage() {
@@ -11,9 +12,12 @@ export default function SignInPage() {
 
   return (
     <Stack spacing={3}>
-      <Typography variant="h4" component="h1">
-        Sign In
-      </Typography>
+      <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+        <Box component="img" src={signInHero} alt="" sx={{ width: 120, flexShrink: 0 }} />
+        <Typography variant="h4" component="h1">
+          Sign In
+        </Typography>
+      </Stack>
 
       <Paper sx={{ p: 3 }}>
         <Stack spacing={3}>

@@ -9,16 +9,20 @@ import {
   Stack,
   TextField,
   Typography,
+  useTheme,
 } from '@mui/material'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../auth/authContext'
+import emptyPeople from '../assets/empty-people.svg'
+import { EmptyState } from '../components/EmptyState'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { errorMessages } from '../graphql/errorMessages'
 import { formatLocalTime } from '../graphql/formatDateTime'
-import { LIST_MEETINGS, LIST_PEOPLE } from '../graphql/queries'
-import type { Meeting, MeetingsFilter, Person } from '../graphql/types'
+import { LIST_MEETINGS, LIST_PEOPLE, LIST_ROOMS } from '../graphql/queries'
+import type { Meeting, MeetingsFilter, Person, Room } from '../graphql/types'
+import { roomColorAt } from '../theme/roomColor'
 
 const WEEKS_SHOWN = 6
 const WORK_DAYS_PER_WEEK = 5
@@ -38,6 +42,7 @@ export default function PersonCalendarPage() {
   const navigate = useNavigate()
   const [dismissedError, setDismissedError] = useState(false)
   const { personId: ownPersonId, displayName: ownDisplayName } = useAuth()
+  const theme = useTheme()
 
   // People change rarely, so fetch once and read from the cache from then on (`cache-first`)
   // instead of refetching on every visit; a full page refresh resets the in-memory cache and
@@ -48,6 +53,16 @@ export default function PersonCalendarPage() {
     error: peopleError,
   } = useQuery<{ people: Person[] }>(LIST_PEOPLE, { fetchPolicy: 'cache-first' })
 
+  // Fetched purely to colour-code each meeting by room below (see theme/roomColor.ts) - sorted
+  // the same way RoomAvailabilityPage sorts its own room list, so a room gets the same colour on
+  // both pages. Likely already warm in Apollo's cache if RoomAvailabilityPage was visited this
+  // session, since both use the same query with the same `cache-first` policy.
+  const { data: roomsData } = useQuery<{ rooms: Room[] }>(LIST_ROOMS, { fetchPolicy: 'cache-first' })
+  const roomIndexById = useMemo(() => {
+    const sorted = [...(roomsData?.rooms ?? [])].sort((a, b) => a.name.localeCompare(b.name))
+    return new Map(sorted.map((room, index) => [room.id, index]))
+  }, [roomsData])
+
   const people = useMemo(
     () => [...(peopleData?.people ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
     [peopleData],
@@ -55,7 +70,7 @@ export default function PersonCalendarPage() {
   // Before the full people list has loaded, fall back to the signed-in user's own name - already
   // known via useAuth(), independent of this page's own LIST_PEOPLE query - rather than leaving
   // the dropdown showing placeholder text until the list resolves. This covers the common case
-  // ("My Calendar" always links here with the signed-in user's own personId); it doesn't help for
+  // (HomePage's "Calendar" button always links here with the signed-in user's own personId); it doesn't help for
   // a cold deep link to someone else's calendar, since nothing else knows their name yet either.
   const selectedPerson = useMemo(() => {
     const fromList = people.find((person) => person.id === personId)
@@ -130,7 +145,7 @@ export default function PersonCalendarPage() {
   return (
     <Stack spacing={3}>
       <Typography variant="h4" component="h1">
-        Person Calendar
+        Calendar
       </Typography>
 
       <Autocomplete
@@ -159,7 +174,7 @@ export default function PersonCalendarPage() {
           <CircularProgress />
         </Box>
       ) : people.length === 0 ? (
-        !peopleError && <Typography color="text.secondary">No people exist yet.</Typography>
+        !peopleError && <EmptyState message="No people exist yet." illustration={emptyPeople} />
       ) : (
         <Paper sx={{ p: 2, overflowX: 'auto' }}>
           <Box sx={{ minWidth: 700 }}>
@@ -212,14 +227,19 @@ export default function PersonCalendarPage() {
                         <Typography variant="caption" color="text.secondary">
                           {date.format('D MMM')}
                         </Typography>
-                        {dayMeetings.map((meeting) => (
+                        {dayMeetings.map((meeting) => {
+                          const roomIndex = roomIndexById.get(meeting.room.id) ?? 0
+                          const roomColor = roomColorAt(roomIndex, theme.palette.mode)
+                          return (
                           <ButtonBase
                             key={meeting.id}
                             component={Link}
                             to={`/meetings/${meeting.id}`}
                             focusRipple
                             sx={{
-                              display: 'block',
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: 0.75,
                               width: '100%',
                               textAlign: 'left',
                               borderRadius: 1,
@@ -227,12 +247,23 @@ export default function PersonCalendarPage() {
                               '&:hover': { bgcolor: 'action.hover' },
                             }}
                           >
+                            <Box
+                              sx={{
+                                width: 8,
+                                height: 8,
+                                mt: 0.5,
+                                borderRadius: '50%',
+                                bgcolor: roomColor,
+                                flexShrink: 0,
+                              }}
+                            />
                             <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
                               {formatLocalTime(meeting.startTime)}–{formatLocalTime(meeting.endTime)}{' '}
                               {meeting.subject} – {meeting.room.name}
                             </Typography>
                           </ButtonBase>
-                        ))}
+                          )
+                        })}
                       </Paper>
                     )
                   })}

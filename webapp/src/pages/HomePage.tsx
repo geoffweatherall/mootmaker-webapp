@@ -16,7 +16,10 @@ import dayjs from 'dayjs'
 import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/authContext'
+import emptyMeetings from '../assets/empty-meetings.svg'
 import homeHero from '../assets/home-hero.svg'
+import homeSignedIn from '../assets/home-signed-in.svg'
+import { EmptyState } from '../components/EmptyState'
 import { SignInForm } from '../components/SignInForm'
 import { formatLocalTime } from '../graphql/formatDateTime'
 import { LIST_MEETINGS } from '../graphql/queries'
@@ -48,7 +51,7 @@ function AgendaList({ title, meetings, loading }: AgendaListProps) {
           <CircularProgress size={24} />
         </Box>
       ) : meetings.length === 0 ? (
-        <Typography color="text.secondary">No meetings.</Typography>
+        <EmptyState message="No meetings." illustration={emptyMeetings} />
       ) : (
         <List disablePadding>
           {meetings.map((meeting) => (
@@ -201,7 +204,7 @@ export default function HomePage() {
             Add Meeting
           </Button>
           <Button variant="contained" onClick={() => navigate(`/rooms/${today}/availability`)}>
-            Rooms available today
+            Room availability today
           </Button>
         </Stack>
       </Stack>
@@ -210,28 +213,42 @@ export default function HomePage() {
 
   return (
     <Stack spacing={3}>
-      <Typography variant="h3" component="h1">
-        Welcome to Mootmaker
-      </Typography>
-      <Typography variant="body1" color="text.secondary">
-        Schedule meetings and keep track of who's using each room, all in one place.
-      </Typography>
-      <Stack direction="row" spacing={2}>
-        <Button
-          variant="contained"
-          disabled={!personId}
-          startIcon={personLoading ? <CircularProgress size={16} color="inherit" /> : undefined}
-          onClick={() => personId && navigate(`/persons/${personId}/calendar`)}
-        >
-          My Calendar
-        </Button>
-        <Button variant="contained" onClick={() => navigate(`/rooms/${today}/availability`)}>
-          Rooms available today
-        </Button>
-        <Button variant="contained" component={Link} to="/meetings/add" startIcon={<AddIcon />}>
-          Add Meeting
-        </Button>
-      </Stack>
+      <Paper sx={{ p: 3 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} sx={{ alignItems: 'center' }}>
+          <Box
+            component="img"
+            src={homeSignedIn}
+            alt=""
+            sx={{ width: { xs: '100%', sm: 220 }, maxWidth: 280, flexShrink: 0 }}
+          />
+          <Stack spacing={2} sx={{ flexGrow: 1 }}>
+            <Stack spacing={1}>
+              <Typography variant="h3" component="h1">
+                Welcome to Mootmaker
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                Schedule meetings and keep track of who's using each room, all in one place.
+              </Typography>
+            </Stack>
+            <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap' }}>
+              <Button
+                variant="contained"
+                disabled={!personId}
+                startIcon={personLoading ? <CircularProgress size={16} color="inherit" /> : undefined}
+                onClick={() => personId && navigate(`/persons/${personId}/calendar`)}
+              >
+                Calendar
+              </Button>
+              <Button variant="contained" onClick={() => navigate(`/rooms/${today}/availability`)}>
+                Room availability today
+              </Button>
+              <Button variant="contained" component={Link} to="/meetings/add" startIcon={<AddIcon />}>
+                Add Meeting
+              </Button>
+            </Stack>
+          </Stack>
+        </Stack>
+      </Paper>
 
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3}>
         <AgendaList title="Today" meetings={agendaFor(today)} loading={agendaLoading} />

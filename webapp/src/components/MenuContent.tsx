@@ -28,7 +28,7 @@ interface MenuContentProps {
 
 /**
  * The vertical nav list shared by the desktop sidebar and the mobile flyout: Home, then - only
- * when signed in - Calendar and Availability (both need a signed-in user; showing them signed
+ * when signed in - Calendar and Room Availability (both need a signed-in user; showing them signed
  * out would just bounce through RequireAuth to the sign-in form), then Sign in/Sign up (signed
  * out) or Sign out (signed in), followed by the secondary About/Feedback items.
  */
@@ -110,7 +110,7 @@ export function MenuContent({ onNavigate }: MenuContentProps) {
               <ListItemIcon>
                 <EventAvailableRoundedIcon />
               </ListItemIcon>
-              <ListItemText primary="Availability" />
+              <ListItemText primary="Room Availability" />
             </ListItemButton>
           </>
         )}

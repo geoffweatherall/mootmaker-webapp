@@ -119,3 +119,39 @@ export const SettingsIcon = createSvgIcon(
   </>,
   'MootmakerSettings',
 )
+
+// A 4-point sparkle plus a smaller companion sparkle (the same "one big + one small" layering
+// AutoAwesome-style icons use elsewhere), redrawn in this set's own flat currentColor style
+// rather than the stock MUI icon - used on the "Suggest a room" button (see AddMeetingPage.tsx).
+export const SparkleIcon = createSvgIcon(
+  <>
+    <path
+      d="M12 2 C12.5 7 13 9.5 18 10 C13 10.5 12.5 13 12 18 C11.5 13 11 10.5 6 10 C11 9.5 11.5 7 12 2 Z"
+      fill="currentColor"
+    />
+    <path
+      d="M18.5 13 C18.75 14.6 18.9 15.25 20.5 15.5 C18.9 15.75 18.75 16.4 18.5 18 C18.25 16.4 18.1 15.75 16.5 15.5 C18.1 15.25 18.25 14.6 18.5 13 Z"
+      fill="currentColor"
+      fillOpacity="0.6"
+    />
+  </>,
+  'MootmakerSparkle',
+)
+
+// A simple flat "empty tray" glyph for empty-state messages (no meetings, no rooms, no people -
+// see components/EmptyState.tsx) - deliberately generic/reused rather than one bespoke
+// illustration per empty state, matching how the rest of this set favours a small shape
+// vocabulary over one-off drawings.
+export const EmptyStateIcon = createSvgIcon(
+  <>
+    <path
+      d="M4.5 4.5 H19.5 L21 10.5 V18 A2.5 2.5 0 0 1 18.5 20.5 H5.5 A2.5 2.5 0 0 1 3 18 V10.5 Z"
+      fill="currentColor"
+      fillOpacity="0.14"
+    />
+    <path d="M4.5 4.5 H19.5 L21 10.5 H3 Z" fill="currentColor" fillOpacity="0.32" />
+    <path d="M3 10.5 H21" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    <path d="M9.5 14 H14.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeOpacity="0.6" />
+  </>,
+  'MootmakerEmptyState',
+)

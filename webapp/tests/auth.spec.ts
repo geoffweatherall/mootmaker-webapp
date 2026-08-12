@@ -16,7 +16,7 @@ test.describe('Authentication', () => {
 
     // Both need a signed-in user, so they're omitted entirely rather than shown disabled.
     await expect(page.getByText('Calendar', { exact: true })).toHaveCount(0)
-    await expect(page.getByText('Availability', { exact: true })).toHaveCount(0)
+    await expect(page.getByText('Room Availability', { exact: true })).toHaveCount(0)
   })
 
   test('signed-out home page offers a one-click demo sign-in when configured', async ({ page }) => {

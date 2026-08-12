@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 150" width="200" height="150" role="img" aria-label="A person holding up a welcome badge with a plus sign">
+  <circle cx="100" cy="78" r="66" fill="#e3f3f1" />
+
+  <!-- Confetti -->
+  <rect x="150" y="30" width="10" height="10" rx="3" fill="#f59e0b" transform="rotate(20 155 35)" />
+  <circle cx="165" cy="60" r="5" fill="#4338ca" />
+  <circle cx="34" cy="40" r="4" fill="#8b85f0" />
+  <rect x="150" y="100" width="9" height="9" rx="3" fill="#0e8f82" transform="rotate(-12 154 104)" />
+
+  <!-- Figure, holding a badge up -->
+  <rect x="70" y="92" width="48" height="50" rx="24" fill="#4338ca" />
+  <circle cx="94" cy="74" r="20" fill="#8b85f0" />
+  <circle cx="87" cy="72" r="2.3" fill="#1e1b2e" />
+  <circle cx="101" cy="72" r="2.3" fill="#1e1b2e" />
+  <path d="M87 82 Q94 87 101 82" fill="none" stroke="#1e1b2e" stroke-width="2.2" stroke-linecap="round" />
+  <path d="M114 100 Q126 84 130 68" fill="none" stroke="#4338ca" stroke-width="11" stroke-linecap="round" />
+
+  <!-- Badge -->
+  <rect x="108" y="38" width="52" height="38" rx="10" fill="#faf9f6" stroke="#e7e3f6" stroke-width="2" />
+  <circle cx="124" cy="57" r="9" fill="#0e8f82" />
+  <rect x="138" y="49" width="16" height="16" rx="4" fill="#f59e0b" />
+  <path d="M146 53 v8 M142 57 h8" stroke="#faf9f6" stroke-width="2.4" stroke-linecap="round" />
+
+  <ellipse cx="94" cy="146" rx="30" ry="6" fill="#2a1f6b" opacity="0.14" />
+</svg>

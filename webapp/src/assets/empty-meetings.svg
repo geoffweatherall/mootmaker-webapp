@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 150" width="200" height="150" role="img" aria-label="A steaming mug of coffee beside a blank calendar page">
+  <circle cx="100" cy="80" r="66" fill="#e3f3f1" />
+
+  <!-- Blank calendar card -->
+  <rect x="98" y="34" width="70" height="86" rx="12" fill="#faf9f6" stroke="#e7e3f6" stroke-width="2" />
+  <rect x="98" y="34" width="70" height="20" rx="12" fill="#4338ca" />
+  <rect x="98" y="44" width="70" height="10" fill="#4338ca" />
+  <line x1="116" y1="80" x2="150" y2="80" stroke="#e7e3f6" stroke-width="6" stroke-linecap="round" stroke-dasharray="1 12" />
+  <line x1="116" y1="98" x2="140" y2="98" stroke="#e7e3f6" stroke-width="6" stroke-linecap="round" stroke-dasharray="1 12" />
+
+  <!-- Steam -->
+  <path d="M42 45 Q37 38 42 32 Q47 26 42 20" fill="none" stroke="#b6b0d8" stroke-width="3.5" stroke-linecap="round" />
+  <path d="M58 45 Q53 38 58 32 Q63 26 58 20" fill="none" stroke="#b6b0d8" stroke-width="3.5" stroke-linecap="round" />
+
+  <!-- Mug -->
+  <rect x="28" y="50" width="46" height="40" rx="10" fill="#f59e0b" />
+  <path d="M74 58 h10 a10 10 0 0 1 0 20 h-10" fill="none" stroke="#f59e0b" stroke-width="7" />
+  <ellipse cx="51" cy="90" rx="23" ry="7" fill="#0b6a60" opacity="0.16" />
+</svg>

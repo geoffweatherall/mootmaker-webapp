@@ -1,8 +1,9 @@
-import { Link as MuiLink, Paper, Stack, TextField, Typography } from '@mui/material'
+import { Box, Link as MuiLink, Paper, Stack, TextField, Typography } from '@mui/material'
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/authContext'
 import { confirmForgotPassword, forgotPassword } from '../auth/cognito'
+import forgotPasswordHero from '../assets/forgot-password-hero.svg'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { SubmitButton } from '../components/SubmitButton'
 
@@ -51,9 +52,12 @@ export default function ForgotPasswordPage() {
 
   return (
     <Stack spacing={3}>
-      <Typography variant="h4" component="h1">
-        Reset Password
-      </Typography>
+      <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+        <Box component="img" src={forgotPasswordHero} alt="" sx={{ width: 120, flexShrink: 0 }} />
+        <Typography variant="h4" component="h1">
+          Reset Password
+        </Typography>
+      </Stack>
 
       <ErrorBanner messages={error ? [error] : []} onDismiss={() => setError(null)} />
 

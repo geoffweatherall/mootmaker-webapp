@@ -68,6 +68,7 @@ export type MeetingError =
   | 'OrganiserNotFound'
   | 'AttendeeNotFound'
   | 'SubjectRequired'
+  | 'OrganiserIsAttendee'
 
 export interface CreateMeetingResult {
   meeting: Meeting | null
@@ -86,4 +87,5 @@ export const MEETING_ERROR_MESSAGES: Record<MeetingError, string> = {
   OrganiserNotFound: 'The selected organiser could not be found.',
   AttendeeNotFound: 'One or more selected attendees could not be found.',
   SubjectRequired: 'Please enter a subject.',
+  OrganiserIsAttendee: 'The organiser cannot also be listed as an attendee.',
 }

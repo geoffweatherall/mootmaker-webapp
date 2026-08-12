@@ -4,7 +4,7 @@ import { Box, Button, CircularProgress, Divider, Paper, Stack, Typography } from
 import { useNavigate, useParams } from 'react-router-dom'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { errorMessages } from '../graphql/errorMessages'
-import { formatLocalDateTime } from '../graphql/formatDateTime'
+import { formatLocalDate, formatLocalTime } from '../graphql/formatDateTime'
 import { LIST_MEETINGS } from '../graphql/queries'
 import type { Meeting } from '../graphql/types'
 import { useState } from 'react'
@@ -66,8 +66,11 @@ export default function MeetingDetailsPage() {
                 label="Attendees"
                 value={meeting.attendees.map((attendee) => attendee.name).join(', ') || 'None'}
               />
-              <DetailRow label="Start" value={formatLocalDateTime(meeting.startTime)} />
-              <DetailRow label="End" value={formatLocalDateTime(meeting.endTime)} />
+              <DetailRow label="Date" value={formatLocalDate(meeting.startTime)} />
+              <DetailRow
+                label="Time"
+                value={`${formatLocalTime(meeting.startTime)}–${formatLocalTime(meeting.endTime)}`}
+              />
             </Stack>
           </Stack>
         </Paper>

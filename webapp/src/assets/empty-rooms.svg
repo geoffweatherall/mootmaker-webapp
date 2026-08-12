@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 150" width="200" height="150" role="img" aria-label="A person hanging a numbered room sign on a doorway">
+  <circle cx="100" cy="80" r="66" fill="#efe9fb" />
+
+  <!-- Doorway -->
+  <rect x="95" y="26" width="72" height="106" rx="10" fill="none" stroke="#b6b0d8" stroke-width="6" />
+  <circle cx="152" cy="80" r="3.4" fill="#b6b0d8" />
+
+  <!-- Hanging sign -->
+  <line x1="131" y1="26" x2="131" y2="46" stroke="#0e8f82" stroke-width="3" stroke-linecap="round" />
+  <rect x="111" y="46" width="40" height="30" rx="8" fill="#0e8f82" />
+  <circle cx="131" cy="61" r="8" fill="#2dd4bf" />
+
+  <!-- Figure reaching up -->
+  <rect x="42" y="88" width="46" height="52" rx="23" fill="#4338ca" />
+  <circle cx="65" cy="70" r="20" fill="#8b85f0" />
+  <circle cx="59" cy="68" r="2.2" fill="#1e1b2e" />
+  <circle cx="71" cy="68" r="2.2" fill="#1e1b2e" />
+  <path d="M60 77 Q65 81 70 77" fill="none" stroke="#1e1b2e" stroke-width="2" stroke-linecap="round" />
+  <path d="M83 95 Q102 78 112 60" fill="none" stroke="#4338ca" stroke-width="12" stroke-linecap="round" />
+  <circle cx="112" cy="60" r="8" fill="#4338ca" />
+
+  <ellipse cx="65" cy="144" rx="34" ry="6" fill="#2a1f6b" opacity="0.14" />
+</svg>

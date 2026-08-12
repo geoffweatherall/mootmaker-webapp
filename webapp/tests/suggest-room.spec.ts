@@ -1,13 +1,13 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('Add Meeting entry point on the home page', () => {
-  test('an "Add Meeting" button on the home page opens the Schedule Meeting form', async ({ page }) => {
+  test('an "Add Meeting" button on the home page opens the Add Meeting form', async ({ page }) => {
     await page.goto('/')
 
     await page.getByRole('link', { name: 'Add Meeting' }).click()
 
     await expect(page).toHaveURL('/meetings/add')
-    await expect(page.getByRole('heading', { name: 'Schedule Meeting' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Add Meeting' })).toBeVisible()
   })
 })
 
@@ -16,7 +16,6 @@ test.describe('Suggest a room', () => {
     page,
   }) => {
     await page.goto('/meetings/add')
-    await page.getByRole('button', { name: 'Next' }).click()
 
     const roomSelect = page.getByRole('combobox', { name: 'Room' })
     const suggestButton = page.getByRole('button', { name: 'Suggest a room' })
@@ -60,7 +59,6 @@ test.describe('Suggest a room', () => {
     }
     await page.keyboard.press('Escape')
 
-    await page.getByRole('button', { name: 'Next' }).click()
     const suggestButton = page.getByRole('button', { name: 'Suggest a room' })
 
     await suggestButton.click()

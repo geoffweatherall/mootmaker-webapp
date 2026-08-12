@@ -1,6 +1,6 @@
 import { useLazyQuery, useMutation, useQuery } from '@apollo/client/react'
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
 import {
+  Box,
   Button,
   Checkbox,
   CircularProgress,
@@ -13,9 +13,6 @@ import {
   Select,
   type SelectChangeEvent,
   Stack,
-  Step,
-  StepLabel,
-  Stepper,
   TextField,
   Typography,
 } from '@mui/material'
@@ -32,12 +29,12 @@ import { CREATE_MEETING } from '../graphql/mutations'
 import { LIST_PEOPLE, LIST_ROOMS, SUGGEST_ROOM } from '../graphql/queries'
 import { MEETING_ERROR_MESSAGES } from '../graphql/types'
 import type { CreateMeetingResult, Person, Room } from '../graphql/types'
+import addMeetingHero from '../assets/add-meeting-hero.svg'
+import { SparkleIcon } from '../icons'
 
 // Only offer minutes on a 5-minute boundary in the time picker, matching the
 // API's requirement that meeting start/end times fall on a 5 minute boundary.
 const MEETING_TIME_STEPS = { minutes: 5 }
-
-const STEPS = ['Details', 'Room']
 
 const NO_ROOM_AVAILABLE_MESSAGE = 'No suitable room is available for that time - try adjusting the attendees or time.'
 
@@ -87,7 +84,6 @@ export default function AddMeetingPage() {
     error: peopleError,
   } = useQuery<{ people: Person[] }>(LIST_PEOPLE)
 
-  const [activeStep, setActiveStep] = useState(0)
   const [subject, setSubject] = useState('')
   const [roomId, setRoomId] = useState('')
   const [organiserId, setOrganiserId] = useState('')
@@ -102,13 +98,19 @@ export default function AddMeetingPage() {
   // Defaults the organiser to the signed-in user's own Person, once it's known - not on every
   // render, and never overriding a choice the user already made (e.g. organising on someone
   // else's behalf). Demo/e2e sign-ins have no linked Person, so this simply never fires for them,
-  // leaving the field blank exactly like before this page defaulted anything.
+  // leaving the field blank exactly like before this page defaulted anything. Also skipped for as
+  // long as the signed-in user has already added themselves as an attendee - the organiser and
+  // attendee lists are mutually exclusive (see the Attendees/Organiser field filtering below), and
+  // an explicit attendee pick like that is exactly the kind of deliberate choice this default must
+  // not override, same as an explicit organiser pick. Re-running on attendeeIds too means removing
+  // that self-attendee pick lets the default apply retroactively, matching how removing someone as
+  // an attendee always makes them selectable as organiser again elsewhere on this form.
   useEffect(() => {
-    if (personId && !organiserTouched) {
+    if (personId && !organiserTouched && !attendeeIds.includes(personId)) {
       setOrganiserId(personId)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [personId])
+  }, [personId, attendeeIds])
 
   const [createMeeting, { loading: submitting, error: mutationError, reset }] = useMutation<{
     createMeeting: CreateMeetingResult
@@ -137,6 +139,16 @@ export default function AddMeetingPage() {
 
   const rooms = roomsData?.rooms ?? []
   const people = peopleData?.people ?? []
+
+  // The organiser and attendees are kept mutually exclusive: whoever is picked as one is not
+  // offered as a choice for the other. This is enforced authoritatively server-side (the
+  // OrganiserIsAttendee validation error) - filtering here is purely a UX nicety so a user can't
+  // even attempt the combination, not a substitute for that server-side check. Because each list
+  // is derived from organiserId/attendeeIds on every render, adding someone to one side
+  // immediately removes them as an option on the other, and removing them makes them a selectable
+  // option again there - there's no separate "sync" step to keep these consistent.
+  const organiserOptions = people.filter((person) => !attendeeIds.includes(person.id))
+  const attendeeOptions = people.filter((person) => person.id !== organiserId)
 
   const bannerMessages = [
     ...errorMessages(roomsError),
@@ -225,9 +237,12 @@ export default function AddMeetingPage() {
 
   return (
     <Stack spacing={3}>
-      <Typography variant="h4" component="h1">
-        Schedule Meeting
-      </Typography>
+      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+        <Box component="img" src={addMeetingHero} alt="" sx={{ width: 56, flexShrink: 0 }} />
+        <Typography variant="h4" component="h1">
+          Add Meeting
+        </Typography>
+      </Stack>
 
       <ErrorBanner messages={bannerMessages} onDismiss={dismissBanner} />
 
@@ -237,135 +252,125 @@ export default function AddMeetingPage() {
             <CircularProgress />
           </Stack>
         ) : (
-          <Stack spacing={3}>
-            <Stepper activeStep={activeStep}>
-              {STEPS.map((label) => (
-                <Step key={label}>
-                  <StepLabel>{label}</StepLabel>
-                </Step>
-              ))}
-            </Stepper>
+          <Stack component="form" spacing={3} onSubmit={handleSubmit}>
+            <TextField
+              label="Subject"
+              value={subject}
+              onChange={(event) => setSubject(event.target.value)}
+              autoFocus
+              fullWidth
+            />
 
-            {activeStep === 0 ? (
-              <Stack spacing={3}>
-                <TextField
-                  label="Subject"
-                  value={subject}
-                  onChange={(event) => setSubject(event.target.value)}
-                  autoFocus
-                  fullWidth
-                />
+            <FormControl fullWidth>
+              <InputLabel id="organiser-label">Organiser</InputLabel>
+              <Select
+                labelId="organiser-label"
+                label="Organiser"
+                value={organiserId}
+                onChange={handleOrganiserChange}
+              >
+                {organiserOptions.map((person) => (
+                  <MenuItem key={person.id} value={person.id}>
+                    {person.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
-                <FormControl fullWidth>
-                  <InputLabel id="organiser-label">Organiser</InputLabel>
-                  <Select
-                    labelId="organiser-label"
-                    label="Organiser"
-                    value={organiserId}
-                    onChange={handleOrganiserChange}
-                  >
-                    {people.map((person) => (
-                      <MenuItem key={person.id} value={person.id}>
-                        {person.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+            <FormControl fullWidth>
+              <InputLabel id="attendees-label">Attendees</InputLabel>
+              <Select
+                labelId="attendees-label"
+                multiple
+                value={attendeeIds}
+                onChange={handleAttendeesChange}
+                input={<OutlinedInput label="Attendees" />}
+                renderValue={(selected) =>
+                  people
+                    .filter((person) => selected.includes(person.id))
+                    .map((person) => person.name)
+                    .join(', ')
+                }
+              >
+                {attendeeOptions.map((person) => (
+                  <MenuItem key={person.id} value={person.id}>
+                    <Checkbox checked={attendeeIds.includes(person.id)} />
+                    <ListItemText primary={person.name} />
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
-                <FormControl fullWidth>
-                  <InputLabel id="attendees-label">Attendees</InputLabel>
-                  <Select
-                    labelId="attendees-label"
-                    multiple
-                    value={attendeeIds}
-                    onChange={handleAttendeesChange}
-                    input={<OutlinedInput label="Attendees" />}
-                    renderValue={(selected) =>
-                      people
-                        .filter((person) => selected.includes(person.id))
-                        .map((person) => person.name)
-                        .join(', ')
-                    }
-                  >
-                    {people.map((person) => (
-                      <MenuItem key={person.id} value={person.id}>
-                        <Checkbox checked={attendeeIds.includes(person.id)} />
-                        <ListItemText primary={person.name} />
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+            <DatePicker
+              label="Date"
+              value={date}
+              onChange={(value) => setDate(value)}
+              slotProps={{ textField: { fullWidth: true } }}
+            />
+            <TimePicker
+              label="Start time"
+              value={startTime}
+              onChange={(value) => setStartTime(value)}
+              timeSteps={MEETING_TIME_STEPS}
+              slotProps={{ textField: { fullWidth: true } }}
+            />
+            <TimePicker
+              label="End time"
+              value={endTime}
+              onChange={(value) => setEndTime(value)}
+              timeSteps={MEETING_TIME_STEPS}
+              slotProps={{ textField: { fullWidth: true } }}
+            />
 
-                <DatePicker
-                  label="Date"
-                  value={date}
-                  onChange={(value) => setDate(value)}
-                  slotProps={{ textField: { fullWidth: true } }}
-                />
-                <TimePicker
-                  label="Start time"
-                  value={startTime}
-                  onChange={(value) => setStartTime(value)}
-                  timeSteps={MEETING_TIME_STEPS}
-                  slotProps={{ textField: { fullWidth: true } }}
-                />
-                <TimePicker
-                  label="End time"
-                  value={endTime}
-                  onChange={(value) => setEndTime(value)}
-                  timeSteps={MEETING_TIME_STEPS}
-                  slotProps={{ textField: { fullWidth: true } }}
-                />
+            <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
+              <FormControl fullWidth>
+                <InputLabel id="room-label">Room</InputLabel>
+                <Select
+                  labelId="room-label"
+                  label="Room"
+                  value={roomId}
+                  onChange={(event) => setRoomId(event.target.value)}
+                >
+                  {rooms.map((room) => (
+                    <MenuItem key={room.id} value={room.id}>
+                      {room.name} (capacity {room.capacity})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Button
+                onClick={handleSuggestRoom}
+                disabled={suggesting}
+                startIcon={suggesting ? <CircularProgress size={16} color="inherit" /> : <SparkleIcon />}
+                // This is the app's one "smart" feature - a gradient fill (rather than the
+                // ordinary outlined/contained buttons used everywhere else) so it reads as
+                // distinct at a glance, not just another secondary action next to the Room field.
+                sx={(theme) => ({
+                  flexShrink: 0,
+                  height: 56,
+                  color: '#fff',
+                  background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                  '&:hover': {
+                    background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                    filter: 'brightness(1.08)',
+                  },
+                  '&.Mui-disabled': {
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                    opacity: 0.6,
+                  },
+                })}
+              >
+                Suggest a room
+              </Button>
+            </Stack>
 
-                <Stack direction="row" spacing={2}>
-                  <Button variant="contained" onClick={() => setActiveStep(1)}>
-                    Next
-                  </Button>
-                  <Button variant="outlined" onClick={() => navigate(-1)}>
-                    Cancel
-                  </Button>
-                </Stack>
-              </Stack>
-            ) : (
-              <Stack component="form" spacing={3} onSubmit={handleSubmit}>
-                <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
-                  <FormControl fullWidth>
-                    <InputLabel id="room-label">Room</InputLabel>
-                    <Select
-                      labelId="room-label"
-                      label="Room"
-                      value={roomId}
-                      onChange={(event) => setRoomId(event.target.value)}
-                    >
-                      {rooms.map((room) => (
-                        <MenuItem key={room.id} value={room.id}>
-                          {room.name} (capacity {room.capacity})
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                  <Button
-                    variant="outlined"
-                    onClick={handleSuggestRoom}
-                    disabled={suggesting}
-                    startIcon={suggesting ? <CircularProgress size={16} color="inherit" /> : <AutoAwesomeIcon />}
-                    sx={{ flexShrink: 0, height: 56 }}
-                  >
-                    Suggest a room
-                  </Button>
-                </Stack>
-
-                <Stack direction="row" spacing={2}>
-                  <SubmitButton loading={submitting}>Save</SubmitButton>
-                  <Button variant="outlined" onClick={() => setActiveStep(0)} disabled={submitting}>
-                    Back
-                  </Button>
-                  <Button variant="outlined" onClick={() => navigate(-1)} disabled={submitting}>
-                    Cancel
-                  </Button>
-                </Stack>
-              </Stack>
-            )}
+            <Stack direction="row" spacing={2}>
+              <SubmitButton loading={submitting}>Save</SubmitButton>
+              <Button variant="outlined" onClick={() => navigate(-1)} disabled={submitting}>
+                Cancel
+              </Button>
+            </Stack>
           </Stack>
         )}
       </Paper>

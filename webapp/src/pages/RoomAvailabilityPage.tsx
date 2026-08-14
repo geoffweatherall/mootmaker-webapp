@@ -17,7 +17,7 @@ import {
 } from '@mui/material'
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import dayjs, { type Dayjs } from 'dayjs'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import emptyRooms from '../assets/empty-rooms.svg'
 import { EmptyState } from '../components/EmptyState'
@@ -68,6 +68,20 @@ export default function RoomAvailabilityPage() {
   const [dismissedError, setDismissedError] = useState(false)
   const theme = useTheme()
 
+  // The grid (fixed-width business-hours columns) scrolls horizontally within its own container
+  // on narrow screens rather than the whole page - these track how far scrolled it is, purely to
+  // show/hide the left/right fade hints below (not to run the scroll itself).
+  const gridScrollRef = useRef<HTMLDivElement>(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+
+  function updateScrollFades() {
+    const el = gridScrollRef.current
+    if (!el) return
+    setCanScrollLeft(el.scrollLeft > 0)
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1)
+  }
+
   const parsedDate = parseDateParam(date)
 
   useEffect(() => {
@@ -115,6 +129,14 @@ export default function RoomAvailabilityPage() {
     () => [...(roomsData?.rooms ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
     [roomsData],
   )
+
+  // Re-check once the grid's actual content (and so its scrollWidth) is known, and on resize -
+  // e.g. rotating a phone from portrait to landscape can make the grid newly fit without scrolling.
+  useEffect(() => {
+    updateScrollFades()
+    window.addEventListener('resize', updateScrollFades)
+    return () => window.removeEventListener('resize', updateScrollFades)
+  }, [rooms])
 
   const meetingsByRoom = useMemo(() => {
     const map = new Map<string, Meeting[]>()
@@ -194,139 +216,183 @@ export default function RoomAvailabilityPage() {
       ) : rooms.length === 0 ? (
         !roomsError && <EmptyState message="No rooms exist yet." illustration={emptyRooms} />
       ) : (
-        <Paper sx={{ p: 2, overflowX: 'auto' }}>
-          <Box sx={{ minWidth: 720 }}>
-            <Box sx={{ display: 'flex' }}>
-              <Box sx={{ width: 200, flexShrink: 0 }} />
-              <Box sx={{ position: 'relative', flexGrow: 1, height: 24 }}>
-                {HOUR_MARKS.map((hour, i) => (
-                  <Typography
-                    key={hour}
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{
-                      position: 'absolute',
-                      left: `${(i / (HOUR_MARKS.length - 1)) * 100}%`,
-                      transform:
-                        i === HOUR_MARKS.length - 1
-                          ? 'translateX(-100%)'
-                          : i === 0
-                            ? undefined
-                            : 'translateX(-50%)',
-                    }}
-                  >
-                    {hour.toString().padStart(2, '0')}:00
-                  </Typography>
-                ))}
-              </Box>
-            </Box>
-
-            {rooms.map((room, roomIndex) => {
-              // See theme/roomColor.ts - a room's colour is a secondary scan aid, not its only
-              // identity: the room name is always shown as text alongside it too.
-              const roomColor = roomColorAt(roomIndex, theme.palette.mode)
-              const meetingTextColor = readableTextOn(roomColor, theme.palette.text.primary)
-              return (
+        <Box sx={{ position: 'relative' }}>
+          <Paper ref={gridScrollRef} onScroll={updateScrollFades} sx={{ p: 2, overflowX: 'auto' }}>
+            <Box sx={{ minWidth: 720 }}>
+              <Box sx={{ display: 'flex' }}>
                 <Box
-                  key={room.id}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'stretch',
-                    borderTop: '1px solid',
-                    borderColor: 'divider',
-                    py: 1.5,
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: 200,
-                      flexShrink: 0,
-                      pr: 2,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                      <Box
-                        sx={{
-                          width: 10,
-                          height: 10,
-                          borderRadius: '50%',
-                          bgcolor: roomColor,
-                          flexShrink: 0,
-                        }}
-                      />
-                      <Typography variant="subtitle2">{room.name}</Typography>
-                    </Stack>
-                    <Typography variant="caption" color="text.secondary">
-                      Capacity {room.capacity}
+                  sx={{ width: 200, flexShrink: 0, position: 'sticky', left: 0, zIndex: 1, bgcolor: 'background.paper' }}
+                />
+                <Box sx={{ position: 'relative', flexGrow: 1, height: 24 }}>
+                  {HOUR_MARKS.map((hour, i) => (
+                    <Typography
+                      key={hour}
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{
+                        position: 'absolute',
+                        left: `${(i / (HOUR_MARKS.length - 1)) * 100}%`,
+                        transform:
+                          i === HOUR_MARKS.length - 1
+                            ? 'translateX(-100%)'
+                            : i === 0
+                              ? undefined
+                              : 'translateX(-50%)',
+                      }}
+                    >
+                      {hour.toString().padStart(2, '0')}:00
                     </Typography>
-                  </Box>
+                  ))}
+                </Box>
+              </Box>
+
+              {rooms.map((room, roomIndex) => {
+                // See theme/roomColor.ts - a room's colour is a secondary scan aid, not its only
+                // identity: the room name is always shown as text alongside it too.
+                const roomColor = roomColorAt(roomIndex, theme.palette.mode)
+                const meetingTextColor = readableTextOn(roomColor, theme.palette.text.primary)
+                return (
                   <Box
+                    key={room.id}
                     sx={{
-                      position: 'relative',
-                      flexGrow: 1,
-                      height: 48,
-                      bgcolor: alpha(roomColor, 0.14),
-                      borderRadius: 1,
+                      display: 'flex',
+                      alignItems: 'stretch',
+                      borderTop: '1px solid',
+                      borderColor: 'divider',
+                      py: 1.5,
                     }}
                   >
-                    {HOUR_MARKS.slice(1, -1).map((hour, i) => (
-                      <Box
-                        key={hour}
-                        sx={{
-                          position: 'absolute',
-                          top: 0,
-                          bottom: 0,
-                          left: `${((i + 1) / (HOUR_MARKS.length - 1)) * 100}%`,
-                          borderLeft: '1px solid',
-                          borderColor: 'divider',
-                        }}
-                      />
-                    ))}
-                    {(meetingsByRoom.get(room.id) ?? []).map((meeting) => {
-                      const left = percentThroughBusinessDay(minutesSinceMidnight(meeting.startTime))
-                      const right = percentThroughBusinessDay(minutesSinceMidnight(meeting.endTime))
-                      if (right <= left) return null
-                      return (
-                        <Tooltip
-                          key={meeting.id}
-                          title={`${meeting.subject}: ${formatLocalTime(meeting.startTime)}–${formatLocalTime(meeting.endTime)}`}
-                        >
-                          <ButtonBase
-                            component={Link}
-                            to={`/meetings/${meeting.id}`}
-                            focusRipple
-                            sx={{
-                              position: 'absolute',
-                              top: 4,
-                              bottom: 4,
-                              left: `${left}%`,
-                              width: `${right - left}%`,
-                              bgcolor: roomColor,
-                              color: meetingTextColor,
-                              borderRadius: 1,
-                              px: 0.75,
-                              overflow: 'hidden',
-                              justifyContent: 'flex-start',
-                              transition: 'filter 120ms ease',
-                              '&:hover': { filter: 'brightness(0.92)' },
-                            }}
+                    <Box
+                      sx={{
+                        width: 200,
+                        flexShrink: 0,
+                        pr: 2,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        // Stays put as the grid scrolls horizontally on narrow screens, so a
+                        // room's name/capacity is never scrolled out of view while checking its
+                        // later hours.
+                        position: 'sticky',
+                        left: 0,
+                        zIndex: 1,
+                        bgcolor: 'background.paper',
+                      }}
+                    >
+                      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                        <Box
+                          sx={{
+                            width: 10,
+                            height: 10,
+                            borderRadius: '50%',
+                            bgcolor: roomColor,
+                            flexShrink: 0,
+                          }}
+                        />
+                        <Typography variant="subtitle2">{room.name}</Typography>
+                      </Stack>
+                      <Typography variant="caption" color="text.secondary">
+                        Capacity {room.capacity}
+                      </Typography>
+                    </Box>
+                    <Box
+                      sx={{
+                        position: 'relative',
+                        flexGrow: 1,
+                        height: 48,
+                        bgcolor: alpha(roomColor, 0.14),
+                        borderRadius: 1,
+                      }}
+                    >
+                      {HOUR_MARKS.slice(1, -1).map((hour, i) => (
+                        <Box
+                          key={hour}
+                          sx={{
+                            position: 'absolute',
+                            top: 0,
+                            bottom: 0,
+                            left: `${((i + 1) / (HOUR_MARKS.length - 1)) * 100}%`,
+                            borderLeft: '1px solid',
+                            borderColor: 'divider',
+                          }}
+                        />
+                      ))}
+                      {(meetingsByRoom.get(room.id) ?? []).map((meeting) => {
+                        const left = percentThroughBusinessDay(minutesSinceMidnight(meeting.startTime))
+                        const right = percentThroughBusinessDay(minutesSinceMidnight(meeting.endTime))
+                        if (right <= left) return null
+                        return (
+                          <Tooltip
+                            key={meeting.id}
+                            title={`${meeting.subject}: ${formatLocalTime(meeting.startTime)}–${formatLocalTime(meeting.endTime)}`}
                           >
-                            <Typography variant="caption" noWrap component="span">
-                              {meeting.subject}
-                            </Typography>
-                          </ButtonBase>
-                        </Tooltip>
-                      )
-                    })}
+                            <ButtonBase
+                              component={Link}
+                              to={`/meetings/${meeting.id}`}
+                              focusRipple
+                              sx={{
+                                position: 'absolute',
+                                top: 4,
+                                bottom: 4,
+                                left: `${left}%`,
+                                width: `${right - left}%`,
+                                bgcolor: roomColor,
+                                color: meetingTextColor,
+                                borderRadius: 1,
+                                px: 0.75,
+                                overflow: 'hidden',
+                                justifyContent: 'flex-start',
+                                transition: 'filter 120ms ease',
+                                '&:hover': { filter: 'brightness(0.92)' },
+                              }}
+                            >
+                              <Typography variant="caption" noWrap component="span">
+                                {meeting.subject}
+                              </Typography>
+                            </ButtonBase>
+                          </Tooltip>
+                        )
+                      })}
+                    </Box>
                   </Box>
-                </Box>
-              )
-            })}
-          </Box>
-        </Paper>
+                )
+              })}
+            </Box>
+          </Paper>
+          {/* Fade hints for the grid's own horizontal scroll (see gridScrollRef above) - a static
+              width is fine since they only need to signal "there's more this way", not track the
+              exact remaining distance. Sit outside the scrolling Paper so they stay pinned to the
+              visible edges rather than scrolling away with the content. left: 200 keeps the left
+              fade from covering the sticky room-label column it sits beside. */}
+          {canScrollLeft && (
+            <Box
+              aria-hidden
+              sx={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                left: 200,
+                width: 24,
+                pointerEvents: 'none',
+                background: (t) => `linear-gradient(to right, ${t.palette.background.paper}, transparent)`,
+              }}
+            />
+          )}
+          {canScrollRight && (
+            <Box
+              aria-hidden
+              sx={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                right: 0,
+                width: 24,
+                pointerEvents: 'none',
+                background: (t) => `linear-gradient(to left, ${t.palette.background.paper}, transparent)`,
+              }}
+            />
+          )}
+        </Box>
       )}
 
       {/* The header row's own "Add Meeting" button (see above) is hidden below "sm" - this is

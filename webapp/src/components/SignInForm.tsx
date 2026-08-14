@@ -25,6 +25,12 @@ export function SignInForm({ defaultEmail = '', defaultPassword = '', onSuccess 
     setError(null)
     try {
       await signIn(email.trim(), password)
+      // On the signed-out home page this form sits below the hero, so on a short mobile screen
+      // the user is scrolled down to reach it. Signing in swaps in a completely different
+      // signed-in layout on the same "/" route (a client-side content swap, not a page
+      // navigation), which the browser has no reason to scroll for on its own - without this,
+      // the user would land wherever they happened to be scrolled to on the old page.
+      window.scrollTo({ top: 0, behavior: 'smooth' })
       onSuccess()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Sign in failed.')

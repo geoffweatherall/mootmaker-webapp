@@ -28,7 +28,7 @@ export function Layout() {
         </Typography>
       </Toolbar>
       <MenuContent onNavigate={closeMobileMenu} />
-      <AccountBox />
+      <AccountBox onNavigate={closeMobileMenu} />
     </>
   )
 

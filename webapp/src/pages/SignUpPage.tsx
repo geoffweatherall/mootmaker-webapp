@@ -95,7 +95,7 @@ export default function SignUpPage() {
               required
               fullWidth
             />
-            <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { xs: 'stretch', sm: 'center' } }}>
               <SubmitButton loading={loading}>Sign up</SubmitButton>
               <Typography variant="body2">
                 Already have an account?{' '}

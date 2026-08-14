@@ -78,7 +78,7 @@ export default function ForgotPasswordPage() {
               required
               fullWidth
             />
-            <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { xs: 'stretch', sm: 'center' } }}>
               <SubmitButton loading={loading}>Send code</SubmitButton>
               <Typography variant="body2">
                 Remembered it?{' '}

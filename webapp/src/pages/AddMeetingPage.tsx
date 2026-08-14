@@ -322,7 +322,7 @@ export default function AddMeetingPage() {
               slotProps={{ textField: { fullWidth: true } }}
             />
 
-            <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { xs: 'stretch', sm: 'flex-start' } }}>
               <FormControl fullWidth>
                 <InputLabel id="room-label">Room</InputLabel>
                 <Select
@@ -347,6 +347,7 @@ export default function AddMeetingPage() {
                 // distinct at a glance, not just another secondary action next to the Room field.
                 sx={(theme) => ({
                   flexShrink: 0,
+                  width: { xs: '100%', sm: 'auto' },
                   height: 56,
                   color: '#fff',
                   background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,

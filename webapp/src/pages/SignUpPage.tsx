@@ -96,7 +96,9 @@ export default function SignUpPage() {
               fullWidth
             />
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { xs: 'stretch', sm: 'center' } }}>
-              <SubmitButton loading={loading}>Sign up</SubmitButton>
+              <SubmitButton loading={loading} hasError={error !== null}>
+                Sign up
+              </SubmitButton>
               <Typography variant="body2">
                 Already have an account?{' '}
                 <MuiLink component={Link} to="/signin">
@@ -123,7 +125,9 @@ export default function SignUpPage() {
               fullWidth
             />
             <Stack direction="row" spacing={2}>
-              <SubmitButton loading={loading}>Confirm</SubmitButton>
+              <SubmitButton loading={loading} hasError={error !== null}>
+                Confirm
+              </SubmitButton>
             </Stack>
           </Stack>
         </Paper>

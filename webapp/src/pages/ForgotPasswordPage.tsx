@@ -79,7 +79,9 @@ export default function ForgotPasswordPage() {
               fullWidth
             />
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { xs: 'stretch', sm: 'center' } }}>
-              <SubmitButton loading={loading}>Send code</SubmitButton>
+              <SubmitButton loading={loading} hasError={error !== null}>
+                Send code
+              </SubmitButton>
               <Typography variant="body2">
                 Remembered it?{' '}
                 <MuiLink component={Link} to="/signin">
@@ -116,7 +118,9 @@ export default function ForgotPasswordPage() {
               fullWidth
             />
             <Stack direction="row" spacing={2}>
-              <SubmitButton loading={loading}>Reset password</SubmitButton>
+              <SubmitButton loading={loading} hasError={error !== null}>
+                Reset password
+              </SubmitButton>
             </Stack>
           </Stack>
         </Paper>

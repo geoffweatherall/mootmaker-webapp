@@ -105,7 +105,7 @@ function NameSection() {
             disabled={!personId}
             sx={{ flexGrow: 1, minWidth: 240 }}
           />
-          <SubmitButton loading={loading} disabled={!personId}>
+          <SubmitButton loading={loading} disabled={!personId} hasError={bannerMessages.length > 0}>
             Save
           </SubmitButton>
         </Stack>
@@ -245,7 +245,9 @@ function RoomDialog({ room, onClose, onSaved }: RoomDialogProps) {
           <Button onClick={onClose} disabled={loading}>
             Cancel
           </Button>
-          <SubmitButton loading={loading}>Save</SubmitButton>
+          <SubmitButton loading={loading} hasError={bannerMessages.length > 0}>
+            Save
+          </SubmitButton>
         </DialogActions>
       </Stack>
     </Dialog>
@@ -360,7 +362,9 @@ function PersonDialog({ person, onClose, onSaved }: PersonDialogProps) {
           <Button onClick={onClose} disabled={loading}>
             Cancel
           </Button>
-          <SubmitButton loading={loading}>Save</SubmitButton>
+          <SubmitButton loading={loading} hasError={bannerMessages.length > 0}>
+            Save
+          </SubmitButton>
         </DialogActions>
       </Stack>
     </Dialog>

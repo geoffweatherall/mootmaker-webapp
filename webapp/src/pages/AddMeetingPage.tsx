@@ -367,7 +367,9 @@ export default function AddMeetingPage() {
             </Stack>
 
             <Stack direction="row" spacing={2}>
-              <SubmitButton loading={submitting}>Save</SubmitButton>
+              <SubmitButton loading={submitting} hasError={bannerMessages.length > 0}>
+                Save
+              </SubmitButton>
               <Button variant="outlined" onClick={() => navigate(-1)} disabled={submitting}>
                 Cancel
               </Button>

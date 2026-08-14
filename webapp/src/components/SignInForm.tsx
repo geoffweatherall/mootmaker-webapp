@@ -60,7 +60,9 @@ export function SignInForm({ defaultEmail = '', defaultPassword = '', onSuccess 
           required
           fullWidth
         />
-        <SubmitButton loading={loading}>Sign in</SubmitButton>
+        <SubmitButton loading={loading} hasError={error !== null}>
+          Sign in
+        </SubmitButton>
       </Stack>
     </Stack>
   )

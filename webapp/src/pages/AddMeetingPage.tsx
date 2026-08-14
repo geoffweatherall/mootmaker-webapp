@@ -31,6 +31,13 @@ import { MEETING_ERROR_MESSAGES } from '../graphql/types'
 import type { CreateMeetingResult, Person, Room } from '../graphql/types'
 import addMeetingHero from '../assets/add-meeting-hero.svg'
 import { SparkleIcon } from '../icons'
+import {
+  advanceSuggestion,
+  filterAttendeeOptions,
+  filterOrganiserOptions,
+  initialSuggestionCache,
+  type SuggestionCache,
+} from './addMeetingLogic'
 
 // Only offer minutes on a 5-minute boundary in the time picker, matching the
 // API's requirement that meeting start/end times fall on a 5 minute boundary.
@@ -122,10 +129,9 @@ export default function AddMeetingPage() {
 
   // The ranked list of suggested rooms, fetched from the server once (on the first "Suggest a
   // room" press for a given time/attendee count) and cached here so later presses just step
-  // through it - null means "not fetched yet for the current inputs" and is distinct from an
-  // empty array, which means "fetched, but nothing qualified".
-  const [suggestedRooms, setSuggestedRooms] = useState<Room[] | null>(null)
-  const [suggestionIndex, setSuggestionIndex] = useState(0)
+  // through it - see addMeetingLogic.ts's SuggestionCache for why `candidates: null` is kept
+  // distinct from an empty array.
+  const [suggestionCache, setSuggestionCache] = useState<SuggestionCache>(initialSuggestionCache)
 
   const meetingStartTime = combineDateAndTime(date, startTime)
   const meetingEndTime = combineDateAndTime(date, endTime)
@@ -133,8 +139,7 @@ export default function AddMeetingPage() {
   // The cached suggestion list is only valid for the time/attendee-count it was fetched for, so
   // clear it whenever any of those change - the next button press will fetch a fresh ranked list.
   useEffect(() => {
-    setSuggestedRooms(null)
-    setSuggestionIndex(0)
+    setSuggestionCache(initialSuggestionCache())
   }, [meetingStartTime, meetingEndTime, attendeeIds.length])
 
   const rooms = roomsData?.rooms ?? []
@@ -146,9 +151,10 @@ export default function AddMeetingPage() {
   // even attempt the combination, not a substitute for that server-side check. Because each list
   // is derived from organiserId/attendeeIds on every render, adding someone to one side
   // immediately removes them as an option on the other, and removing them makes them a selectable
-  // option again there - there's no separate "sync" step to keep these consistent.
-  const organiserOptions = people.filter((person) => !attendeeIds.includes(person.id))
-  const attendeeOptions = people.filter((person) => person.id !== organiserId)
+  // option again there - there's no separate "sync" step to keep these consistent. See
+  // addMeetingLogic.ts for the (unit-tested) filtering functions themselves.
+  const organiserOptions = filterOrganiserOptions(people, attendeeIds)
+  const attendeeOptions = filterAttendeeOptions(people, organiserId)
 
   const bannerMessages = [
     ...errorMessages(roomsError),
@@ -177,10 +183,8 @@ export default function AddMeetingPage() {
   async function handleSuggestRoom() {
     setSuggestionErrors([])
 
-    let candidates = suggestedRooms
-    let index = suggestionIndex
-
-    if (candidates === null) {
+    let fetchedRooms: Room[] | undefined
+    if (suggestionCache.candidates === null) {
       const result = await suggestRoom({
         variables: {
           startTime: meetingStartTime,
@@ -188,19 +192,16 @@ export default function AddMeetingPage() {
           requiredCapacity: attendeeIds.length + 1,
         },
       })
-      candidates = result.data?.suggestRoom ?? []
-      index = 0
-      setSuggestedRooms(candidates)
-    } else if (candidates.length > 0) {
-      index = (index + 1) % candidates.length
+      fetchedRooms = result.data?.suggestRoom ?? []
     }
 
-    setSuggestionIndex(index)
+    const { cache, room } = advanceSuggestion(suggestionCache, fetchedRooms)
+    setSuggestionCache(cache)
 
-    if (candidates.length === 0) {
+    if (room === null) {
       setSuggestionErrors([NO_ROOM_AVAILABLE_MESSAGE])
     } else {
-      setRoomId(candidates[index].id)
+      setRoomId(room.id)
     }
   }
 

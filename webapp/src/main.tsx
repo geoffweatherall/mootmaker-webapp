@@ -21,18 +21,32 @@ import { AuthProvider } from './auth/AuthProvider.tsx'
 import { ThemeModeProvider } from './theme/ThemeModeProvider.tsx'
 import App from './App.tsx'
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <ApolloProvider client={apolloClient}>
-      <ThemeModeProvider>
-        <LocalizationProvider dateAdapter={AdapterDayjs}>
-          <AuthProvider>
-            <BrowserRouter>
-              <App />
-            </BrowserRouter>
-          </AuthProvider>
-        </LocalizationProvider>
-      </ThemeModeProvider>
-    </ApolloProvider>
-  </StrictMode>,
-)
+function renderApp() {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <ApolloProvider client={apolloClient}>
+        <ThemeModeProvider>
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <AuthProvider>
+              <BrowserRouter>
+                <App />
+              </BrowserRouter>
+            </AuthProvider>
+          </LocalizationProvider>
+        </ThemeModeProvider>
+      </ApolloProvider>
+    </StrictMode>,
+  )
+}
+
+// Only true for the Playwright suite's dev server (`vite --mode mock`, see playwright.config.ts) -
+// `import.meta.env.MODE` is a compile-time constant Vite/Rollup dead-code-eliminates in a normal
+// build, so this branch (and the MSW module it dynamically imports) never reaches a real bundle.
+// See testing-strategy.md's "Integration tests against a mocked API" section: MSW intercepts the
+// app's real network calls rather than replacing Apollo Client's internals.
+if (import.meta.env.MODE === 'mock') {
+  const { worker } = await import('./testSupport/mocks/browser.ts')
+  await worker.start({ onUnhandledRequest: 'bypass' })
+}
+
+renderApp()

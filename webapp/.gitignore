@@ -23,6 +23,9 @@ playwright/.auth
 .env
 .env.*
 !.env.example
+# Committed: config for the Playwright suite's mocked dev server (`vite --mode mock`) - no
+# secrets, no real infrastructure, see testing-strategy.md.
+!.env.mock
 
 # Editor directories and files
 .vscode/*

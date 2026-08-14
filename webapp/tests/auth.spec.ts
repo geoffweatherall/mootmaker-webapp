@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { E2E_USER } from '../src/auth/cognito.mock'
 
 // Run these tests signed out, ignoring the saved session from auth.setup.ts.
 test.use({ storageState: { cookies: [], origins: [] } })
@@ -19,14 +20,13 @@ test.describe('Authentication', () => {
     await expect(page.getByText('Room Availability', { exact: true })).toHaveCount(0)
   })
 
-  test('signed-out home page offers a one-click demo sign-in when configured', async ({ page }) => {
+  test('signed-out home page offers a one-click demo sign-in', async ({ page }) => {
     await page.goto('/')
 
-    // The embedded form is pre-filled from VITE_DEMO_USER_EMAIL/VITE_DEMO_USER_PASSWORD, which
-    // aren't set in every environment (e.g. a .env predating this feature) - skip rather than
-    // fail when that's the case, matching the E2E_USER_* skip pattern used elsewhere in this file.
+    // The embedded form is pre-filled from VITE_DEMO_USER_EMAIL/VITE_DEMO_USER_PASSWORD - see
+    // .env.mock, which always sets both for this suite's mocked dev server.
     const prefilledEmail = await page.getByRole('textbox', { name: 'Email' }).inputValue()
-    test.skip(!prefilledEmail, 'VITE_DEMO_USER_EMAIL / VITE_DEMO_USER_PASSWORD not configured')
+    expect(prefilledEmail.length).toBeGreaterThan(0)
 
     await page.getByRole('button', { name: 'Sign in' }).click()
 
@@ -49,15 +49,11 @@ test.describe('Authentication', () => {
   }
 
   test('signing in from a protected page returns to that page after sign-in', async ({ page }) => {
-    const email = process.env.E2E_USER_EMAIL
-    const password = process.env.E2E_USER_PASSWORD
-    test.skip(!email || !password, 'E2E_USER_EMAIL / E2E_USER_PASSWORD not set')
-
     await page.goto('/meetings/add')
     await expect(page.getByRole('heading', { name: 'Sign In' })).toBeVisible()
 
-    await page.getByLabel('Email').fill(email!)
-    await page.getByLabel('Password').fill(password!)
+    await page.getByLabel('Email').fill(E2E_USER.email)
+    await page.getByLabel('Password').fill(E2E_USER.password)
     await page.getByRole('button', { name: 'Sign in' }).click()
 
     await expect(page).toHaveURL('/meetings/add')
@@ -65,13 +61,9 @@ test.describe('Authentication', () => {
   })
 
   test('signing out returns to the home page and protected pages lock again', async ({ page }) => {
-    const email = process.env.E2E_USER_EMAIL
-    const password = process.env.E2E_USER_PASSWORD
-    test.skip(!email || !password, 'E2E_USER_EMAIL / E2E_USER_PASSWORD not set')
-
     await page.goto('/signin')
-    await page.getByLabel('Email').fill(email!)
-    await page.getByLabel('Password').fill(password!)
+    await page.getByLabel('Email').fill(E2E_USER.email)
+    await page.getByLabel('Password').fill(E2E_USER.password)
     await page.getByRole('button', { name: 'Sign in' }).click()
     await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
 
@@ -87,8 +79,19 @@ test.describe('Authentication', () => {
   test('wrong password shows an error and stays on the sign-in form', async ({ page }) => {
     await page.goto('/signin')
 
+    await page.getByLabel('Email').fill(E2E_USER.email)
+    await page.getByLabel('Password').fill('definitely-the-wrong-password')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+
+    await expect(page.getByRole('alert')).toBeVisible()
+    await expect(page).toHaveURL('/signin')
+  })
+
+  test('unknown email shows an error and stays on the sign-in form', async ({ page }) => {
+    await page.goto('/signin')
+
     await page.getByLabel('Email').fill('nobody@example.com')
-    await page.getByLabel('Password').fill('Wrong-password-1!')
+    await page.getByLabel('Password').fill('Whatever-password-1')
     await page.getByRole('button', { name: 'Sign in' }).click()
 
     await expect(page.getByRole('alert')).toBeVisible()

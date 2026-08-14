@@ -9,11 +9,13 @@ import { test, expect } from '@playwright/test'
 
 test.describe('Meeting details - date shown once, not per start/end', () => {
   test('shows a single Date row and a start-end Time row, with no duplicated date', async ({ page }) => {
-    // This test does more round trips than most in this suite (create a meeting, then navigate to
-    // a second page and open it) - each one a real cold-start-prone Lambda call (see
-    // playwright.config.ts's comment on expect.timeout) - so it gets a longer allowance than the
-    // 30s default rather than that default being raised for every test.
-    test.setTimeout(60_000)
+    // AddMeetingPage defaults the date to "today" and the start time to the next 15-minute
+    // boundary - fine most of the time, but PersonCalendarPage only ever shows Monday-Friday (see
+    // README.md's Person Calendar section), so this test would flake whenever it happened to run
+    // on a weekend. Pinning just Date.now()/new Date() (not the timers - setFixedTime keeps those
+    // running normally, unlike clock.install()) to a known weekday, safely inside business hours,
+    // makes that deterministic instead of leaving it to whatever day this suite happens to run on.
+    await page.clock.setFixedTime(new Date('2026-08-19T10:00:00'))
 
     const subject = `E2E meeting details ${Date.now()}`
 
@@ -33,11 +35,8 @@ test.describe('Meeting details - date shown once, not per start/end', () => {
     await page.getByRole('option').first().click()
     await page.keyboard.press('Escape')
 
-    // "Suggest a room" rather than picking a room directly - this environment's sample data
-    // already fills most rooms' schedules, so blindly picking the first Room option risked landing
-    // on one already booked over the form's default (current-time-based) start/end, which the API
-    // rejects with TimeRangeUnavailable instead of navigating anywhere. Suggest a room guarantees
-    // one that's actually free for the chosen time.
+    // "Suggest a room" rather than picking a room directly - guarantees one that's actually free
+    // for the chosen time, the same reasoning as suggest-room.spec.ts's own tests.
     const suggestButton = page.getByRole('button', { name: 'Suggest a room' })
     await suggestButton.click()
     await expect(suggestButton).toBeEnabled()

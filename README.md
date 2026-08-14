@@ -209,6 +209,8 @@ npm run build               # type-check (tsc -b) + production build into dist/
 
 ## Tests
 
+See [testing-strategy.md](testing-strategy.md) for the overall testing approach for this repo (including what's planned beyond what's below — unit tests, mocked-API integration tests), and [mootmaker's testing-strategy.md](https://github.com/geoffweatherall/mootmaker/blob/main/testing-strategy.md) for how it fits the wider project.
+
 **End-to-end (Playwright):**
 
 ```bash

@@ -77,10 +77,15 @@ export function signUp(email: string, password: string, name: string): Promise<v
     userPool.signUp(
       email,
       password,
-      [
-        new CognitoUserAttribute({ Name: 'email', Value: email }),
-        new CognitoUserAttribute({ Name: 'name', Value: name }),
-      ],
+      // No "email" CognitoUserAttribute: the pool's username_attributes is ["email"], so the
+      // `email` parameter above already establishes it - explicitly setting it again is rejected
+      // with NotAuthorizedException ("A client attempted to write unauthorized attribute"), since
+      // this app client's write_attributes only grants "name" (see cognito.tf). This broke every
+      // real sign-up silently until mootmaker-e2e's full-stack suite caught it - nothing else in
+      // this project's test suites drives a real sign-up against a real Cognito pool (the mocked
+      // Playwright suite never touches real Cognito; the demo/e2e users are pre-created directly
+      // via Terraform, bypassing this call entirely).
+      [new CognitoUserAttribute({ Name: 'name', Value: name })],
       [],
       (error) => (error ? reject(error) : resolve()),
     )

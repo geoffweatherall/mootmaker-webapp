@@ -8,17 +8,21 @@ interface ToastState {
 export function useLocationToast() {
   const location = useLocation()
   const navigate = useNavigate()
-  const stateMessage = (location.state as ToastState | null)?.toast ?? null
-  const [message, setMessage] = useState<string | null>(stateMessage)
+  const [message, setMessage] = useState<string | null>(null)
 
   useEffect(() => {
+    // Re-runs on every navigation (not just mount) - the component calling this hook (Layout)
+    // stays mounted across client-side route changes, so a `useState` initializer alone would
+    // only ever see whichever location.state existed at Layout's very first render, never a
+    // later one.
+    const stateMessage = (location.state as ToastState | null)?.toast ?? null
     if (stateMessage) {
-      // Clear the navigation state so the toast doesn't reappear on refresh/back.
+      setMessage(stateMessage)
+      // Clear the navigation state so the toast doesn't reappear on refresh/back, and so this
+      // effect doesn't re-fire for the same message on the next unrelated render.
       navigate(location.pathname, { replace: true, state: null })
     }
-    // Intentionally run once on mount only, to consume the one-shot toast state.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [location, navigate])
 
   return { message, clear: () => setMessage(null) }
 }

@@ -3,8 +3,10 @@ import { AppBar, Box, Container, Drawer, IconButton, Toolbar, Typography } from 
 import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import logo from '../assets/logo.svg'
+import { useLocationToast } from '../hooks/useLocationToast'
 import { AccountBox } from './AccountBox'
 import { MenuContent } from './MenuContent'
+import { SuccessToast } from './SuccessToast'
 
 const DRAWER_WIDTH = 260
 
@@ -14,6 +16,7 @@ const DRAWER_WIDTH = 260
  */
 export function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { message: toastMessage, clear: clearToast } = useLocationToast()
 
   function closeMobileMenu() {
     setMobileOpen(false)
@@ -79,6 +82,8 @@ export function Layout() {
           <Outlet />
         </Container>
       </Box>
+
+      <SuccessToast message={toastMessage} onClose={clearToast} />
     </Box>
   )
 }

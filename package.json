@@ -1,0 +1,23 @@
+{
+  "name": "mootmaker-webapp-tests",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Real-deployed-environment test suites for mootmaker-webapp (e2e/, acceptance/) and their shared support/ helpers. The webapp source itself, its unit tests, and its mocked-API integration tests live under webapp/ with their own separate package.json.",
+  "scripts": {
+    "test:e2e": "playwright test -c e2e/playwright.config.ts",
+    "test:acceptance": "playwright test -c acceptance/playwright.config.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.940.0",
+    "@aws-sdk/client-sqs": "^3.940.0",
+    "mailparser": "^3.7.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/mailparser": "^3.4.6",
+    "@types/node": "^24.13.2",
+    "typescript": "~6.0.2"
+  }
+}

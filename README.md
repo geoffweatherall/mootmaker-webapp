@@ -23,6 +23,9 @@ Users must **sign in** (or sign up) with an email address and password before th
 | [webapp/tests/](webapp/tests/) | Playwright end-to-end tests, run against a mocked API (see [Tests](#tests) below) — plus `webapp/src/**/*.test.ts`, Vitest unit tests co-located with the code they cover. |
 | [deploy/terraform/](deploy/terraform/) | Terraform for the hosting infrastructure: S3 bucket ([s3.tf](deploy/terraform/s3.tf)) and CloudFront distribution ([cloudfront.tf](deploy/terraform/cloudfront.tf)). All resource names are prefixed with `<environment>-<project_name>` ([locals.tf](deploy/terraform/locals.tf)) so multiple environments can coexist in one AWS account. State is stored remotely in S3, one state file per environment ([backend.hcl](deploy/terraform/backend.hcl) — see the [mootmaker-bootstrap-terraform](https://github.com/geoffweatherall/mootmaker-bootstrap-terraform) README for how that bucket is set up, and the [mootmaker project README](https://github.com/geoffweatherall/mootmaker#multi-environment-deployments) for the multi-environment design). |
 | [deploy.sh](deploy.sh) / [undeploy.sh](undeploy.sh) | Deploy and tear down (see below). |
+| [e2e/](e2e/) | Playwright tests against a genuinely deployed webapp + API + Cognito — a small, curated set proving the real infrastructure is wired correctly. See [Tests](#tests) below. |
+| [acceptance/](acceptance/) | Playwright tests proving the use cases in [mootmaker/use-cases.md](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md) are satisfied, against the same kind of genuinely deployed environment as `e2e/`. See [acceptance/README.md](acceptance/README.md) and [Tests](#tests) below. |
+| [support/](support/) | TypeScript helpers shared by `e2e/` and `acceptance/`: real-emailed-verification-code reading (SQS) and Cognito Admin-API test-account creation. Neither suite duplicates the other's copy — both import from here. |
 
 The `src/` layout follows the conventional React "group by file type" pattern (pages / components / hooks / api-layer) described in the [React FAQ on file structure](https://legacy.reactjs.org/docs/faq-structure.html#grouping-by-file-type), on top of a standard [Vite React scaffold](https://vite.dev/guide/).
 
@@ -209,7 +212,7 @@ npm run build               # type-check (tsc -b) + production build into dist/
 
 ## Tests
 
-See [testing-strategy.md](testing-strategy.md) for the overall testing approach for this repo, and [mootmaker's testing-strategy.md](https://github.com/geoffweatherall/mootmaker/blob/main/testing-strategy.md) for how it fits the wider project. There are two layers, both fully local — neither needs a deployed API, a live AWS environment, or real Cognito credentials.
+See [testing-strategy.md](testing-strategy.md) for the overall testing approach for this repo, and [mootmaker's testing-strategy.md](https://github.com/geoffweatherall/mootmaker/blob/main/testing-strategy.md) for how it fits the wider project. Four layers in total: the two below are fully local (neither needs a deployed API, a live AWS environment, or real Cognito credentials) and live under `webapp/`; [e2e/](e2e/) and [acceptance/](acceptance/), at the repo root alongside `webapp/`, both run against a genuinely deployed environment instead — see testing-strategy.md for those.
 
 **Unit tests (Vitest):**
 
@@ -220,14 +223,14 @@ npm run test:unit
 
 Pure-logic tests, no browser and no network — seconds to run. Covers [formatDateTime.ts](webapp/src/graphql/formatDateTime.ts)'s date/time splitting, the `ROOM_ERROR_MESSAGES`/`MEETING_ERROR_MESSAGES`/`PERSON_ERROR_MESSAGES` maps and [errorMessages.ts](webapp/src/graphql/errorMessages.ts)'s flattening of Apollo errors, [theme/roomColor.ts](webapp/src/theme/roomColor.ts)'s palette assignment/wraparound and contrast-based text colour, and [addMeetingLogic.ts](webapp/src/pages/addMeetingLogic.ts) — the organiser/attendee mutual-exclusivity filtering and the suggested-room caching state machine described in [Organiser/attendee mutual exclusivity](#organiserattendee-mutual-exclusivity) and [Suggested-room caching](#suggested-room-caching) above, extracted out of `AddMeetingPage.tsx` specifically so they're testable without rendering the component or mocking Apollo.
 
-**End-to-end (Playwright), against a mocked API:**
+**Integration tests (Playwright), against a mocked API:**
 
 ```bash
 cd webapp
-npm run test:e2e
+npm run test:integration
 ```
 
-Playwright starts a dev server on port 5173 running in a distinct Vite mode (`npm run dev:mock`, i.e. `vite --mode mock` — see [playwright.config.ts](webapp/playwright.config.ts)) and drives Chrome against it. This mode swaps in two test-only doubles, at the two seams testing-strategy.md's "Integration tests against a mocked API" section describes:
+Playwright starts a dev server on port 5173 running in a distinct Vite mode (`npm run dev:mock`, i.e. `vite --mode mock` — see [playwright.config.ts](webapp/playwright.config.ts)) and drives Chrome against it. This mode swaps in two test-only doubles, at the two seams testing-strategy.md's "Integration tests" section describes:
 
 - **MSW** ([mockServiceWorker.js](webapp/public/mockServiceWorker.js), handlers in [src/testSupport/mocks/](webapp/src/testSupport/mocks/)) intercepts the app's GraphQL calls at the real network layer — a genuine Service Worker in the browser — rather than replacing Apollo Client's internals. The app still builds its requests through the real `HttpLink`/`SetContextLink` pipeline in [apolloClient.ts](webapp/src/apolloClient.ts); only what's on the other end of the wire is fake. [src/testSupport/mocks/fixtures.ts](webapp/src/testSupport/mocks/fixtures.ts) holds the small fixed data set (3 rooms, 5 people) the suite runs against; meetings created during a test are persisted to `sessionStorage` so they survive a real browser navigation (a full page load re-evaluates every JS module, including the in-memory parts of the mock), not just SPA client-side routing.
 - **A mocked Cognito module** ([src/auth/cognito.mock.ts](webapp/src/auth/cognito.mock.ts), swapped in for `./cognito`/`../auth/cognito`/`./auth/cognito` by [vite.config.ts](webapp/vite.config.ts)'s mode-gated `resolve.alias`) stands in for [auth/cognito.ts](webapp/src/auth/cognito.ts) — the one module that actually talks to Cognito. Cognito's SRP sign-in exchange is genuinely cryptographic and isn't reasonably fakeable at the network layer the way a JSON GraphQL API is (see testing-strategy.md), so the swap happens one level up, at the same seam [AuthProvider.tsx](webapp/src/auth/AuthProvider.tsx) already funnels every Cognito interaction through — `AuthProvider` itself, and every page, are completely unchanged in this mode. A small fixed pair of fixture accounts (an e2e user with no linked Person, and a demo user with one — see the doc comment on `MOCK_USERS`) covers everything the suite needs; a mock session is persisted to `localStorage` so it survives Playwright's `storageState` snapshot/restore between the `setup` project and the tests that reuse its session, the same way a real Cognito session would via its own cached tokens.

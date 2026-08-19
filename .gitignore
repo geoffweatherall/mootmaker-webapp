@@ -7,3 +7,9 @@
 *.tfvars.json
 crash.log
 crash.*.log
+
+# Node (root package.json - support/, e2e/, acceptance/)
+node_modules/
+playwright-report/
+test-results/
+

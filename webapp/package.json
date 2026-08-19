@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "dev:mock": "vite --mode mock",
     "test:unit": "vitest run",
-    "test:e2e": "playwright test"
+    "test:integration": "playwright test"
   },
   "dependencies": {
     "@apollo/client": "^4.2.5",

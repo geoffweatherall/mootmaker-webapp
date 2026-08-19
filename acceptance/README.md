@@ -57,3 +57,12 @@ outcome (data changed, something new is visible somewhere else), not just "no er
 - **Use cases aren't tagged per-frontend yet** — see `mootmaker/use-cases.md`'s own "Notes" section.
   Not a problem yet with only one frontend automated, but will matter once `mootmaker-android` gets
   its own `acceptance/` suite.
+- ~~`add-meeting.spec.ts` flaked outside business hours.~~ **Fixed 2026-08-19.** Caught for real: a
+  run at 17:30 local time failed because `RoomAvailabilityPage` only ever renders business hours
+  (08:00–17:00), and `AddMeetingPage`'s start-time default (next 5-minute boundary from now) landed
+  just outside that window — the meeting was created successfully, just off-screen. Fixed with
+  `page.clock.setFixedTime(...)` pinned to a safely-inside-business-hours time before the meeting's
+  created, the same fix already used in `webapp/tests/meeting-details.spec.ts` for the equivalent
+  weekday-vs-weekend problem. A reminder that any spec here relying on a default derived from "now"
+  needs to consider the full range of times/days it might actually run at, not just whenever it
+  happened to be written.

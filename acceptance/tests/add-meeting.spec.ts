@@ -24,9 +24,22 @@ test('add a meeting with all required fields succeeds and it appears on the room
 }) => {
   const demoEmail = requireEnv('DEMO_USER_EMAIL')
   const demoPassword = requireEnv('DEMO_USER_PASSWORD')
+  // Real Date.now(), before pinning the clock below - run.sh supports iterating against an
+  // already-deployed environment across repeated runs, so this still needs to be genuinely
+  // unique each time, not just once per pinned-clock value.
   const runId = `${Date.now()}-${Math.floor(Math.random() * 10_000)}`
   const roomName = `Acceptance Test Room ${runId}`
   const subject = `Acceptance test meeting ${runId}`
+
+  // AddMeetingPage defaults the start time to the next 5-minute boundary from now - fine most of
+  // the time, but RoomAvailabilityPage only ever renders business hours (08:00-17:00, see that
+  // page's own "Showing business hours" note), so this test would flake whenever it happened to
+  // run outside that window (caught for real: failed at 17:30 local time, the meeting was created
+  // successfully but fell just outside the grid's visible range). Pinning just
+  // Date.now()/new Date() (not the timers - setFixedTime keeps those running normally) to a known
+  // time safely inside business hours makes that deterministic instead, matching the same fix
+  // already used in webapp/tests/meeting-details.spec.ts for the same class of problem.
+  await page.clock.setFixedTime(new Date('2026-08-19T10:00:00'))
 
   await page.goto('/signin')
   await page.getByLabel('Email').fill(demoEmail)

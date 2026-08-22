@@ -31,7 +31,7 @@ test('add a meeting with all required fields succeeds and it appears on the room
   const roomName = `Acceptance Test Room ${runId}`
   const subject = `Acceptance test meeting ${runId}`
 
-  // AddMeetingPage defaults the start time to the next 5-minute boundary from now - fine most of
+  // AddMeetingPage defaults the start time to the next 15-minute boundary from now - fine most of
   // the time, but RoomAvailabilityPage only ever renders business hours (08:00-17:00, see that
   // page's own "Showing business hours" note), so this test would flake whenever it happened to
   // run outside that window (caught for real: failed at 17:30 local time, the meeting was created

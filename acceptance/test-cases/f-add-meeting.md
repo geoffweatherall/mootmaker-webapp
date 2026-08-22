@@ -1,9 +1,11 @@
 # F. Add Meeting
 
 Use cases [mootmaker/use-cases.md § F](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#f-add-meeting).
-See [README.md](README.md) for the entry format, test-data conventions, and the F.40 doc-drift note
-(15-minute, not 5-minute, start-time default). **F.42 below documents a real, source-confirmed
-implementation gap** found while writing this section — see its Notes.
+See [README.md](README.md) for the entry format and test-data conventions. **F.42 below documents a
+real, source-confirmed implementation gap** found while writing this section — see its Notes. (F.40
+originally flagged a 5-vs-15-minute doc drift here too; that's now fixed system-wide as of
+2026-08-22 — see README.md's "Resolved" section — and F.40/F.41 below describe the fixed
+behaviour.)
 
 Every case signs in as the demo user unless stated otherwise, and every case that touches
 `RoomAvailabilityPage` (to confirm a meeting landed) needs `page.clock.setFixedTime` pinned inside
@@ -71,7 +73,7 @@ business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 <a id="tc-f40"></a>
 ### F.40 — Start/end time defaults
 
-**Use case:** [use-cases.md#uc-40](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-40) — "Start time defaults to the next 5-minute boundary; end time defaults to an hour later, same calendar day."
+**Use case:** [use-cases.md#uc-40](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-40) — "Start time defaults to the next 15-minute boundary; end time defaults to an hour later, same calendar day." *(wording fixed 2026-08-22 — previously said 5-minute; see README.md's "Resolved" section)*
 **Status:** ⬜ Planned
 **Android:** not yet automated
 
@@ -79,7 +81,7 @@ business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 
 **Given** the current time is `10:07:00`
 **When** the user opens Add Meeting
-**Then** Start time defaults to `10:15` (the next **15-minute** boundary — see this catalog's doc-drift note, not the 5-minute boundary `use-cases.md`'s current wording describes) and End time defaults to `11:15` (exactly one hour later, same day)
+**Then** Start time defaults to `10:15` (the next 15-minute boundary) and End time defaults to `11:15` (exactly one hour later, same day)
 
 **Steps:**
 1. Sign in as the demo user; `page.clock.setFixedTime(new Date('2026-08-24T10:07:00'))`.
@@ -92,14 +94,14 @@ business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 
 **Out of scope:** the late-in-the-day clamping behaviour, where a default start close to midnight would otherwise push the default end past it (`defaultEndTime`'s same-day clamp to `23:55`) — worth its own dedicated case if this area ever gets more coverage, since it's a distinct code path from the ordinary case tested here.
 
-**Notes:** **Write this test against the actual 15-minute default**, not the 5-minute figure in `use-cases.md`'s current wording — see [README.md](README.md)'s "Known doc/code drift" section. Whoever reviews this catalog should decide whether to fix `use-cases.md`'s wording (and `acceptance/README.md`'s) to say 15 minutes, or whether 15 minutes was itself an unintended change that should be reverted — either way, this test should reflect a deliberate decision, not silently encode whichever the code happens to do today.
+**Notes:** None — this used to need a note about a 5-vs-15-minute wording drift between `use-cases.md` and the shipped default; both now agree (15 minutes), and the *validation rule* (F.41) matches too as of 2026-08-22.
 
 ---
 
 <a id="tc-f41"></a>
-### F.41 — Time pickers only offer 5-minute-boundary minutes
+### F.41 — Time pickers only offer 15-minute-boundary minutes
 
-**Use case:** [use-cases.md#uc-41](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-41) — "Time pickers only offer 5-minute-boundary minutes."
+**Use case:** [use-cases.md#uc-41](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-41) — "Time pickers only offer 15-minute-boundary minutes." *(wording fixed 2026-08-22 — previously said 5-minute; the rule itself changed from 5 to 15 minutes system-wide, see README.md's "Resolved" section)*
 **Status:** ⬜ Planned
 **Android:** not yet automated
 
@@ -107,16 +109,16 @@ business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 
 **Given** the Add Meeting form's Start/End time pickers
 **When** the minute selection list is opened
-**Then** only `:00, :05, :10, ... :55` are offered — never `:01`–`:04` etc.
+**Then** only `:00, :15, :30, :45` are offered — never any other value
 
 **Steps:**
 1. Sign in; navigate to `/meetings/add`.
-2. Open the **Start time** picker's minute view (MUI X `TimePicker`, `timeSteps={{ minutes: 5 }}`).
+2. Open the **Start time** picker's minute view (MUI X `TimePicker`, `timeSteps={{ minutes: 15 }}`).
 3. Read all rendered minute option values.
 4. Repeat for **End time**.
 
 **Assertions:**
-- Every rendered minute option is a multiple of 5.
+- The rendered minute options equal exactly `['00', '15', '30', '45']` — not just "every option is a multiple of 15," since a 15-minute step over 60 minutes has a small, fully-enumerable set worth pinning down precisely (matching the tightened assertion in `webapp/tests/meeting-form.spec.ts`'s mocked-layer equivalent).
 
 **Out of scope:** the server-side `StartMissaligned`/`EndMissaligned` rule this UI restriction mirrors (not directly reachable through the picker, since it structurally can't select a non-boundary minute — see F.45's Notes for how a server-side rule gets tested when the UI itself can't produce the invalid input).
 

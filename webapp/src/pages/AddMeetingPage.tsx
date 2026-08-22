@@ -39,9 +39,9 @@ import {
   type SuggestionCache,
 } from './addMeetingLogic'
 
-// Only offer minutes on a 5-minute boundary in the time picker, matching the
-// API's requirement that meeting start/end times fall on a 5 minute boundary.
-const MEETING_TIME_STEPS = { minutes: 5 }
+// Only offer minutes on a 15-minute boundary in the time picker, matching the
+// API's requirement that meeting start/end times fall on a 15 minute boundary.
+const MEETING_TIME_STEPS = { minutes: 15 }
 
 const NO_ROOM_AVAILABLE_MESSAGE = 'No suitable room is available for that time - try adjusting the attendees or time.'
 

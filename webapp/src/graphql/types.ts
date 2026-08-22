@@ -76,8 +76,8 @@ export interface CreateMeetingResult {
 }
 
 export const MEETING_ERROR_MESSAGES: Record<MeetingError, string> = {
-  StartMissaligned: 'Start time must fall on a 5 minute boundary.',
-  EndMissaligned: 'End time must fall on a 5 minute boundary.',
+  StartMissaligned: 'Start time must fall on a 15 minute boundary.',
+  EndMissaligned: 'End time must fall on a 15 minute boundary.',
   SpansMultipleDays: 'A meeting cannot span midnight - start and end time must be on the same day.',
   InsufficientCapacity: 'The room does not have enough capacity for all attendees.',
   TimeRangeUnavailable: 'The room already has a meeting scheduled during that time range.',

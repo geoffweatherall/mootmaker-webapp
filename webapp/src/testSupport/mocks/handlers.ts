@@ -54,9 +54,9 @@ function meetingMatchesFilter(meeting: Meeting, filter: MeetingsFilter | undefin
   return true
 }
 
-function isFiveMinuteAligned(isoLocalDateTime: string): boolean {
+function isFifteenMinuteAligned(isoLocalDateTime: string): boolean {
   const minute = Number(isoLocalDateTime.slice(14, 16))
-  return minute % 5 === 0
+  return minute % 15 === 0
 }
 
 interface MeetingInput {
@@ -82,8 +82,8 @@ function validateMeetingInput(input: MeetingInput): MeetingError[] {
   else if (!people.some((person) => person.id === input.organiserId)) errors.push('OrganiserNotFound')
   if (input.organiserId && input.attendeeIds.includes(input.organiserId)) errors.push('OrganiserIsAttendee')
   if (input.attendeeIds.some((id) => !people.some((person) => person.id === id))) errors.push('AttendeeNotFound')
-  if (!isFiveMinuteAligned(input.startTime)) errors.push('StartMissaligned')
-  if (!isFiveMinuteAligned(input.endTime)) errors.push('EndMissaligned')
+  if (!isFifteenMinuteAligned(input.startTime)) errors.push('StartMissaligned')
+  if (!isFifteenMinuteAligned(input.endTime)) errors.push('EndMissaligned')
   if (input.startTime.slice(0, 10) !== input.endTime.slice(0, 10)) errors.push('SpansMultipleDays')
 
   const room = rooms.find((candidate) => candidate.id === input.roomId)

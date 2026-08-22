@@ -121,22 +121,26 @@ one at a time against real, possibly-shared infrastructure. Every test case here
 to create whatever data it personally needs rather than relying on another test's leftovers or a
 particular run order, the same discipline the two existing specs already follow.
 
+## Resolved since this catalog was first written
+
+- **2026-08-22: the 5-vs-15-minute boundary inconsistency this catalog originally flagged for
+  F.40/F.41 is fixed, system-wide.** What was previously two genuinely different things that
+  happened to both say "5 minutes" — a stale *default-value* description (already 15 minutes in
+  the shipped default, per the note that used to live here) and the *validation rule* itself
+  (`StartMissaligned`/`EndMissaligned`, still genuinely 5 minutes at the time) — are now both
+  consistently **15 minutes**, end to end: the server-side rule
+  (`CreateMeetingHandler.parseOnFifteenMinuteBoundary`), the time pickers' `timeSteps`
+  (`AddMeetingPage.tsx`'s `MEETING_TIME_STEPS`), the mocked-layer validation
+  (`testSupport/mocks/handlers.ts`), and every doc/error-message string across `mootmaker-api`,
+  this repo, and `mootmaker/use-cases.md`. See [f-add-meeting.md](f-add-meeting.md)'s F.40/F.41
+  entries, now rewritten to describe the fixed behaviour rather than the drift.
+
 ## Known doc/code drift found while writing this catalog
 
-Two inconsistencies turned up while cross-checking `use-cases.md` and this catalog against the
-actual webapp/API source — flagged here rather than silently "corrected" in place, since fixing the
-wording is a decision for whoever owns those docs, not this catalog:
+One inconsistency remains from when this catalog was first written, cross-checking `use-cases.md`
+against the actual webapp source — flagged here rather than silently "corrected" in place, since
+fixing the wording is a decision for whoever owns those docs, not this catalog:
 
-- **F.40's "5-minute boundary" start-time default is stale.** `use-cases.md` case 40 and this
-  repo's own `acceptance/README.md` both still say the Add Meeting form's start time defaults to
-  "the next 5-minute boundary." The shipped code
-  ([`AddMeetingPage.tsx`](../../webapp/src/pages/AddMeetingPage.tsx)'s `nextFifteenMinuteBoundary`)
-  actually defaults to the next **15-minute** boundary — and the main repo README's own "Home page"
-  section already describes it correctly. The *server-side* rule that start/end must fall on a
-  5-minute boundary (`MeetingError.StartMissaligned`/`EndMissaligned`) is unrelated and still
-  accurate; only the client-side *default* moved from 5 to 15 minutes at some point without
-  `use-cases.md`/`acceptance/README.md` being updated. See [f-add-meeting.md](f-add-meeting.md)'s
-  F.40 entry.
 - **The demo user's linked-Person status is inconsistently described in code comments.**
   `HomePage.tsx`'s and `organiser-attendee-exclusivity.spec.ts`'s own comments both list "the demo
   user" alongside "the e2e test user" as accounts with *no* linked Person. That's true for the e2e

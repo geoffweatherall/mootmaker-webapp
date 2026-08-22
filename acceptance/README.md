@@ -71,7 +71,7 @@ outcome (data changed, something new is visible somewhere else), not just "no er
   its own `acceptance/` suite.
 - ~~`add-meeting.spec.ts` flaked outside business hours.~~ **Fixed 2026-08-19.** Caught for real: a
   run at 17:30 local time failed because `RoomAvailabilityPage` only ever renders business hours
-  (08:00–17:00), and `AddMeetingPage`'s start-time default (next 5-minute boundary from now) landed
+  (08:00–17:00), and `AddMeetingPage`'s start-time default (next 15-minute boundary from now) landed
   just outside that window — the meeting was created successfully, just off-screen. Fixed with
   `page.clock.setFixedTime(...)` pinned to a safely-inside-business-hours time before the meeting's
   created, the same fix already used in `webapp/tests/meeting-details.spec.ts` for the equivalent

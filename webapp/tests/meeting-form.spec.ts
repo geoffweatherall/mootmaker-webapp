@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('Add Meeting form - time picker minute options', () => {
-  test('start time minute picker excludes 13 and only offers 5-minute boundaries', async ({
+  test('start time minute picker excludes 13 and only offers 15-minute boundaries', async ({
     page,
   }) => {
     await page.goto('/meetings/add')
@@ -15,14 +15,12 @@ test.describe('Add Meeting form - time picker minute options', () => {
 
     const minutes = await minuteOptions.getByRole('option').allTextContents()
 
-    expect(minutes.length).toBeGreaterThan(0)
-    expect(minutes).not.toContain('13')
-    for (const minute of minutes) {
-      expect(Number(minute) % 5).toBe(0)
-    }
+    // Exactly {00, 15, 30, 45} - not just "some multiple of 15" - since a 15-minute step over 60
+    // minutes has a small, fully-enumerable option set worth pinning down precisely.
+    expect(minutes).toEqual(['00', '15', '30', '45'])
   })
 
-  test('end time minute picker excludes 13 and only offers 5-minute boundaries', async ({
+  test('end time minute picker excludes 13 and only offers 15-minute boundaries', async ({
     page,
   }) => {
     await page.goto('/meetings/add')
@@ -36,11 +34,7 @@ test.describe('Add Meeting form - time picker minute options', () => {
 
     const minutes = await minuteOptions.getByRole('option').allTextContents()
 
-    expect(minutes.length).toBeGreaterThan(0)
-    expect(minutes).not.toContain('13')
-    for (const minute of minutes) {
-      expect(Number(minute) % 5).toBe(0)
-    }
+    expect(minutes).toEqual(['00', '15', '30', '45'])
   })
 })
 

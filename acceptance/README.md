@@ -7,6 +7,18 @@ DNS/TLS/CloudFront) is wired correctly, with a deliberately small, curated set o
 [../testing-strategy.md](../testing-strategy.md#acceptance-tests) for how this fits the overall
 layering.
 
+## Test case catalog
+
+[test-cases/](test-cases/) has a detailed, reviewable design (Given/When/Then, UI-level steps with
+Playwright selector hints, assertions, explicit "out of scope" notes) for **every one of the 99
+use cases** in `use-cases.md` — the source to generate this suite's `.spec.ts` files from, one at a
+time. "Designed" isn't "automated" — see its own README for the format and the account/test-data
+conventions shared across all 99, and the Status list right below for what's actually implemented
+so far. It also flags three real inconsistencies found between `use-cases.md`'s wording and the
+actual webapp/API behaviour while writing it (a stale time-default figure, an apparently-unenforced
+validation rule, and a page-navigation feature that doesn't exist yet) — see its "Known doc/code
+drift" and "Known implementation gap" sections.
+
 ## Status
 
 Two use cases automated so far, as a thin first slice rather than an attempt at all ~99 in

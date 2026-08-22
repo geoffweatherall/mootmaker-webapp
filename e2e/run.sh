@@ -13,8 +13,15 @@
 #                             iterating against) - this script never creates or tears down an
 #                             environment you passed in explicitly, that's yours to manage
 set -euo pipefail
-cd "$(dirname "$0")"
 
+# Deliberately no `cd "$(dirname "$0")"` here - script_dir below already resolves an absolute
+# path from BASH_SOURCE via a subshell cd (which doesn't affect this script's own cwd), and every
+# path used after this is built from it. A prior version of this script did also `cd
+# "$(dirname "$0")"` first, which broke when invoked as `./e2e/run.sh` from the repo root (the
+# documented usage - see this file's own header comment): $0 is then "./e2e/run.sh", so that cd
+# moved into e2e/ - and BASH_SOURCE[0] below is the *same* unchanged relative string, so the
+# subshell then tried to cd into "./e2e" a second time, now relative to a cwd already inside e2e/,
+# which fails with "No such file or directory".
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="${script_dir}/.."
 api_dir="${repo_root}/../mootmaker-api"

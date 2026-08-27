@@ -17,7 +17,7 @@ import {
 } from '@mui/material'
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import dayjs, { type Dayjs } from 'dayjs'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import emptyRooms from '../assets/empty-rooms.svg'
 import { EmptyState } from '../components/EmptyState'
@@ -71,12 +71,25 @@ export default function RoomAvailabilityPage() {
   // The grid (fixed-width business-hours columns) scrolls horizontally within its own container
   // on narrow screens rather than the whole page - these track how far scrolled it is, purely to
   // show/hide the left/right fade hints below (not to run the scroll itself).
-  const gridScrollRef = useRef<HTMLDivElement>(null)
+  //
+  // State (via a ref callback) rather than a plain useRef: this grid only mounts once *both*
+  // LIST_ROOMS and LIST_MEETINGS have resolved (see showSpinner below), and those two queries
+  // settle independently - LIST_ROOMS often finishes first. A useRef + useEffect keyed on the
+  // rooms array can miss the grid's real mount entirely: the rooms array can stop changing before
+  // showSpinner ever goes false, so the effect fires once while the ref is still null (grid not
+  // mounted yet) and never fires again once it actually mounts, since its own dependency never
+  // changes a second time - the ResizeObserver below never gets attached. A ref callback sidesteps
+  // this: React calls it exactly when the DOM node mounts/unmounts, independent of any query's
+  // loading state, so the effect that depends on this state always gets a real chance to run.
+  const [gridScrollEl, setGridScrollEl] = useState<HTMLDivElement | null>(null)
+  // The inner minWidth:720 content box - its rendered width is what actually determines whether
+  // gridScrollEl (the Paper) is scrollable (scrollWidth), independently of the Paper's own box size.
+  const [gridContentEl, setGridContentEl] = useState<HTMLDivElement | null>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
 
   function updateScrollFades() {
-    const el = gridScrollRef.current
+    const el = gridScrollEl
     if (!el) return
     setCanScrollLeft(el.scrollLeft > 0)
     setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1)
@@ -130,13 +143,21 @@ export default function RoomAvailabilityPage() {
     [roomsData],
   )
 
-  // Re-check once the grid's actual content (and so its scrollWidth) is known, and on resize -
-  // e.g. rotating a phone from portrait to landscape can make the grid newly fit without scrolling.
+  // Attaches (and re-measures) exactly when both boxes are actually mounted, and re-measures again
+  // whenever either's rendered size changes afterward - rotating a phone from portrait to
+  // landscape, web fonts swapping in after their async load (this app self-hosts via @fontsource -
+  // see main.tsx), or anything else that reflows the grid without gridScrollEl/gridContentEl
+  // themselves changing. See the state declarations above for why this depends on ref-callback
+  // state rather than a rooms-array-keyed effect - that version had a real, confirmed-live bug
+  // where the observer could simply never get attached (e-room-availability.md's E.36 Notes).
   useEffect(() => {
+    if (!gridScrollEl || !gridContentEl) return
+    const observer = new ResizeObserver(updateScrollFades)
+    observer.observe(gridScrollEl)
+    observer.observe(gridContentEl)
     updateScrollFades()
-    window.addEventListener('resize', updateScrollFades)
-    return () => window.removeEventListener('resize', updateScrollFades)
-  }, [rooms])
+    return () => observer.disconnect()
+  }, [gridScrollEl, gridContentEl])
 
   const meetingsByRoom = useMemo(() => {
     const map = new Map<string, Meeting[]>()
@@ -218,8 +239,8 @@ export default function RoomAvailabilityPage() {
         !roomsError && <EmptyState message="No rooms exist yet." illustration={emptyRooms} />
       ) : (
         <Box sx={{ position: 'relative' }}>
-          <Paper ref={gridScrollRef} onScroll={updateScrollFades} sx={{ p: 2, overflowX: 'auto' }}>
-            <Box sx={{ minWidth: 720 }}>
+          <Paper ref={setGridScrollEl} onScroll={updateScrollFades} sx={{ p: 2, overflowX: 'auto' }}>
+            <Box ref={setGridContentEl} sx={{ minWidth: 720 }}>
               <Box sx={{ display: 'flex' }}>
                 <Box
                   sx={{ width: 200, flexShrink: 0, position: 'sticky', left: 0, zIndex: 1, bgcolor: 'background.paper' }}
@@ -360,7 +381,7 @@ export default function RoomAvailabilityPage() {
               })}
             </Box>
           </Paper>
-          {/* Fade hints for the grid's own horizontal scroll (see gridScrollRef above) - a static
+          {/* Fade hints for the grid's own horizontal scroll (see gridScrollEl above) - a static
               width is fine since they only need to signal "there's more this way", not track the
               exact remaining distance. Sit outside the scrolling Paper so they stay pinned to the
               visible edges rather than scrolling away with the content. left: 200 keeps the left

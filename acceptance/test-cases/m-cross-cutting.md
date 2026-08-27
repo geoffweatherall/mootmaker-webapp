@@ -11,7 +11,7 @@ otherwise-fast, hard-to-catch transient state reliably observable — each says 
 ### M.92 — Loading states: first-load spinner vs. background-refetch progress bar
 
 **Use case:** [use-cases.md#uc-92](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-92) — "Loading states: spinner on first load, slim progress bar on background refetch with stale data still shown."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. A room and a meeting, so there's real content to render as "stale data."
@@ -43,7 +43,7 @@ otherwise-fast, hard-to-catch transient state reliably observable — each says 
 ### M.93 — Network/transport error surfaces a readable message
 
 **Use case:** [use-cases.md#uc-93](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-93) — "Network/transport error (e.g. API unreachable) surfaces a readable message in the error banner, not a blank/broken page."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user.
@@ -71,7 +71,7 @@ otherwise-fast, hard-to-catch transient state reliably observable — each says 
 ### M.94 — Expired/invalid session mid-use fails gracefully
 
 **Use case:** [use-cases.md#uc-94](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-94) — "Expired/invalid session mid-use → next API call fails gracefully, ideally prompting re-authentication."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user.
@@ -93,13 +93,15 @@ otherwise-fast, hard-to-catch transient state reliably observable — each says 
 
 **Notes:** This is the one case in the catalog that most depends on `amazon-cognito-identity-js` internals not asserted anywhere else in this document — treat the first implementation attempt as partly exploratory (confirm the library's actual `localStorage` key shape against a real signed-in session before finalising the corruption step).
 
+**2026-08-27 root cause: test bug, fixed.** The app's actual behaviour here is exactly the "ideal" outcome (redirects to `/signin`), confirmed against a real run's network trace: `getSession()` finds the corrupted-but-present refresh token and calls `refreshSession()`, which blindly retries via `amazon-cognito-identity-js`'s own `jitteredExponentialRetry` (`Client.js`) even though the error is a definitive 400 `NotAuthorizedException`, not anything transient — 6 attempts backing off up to 5s each, ~7.5s of wall-clock time, before finally giving up and resolving the session as null, at which point `RequireAuth` redirects. The original test asserted the Settings/Your name headings were visible *before* checking for a redirect, which contradicts that outcome: if the app redirects, `SettingsPage` never mounts, so those headings correctly never appear, and the original assertion just timed out first. Fixed by waiting (with 15s headroom, to cover the ~7.5s retry storm) for the redirect before deciding which of the two acceptable branches applies. Re-verified live and passing twice in a row. Worth noting for a future product-side look, though not treated as a bug fixed here: the ~7.5s delay before the app decides anything is entirely `amazon-cognito-identity-js`'s own built-in retry policy retrying a non-transient auth failure — the use case's own "ideally" bar is still met, just slower than a user might expect.
+
 ---
 
 <a id="tc-m95"></a>
 ### M.95 — Deep link to a client-side route loads the SPA correctly
 
 **Use case:** [use-cases.md#uc-95](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-95) — "Deep link directly to a client-side route (e.g. `/meetings/add`) loads the SPA correctly rather than 404ing."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user (or signed out, for the redirect-to-signin variant — either proves the deep link itself resolved rather than 404ing).
@@ -126,7 +128,7 @@ otherwise-fast, hard-to-catch transient state reliably observable — each says 
 ### M.96 — Light/dark mode follows OS `prefers-color-scheme`
 
 **Use case:** [use-cases.md#uc-96](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-96) — "Light/dark mode follows OS `prefers-color-scheme` correctly on every page."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user.
@@ -154,7 +156,7 @@ otherwise-fast, hard-to-catch transient state reliably observable — each says 
 ### M.97 — Mobile nav flyout opens/closes, auto-closing after navigation
 
 **Use case:** [use-cases.md#uc-97](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-97) — "Mobile nav flyout opens/closes correctly, including auto-closing after navigating to any page (Settings included)."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. Narrow viewport.
@@ -180,13 +182,15 @@ otherwise-fast, hard-to-catch transient state reliably observable — each says 
 
 **Notes:** The use case's explicit "(Settings included)" parenthetical exists because `AccountBox`'s Settings shortcut is a structurally separate component from `MenuContent`'s own items, each independently wired to call `onNavigate` — worth checking both rather than assuming one implies the other.
 
+**2026-08-27 root cause: two stacked test bugs, both fixed.** (1) The test set the mobile viewport *before* signing in; `signInAsDemo`'s own "Sign out" check targets the sidebar `Drawer`, which `Layout.tsx` hides via CSS (not unmounts) at narrow widths, so at that viewport "Sign out" resolved to a real but permanently-hidden element (confirmed against a real run: "unexpected value 'hidden'") - fixed by signing in at the default desktop viewport first, then resizing, matching the pattern `room-availability.spec.ts`'s E.36 already established for the identical issue. (2) Once past that, `getByLabel('Settings')` hit "strict mode violation ... resolved to 2 elements": `Layout.tsx` renders its `drawerContent` (`MenuContent` + `AccountBox`) once per `Drawer` - the permanent one (always in the DOM, just CSS-hidden here) and the temporary one (mounted only while open) - and CSS `display:none` does **not** stop Playwright's `getByRole`/`getByLabel` from resolving the hidden copy too (only `.toBeVisible()`'s own check treats it as invisible, evaluated *after* strict-mode uniqueness already failed). Fixed by scoping both the "Room Availability" and "Settings" locators to `page.getByRole('dialog')` (the temporary Drawer's own Modal, confirmed via a real page snapshot to render with that role), which also naturally resolves to 0 once the drawer closes/unmounts, preserving the original "0 matches means closed" reasoning without relying on the incorrect hidden-element-exclusion assumption. Re-verified live and passing twice in a row.
+
 ---
 
 <a id="tc-m98"></a>
 ### M.98 — Same-session cache consistency without a manual refresh
 
 **Use case:** [use-cases.md#uc-98](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-98) — "Data edited in one place (e.g. a room renamed in Settings) is consistent everywhere it's cached (meeting lists, availability grid) without needing a manual refresh."
-**Status:** ⬜ Planned
+**Status:** ✅ Satisfied by [`tests/settings-rooms.spec.ts`](../tests/settings-rooms.spec.ts)'s J.81 test — see Notes
 **Android:** not yet automated
 
 **Preconditions/Steps/Assertions:** Identical to [J.81](j-settings-rooms.md#tc-j81) — same mechanism (Apollo `InMemoryCache` normalization), same room-rename fixture, same "no reload" assertion.
@@ -201,7 +205,7 @@ otherwise-fast, hard-to-catch transient state reliably observable — each says 
 ### M.99 — Refreshing picks up changes made outside the current session
 
 **Use case:** [use-cases.md#uc-99](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-99) — "Refreshing the page picks up any changes made outside the current session (cache reset)."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Two separate browser contexts (simulating two independent sessions/devices), both signed in as the demo user.
@@ -224,3 +228,5 @@ otherwise-fast, hard-to-catch transient state reliably observable — each says 
 **Out of scope:** the same-session, no-reload-needed case (M.98/J.81 — this case is specifically the *contrast*: a genuinely separate session/context that only picks up the change via a hard reload, not automatically).
 
 **Notes:** This is the one case in the catalog that specifically needs **two independent browser contexts**, not just one page navigating around — the whole point is proving cache behaviour *across* sessions, which a single context's own always-fresh state can't demonstrate on its own.
+
+**2026-08-27 update:** re-verified live and passing in every run today (3 for 3), including before M.94/M.97's own test fixes landed - confirming this case's earlier failure in the full-suite run was unrelated flakiness, not a real regression from the SES/Cognito change or the room-availability fixes. No test or product change was needed.

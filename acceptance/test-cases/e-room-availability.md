@@ -11,7 +11,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 ### E.26 — View room availability for today
 
 **Use case:** [use-cases.md#uc-26](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-26) — "View room availability for today."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. At least one room exists (create one if needed).
@@ -40,7 +40,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 ### E.27 — Navigate to a future date
 
 **Use case:** [use-cases.md#uc-27](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-27) — "Navigate to a future date and view that day's schedule."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. Clock pinned. A meeting exists 3 days in the future (created via Add Meeting, date field set explicitly).
@@ -69,7 +69,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 ### E.28 — Navigate to a past date
 
 **Use case:** [use-cases.md#uc-28](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-28) — "Navigate to a past date and view that day's schedule."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. Clock pinned.
@@ -96,7 +96,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 ### E.29 — Date picker jumps to an arbitrary date
 
 **Use case:** [use-cases.md#uc-29](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-29) — "Date picker jump to an arbitrary date (not just next/prev day)."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. Clock pinned.
@@ -117,13 +117,15 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **Notes:** None.
 
+**2026-08-27 update:** re-verified live and passing (5.3s) against a fresh ephemeral environment. The prior failure (`locator.click: Test timeout of 120000ms exceeded` on the target day cell, "element is not stable" / "element was detached from the DOM, retrying") reproduced only against a heavily-populated shared environment (28+ accumulated rooms from other specs); against a fresh environment with a normal room count the same unmodified test code passes cleanly and quickly. No test or product change was needed here - treated as environment-bloat-induced instability in the earlier run, not a real bug in this test's logic.
+
 ---
 
 <a id="tc-e30"></a>
 ### E.30 — No rooms exist yet shows an empty state
 
 **Use case:** [use-cases.md#uc-30](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-30) — "No rooms exist yet → empty state."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/00-room-availability-empty.spec.ts`](../tests/00-room-availability-empty.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** A **genuinely fresh environment with zero rooms** — this is the one precondition in this whole catalog that can't be created by the test itself (rooms can only be added, never removed, through this app's own UI/API).
@@ -149,7 +151,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 ### E.31 — Rooms exist but none has meetings that day
 
 **Use case:** [use-cases.md#uc-31](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-31) — "Rooms exist but none has meetings that day → grid shows with empty lanes."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. At least one room exists. Clock pinned to a date guaranteed to have no meetings (e.g. a date several months in the future, never touched by any other fixture).
@@ -171,13 +173,15 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **Notes:** Picking a date far enough in the future to be collision-free with every other fixture in this catalog is simpler than trying to guarantee isolation any other way, given there's no way to query/clear meetings directly.
 
+**2026-08-27 root cause: test bug, fixed.** The link-count assertion was scoped via a raw `page.locator('.MuiPaper-root')`, which - confirmed against a real run - also matches `Layout.tsx`'s own sidebar `Drawer` (always in the DOM as a Paper, even when CSS-hidden at some viewports) alongside the availability grid's own Paper, so it picked up the sidebar's 6 nav links too ("Expected: 0, Received: 6"). Fixed by adding a `gridPaper(page)` helper that walks up from the grid's own unique "08:00" hour-mark text to its nearest `MuiPaper-root` ancestor, isolating just the grid. Re-verified live and passing.
+
 ---
 
 <a id="tc-e32"></a>
 ### E.32 — Meeting block tooltip and click-through to details
 
 **Use case:** [use-cases.md#uc-32](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-32) — "A meeting block's tooltip shows subject + time range; clicking it navigates to Meeting Details."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. A room and a meeting on it exist (create via Add Meeting), clock pinned to that meeting's date.
@@ -201,13 +205,15 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **Notes:** Playwright tooltip hover can be flaky in headless mode — consider asserting via the element's `title`/ARIA description attribute if MUI exposes one, rather than relying purely on a real hover-triggered popper being visible, when this is implemented.
 
+**2026-08-27 root cause: test bug, fixed.** The tooltip assertion checked a native `title` HTML attribute, but confirmed against both `@mui/material`'s own `Tooltip` source and a real run: with the default `describeChild={false}` (used here), MUI never sets a `title` attribute at all - only `aria-label`, unconditionally (real run: asserting `title` failed with "Received: null"; the element's actual `aria-label` was `"<subject>: 09:00–09:30"`). Fixed by asserting `aria-label` instead. Re-verified live and passing.
+
 ---
 
 <a id="tc-e33"></a>
 ### E.33 — Overlapping meetings in different rooms render in their own lanes
 
 **Use case:** [use-cases.md#uc-33](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-33) — "Multiple overlapping-in-time meetings across different rooms render in their own room's lane without visual confusion."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. Two rooms ("Room A", "Room B"). Two meetings on the same date: Room A 10:00–11:00, Room B 10:30–11:30 (time-overlapping, different rooms — legal, since `TimeRangeUnavailable` is scoped per room). Clock pinned to that date.
@@ -237,7 +243,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 ### E.34 — Back-to-back meetings in the same room render distinctly
 
 **Use case:** [use-cases.md#uc-34](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-34) — "Same room, back-to-back meetings (one ending exactly when another starts) both render distinctly, non-overlapping."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. One room. Two meetings in it on the same date: 09:00–10:00 and 10:00–11:00 (touching end-to-start — explicitly allowed by the API's `[startTime, endTime)` half-open-interval rule, per `mootmaker-api/README.md`'s Validation table). Clock pinned.
@@ -266,7 +272,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 ### E.35 — Room colour is consistent between Room Availability and Person Calendar
 
 **Use case:** [use-cases.md#uc-35](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-35) — "Room identity colour is consistent for the same room across this page and Person Calendar."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user (organiser, so the meeting shows on their own Person Calendar too). One room, one meeting on a date within the visible 6-week calendar window, clock pinned accordingly.
@@ -293,7 +299,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 ### E.36 — Mobile viewport: horizontal scroll, pinned room column, scroll-fade hints
 
 **Use case:** [use-cases.md#uc-36](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-36) — "On a narrow/mobile viewport: grid scrolls horizontally, room name column stays pinned, scroll-fade hints appear/disappear correctly at the edges."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. At least one room (the grid's `minWidth: 720` needs to exceed a narrow viewport for scrolling to be possible at all).
@@ -319,13 +325,15 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **Notes:** `Layout.tsx`'s own mobile app bar is unrelated chrome around this — make sure the viewport used is narrow enough to trigger the grid's own horizontal scroll (which depends on the 720px inner `minWidth` vs. the outer `Container maxWidth="md"`, not directly on MUI's own `xs`/`sm` breakpoints) rather than assuming a specific MUI breakpoint name is what matters here.
 
+**2026-08-27 root cause: test bug, fixed.** Same `.MuiPaper-root` over-matching as E.31 (confirmed against a real run: `strict mode violation: locator('.MuiPaper-root') resolved to 3 elements` - the fixed mobile `AppBar`, the sidebar `Drawer`, and the grid, all Papers). Fixed by reusing the same `gridPaper(page)` helper introduced for E.31. Re-verified live and passing.
+
 ---
 
 <a id="tc-e37"></a>
 ### E.37 — "Add Meeting" from this page pre-fills the currently viewed date
 
 **Use case:** [use-cases.md#uc-37](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-37) — "'Add Meeting' button from this page pre-fills the currently viewed date."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. Clock pinned.

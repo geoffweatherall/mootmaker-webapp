@@ -9,7 +9,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### J.77 — Standard user does not see the Rooms section
 
 **Use case:** [use-cases.md#uc-77](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-77) — "Standard user does not see the Rooms section."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/settings-rooms.spec.ts`](../tests/settings-rooms.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the e2e user (standard).
@@ -37,7 +37,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### J.78 — Admin adds a room; it's immediately usable elsewhere
 
 **Use case:** [use-cases.md#uc-78](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-78) — "Admin adds a new room with a valid name + capacity ≥ 2 → appears in the room list and is immediately selectable in Add Meeting / Room Availability."
-**Status:** ⬜ Planned (this exact behaviour is already relied on as a *precondition* by the automated `add-meeting.spec.ts`, but not directly asserted as its own outcome anywhere yet)
+**Status:** ✅ Automated — [`tests/settings-rooms.spec.ts`](../tests/settings-rooms.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user.
@@ -68,7 +68,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### J.79 — Blank room name rejected
 
 **Use case:** [use-cases.md#uc-79](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-79) — "Add a room with a blank name → validation error."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/settings-rooms.spec.ts`](../tests/settings-rooms.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user.
@@ -94,7 +94,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### J.80 — Capacity below 2 rejected
 
 **Use case:** [use-cases.md#uc-80](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-80) — "Add a room with capacity 1 (or 0/negative) → `CapacityTooLow` error."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/settings-rooms.spec.ts`](../tests/settings-rooms.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user.
@@ -120,7 +120,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### J.81 — Editing a room propagates everywhere it's referenced
 
 **Use case:** [use-cases.md#uc-81](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-81) — "Edit an existing room's name/capacity → change reflected everywhere it's referenced (existing meetings, availability view) without a manual refresh."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/settings-rooms.spec.ts`](../tests/settings-rooms.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. A room with an existing meeting booked into it.
@@ -149,7 +149,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### J.82 — Reducing capacity below an already-booked meeting is allowed
 
 **Use case:** [use-cases.md#uc-82](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-82) — "Reduce a room's capacity below a meeting already booked into it → allowed (not retroactively validated)."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/settings-rooms.spec.ts`](../tests/settings-rooms.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. A room with capacity 4, and a meeting in it with 1 organiser + 2 attendees (3 distinct people, within the current capacity).
@@ -176,7 +176,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### J.83 — Standard user calling `createRoom`/`updateRoom` directly is rejected server-side
 
 **Use case:** [use-cases.md#uc-83](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-83) — "A standard user attempting the `updateRoom`/`createRoom` operations directly (bypassing the UI) is rejected server-side regardless of what the UI would show."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/settings-rooms.spec.ts`](../tests/settings-rooms.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** A confirmed standard test account, signed in (for its auth token).

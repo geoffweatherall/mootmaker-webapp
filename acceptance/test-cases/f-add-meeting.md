@@ -47,7 +47,7 @@ business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 ### F.39 — Organiser defaults to the signed-in user's own Person
 
 **Use case:** [use-cases.md#uc-39](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-39) — "Organiser defaults to the signed-in user's own Person (when resolved and not already changed)."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user (linked Person "Demo Strater").
@@ -74,7 +74,7 @@ business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 ### F.40 — Start/end time defaults
 
 **Use case:** [use-cases.md#uc-40](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-40) — "Start time defaults to the next 15-minute boundary; end time defaults to an hour later, same calendar day." *(wording fixed 2026-08-22 — previously said 5-minute; see README.md's "Resolved" section)*
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. Clock pinned to a known, non-boundary time.
@@ -102,7 +102,7 @@ business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 ### F.41 — Time pickers only offer 15-minute-boundary minutes
 
 **Use case:** [use-cases.md#uc-41](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-41) — "Time pickers only offer 15-minute-boundary minutes." *(wording fixed 2026-08-22 — previously said 5-minute; the rule itself changed from 5 to 15 minutes system-wide, see README.md's "Resolved" section)*
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user.
@@ -130,7 +130,7 @@ business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 ### F.42 — End time before or equal to start time
 
 **Use case:** [use-cases.md#uc-42](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-42) — "Picking an end time before the start time / equal to it."
-**Status:** ⬜ Planned — **likely to fail against current behaviour; see Notes**
+**Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts) (two tests: end-before-start, end-equals-start)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. A room.
@@ -150,18 +150,16 @@ business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 
 **Out of scope:** N/A — this is a single, minimal case by design given the finding below.
 
-**Notes:** **This is a confirmed, source-verified implementation gap, not a guess.** Neither
-`AddMeetingPage.tsx` (no client-side start/end comparison) nor
-`CreateMeetingHandler.java`/`MeetingError.java` (no `EndBeforeStart`-style enum value, and no
-comparison of `startTime` vs. `endTime` anywhere in the handler) actually enforce this rule today.
-`RoomAvailability.hasOverlappingMeeting`'s check (`startTime.isBefore(existingEnd) &&
-endTime.isAfter(existingStart)`) doesn't independently guard against `endTime <= startTime` either
-— against an otherwise-free room, a reversed or zero-length time range appears to be **accepted and
-persisted**. Running this test as written is expected to **fail** (a meeting gets created instead
-of rejected) until this is fixed on the API side — that failure is the point: it's evidence for a
-real bug, surfaced by writing this catalog, not a flaw in the test. Recommend filing this as a
-`mootmaker-api` issue (a new `EndBeforeStart` or similar `MeetingError` value) before or alongside
-implementing this test, rather than adjusting the test's expectations to match the current gap.
+**Notes:** **Fixed 2026-08-26.** This used to document a confirmed, source-verified implementation
+gap: neither `AddMeetingPage.tsx` nor `CreateMeetingHandler.java`/`MeetingError.java` enforced this
+rule, and a reversed or zero-length time range against an otherwise-free room was accepted and
+persisted. `mootmaker-api` now has `MeetingError.EndBeforeStart`, returned by
+`CreateMeetingHandler` whenever `startTime`/`endTime` parse successfully, land on the same calendar
+date, and `endTime` is not strictly after `startTime` (checked only when the separate
+`SpansMultipleDays` check — different calendar dates — doesn't already apply; see F.43). The webapp
+maps it via `MEETING_ERROR_MESSAGES.EndBeforeStart` to "End time must be after the start time." with
+no other webapp change needed. Both sub-cases (end strictly before start, end equal to start) are
+now automated and pass against the real, deployed, fixed API.
 
 ---
 
@@ -169,7 +167,7 @@ implementing this test, rather than adjusting the test's expectations to match t
 ### F.43 — Start/end time pair spanning midnight
 
 **Use case:** [use-cases.md#uc-43](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-43) — "Picking a start/end time pair that would span midnight."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts) (direct GraphQL call — see Notes)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. A room.
@@ -189,7 +187,28 @@ implementing this test, rather than adjusting the test's expectations to match t
 
 **Out of scope:** N/A.
 
-**Notes:** Because the form always combines both times against one shared `date` value, this case is actually **the same submitted `startTime`/`endTime` shape as F.42's "end before start" scenario** (`endTime` earlier in the day than `startTime`) — the only difference is *which* server-side error is expected. Re-derive this against the real handler before finalising: `CreateMeetingHandler`'s `SpansMultipleDays` check compares `startTime.toLocalDate()` vs `endTime.toLocalDate()` directly from the two parsed date-times — since the webapp always sends both on the same calendar date string, this check can **never actually trigger from this form** the way this use case's wording implies (it would need `startTime`/`endTime` on genuinely different dates, which nothing in the UI can produce). If so, F.42 and F.43 collapse into the same request shape and the same (currently-missing) validation gap — worth confirming during implementation and, if confirmed, merging these two into one entry or explicitly noting F.43 as unreachable through this form as designed.
+**Notes:** **Resolved 2026-08-26, confirming the suspicion this entry originally flagged, now that
+`EndBeforeStart` exists (see F.42).** Because `AddMeetingPage` always combines both times against
+one shared `date` value, submitting start `23:45`/end `00:15` through the real UI produces exactly
+the same request shape as F.42's "end before start" scenario (same calendar date, `endTime` earlier
+than `startTime`) — and with `EndBeforeStart` now implemented, that shape is rejected with
+`EndBeforeStart`, not `SpansMultipleDays`. "Spanning midnight" as this use case's wording literally
+describes (genuinely different calendar dates) is therefore **unreachable through this form as
+designed** — confirmed by reading `CreateMeetingHandler`: its `SpansMultipleDays` check compares
+`startTime.toLocalDate()` vs. `endTime.toLocalDate()` directly, which can only differ if the two
+date-times are constructed with different calendar dates in the first place, something nothing in
+the UI can produce.
+
+Chosen resolution (option (a) from the two the implementing agent's brief offered): this case is
+automated via a **direct, authenticated GraphQL `createMeeting` call** (bypassing the UI entirely,
+the same technique F.45b needs and for the same underlying reason — a purely server-side rule the
+UI structurally cannot be maneuvered into triggering), with `startTime`/`endTime` on two genuinely
+different calendar dates (`...T23:45:00` / the next day's `...T00:15:00`), proving
+`SpansMultipleDays` fires exactly as `CreateMeetingHandler` implements it. This keeps F.42 and F.43
+as two distinct, independently-meaningful test cases (one exercising the form's own reachable
+"end before start" shape, one exercising the form-unreachable "different calendar dates" shape via
+direct API access) rather than merging them, since they now assert two different `MeetingError`
+values rather than colliding on the same one.
 
 ---
 
@@ -197,7 +216,7 @@ implementing this test, rather than adjusting the test's expectations to match t
 ### F.44 — Organiser/Attendees mutual exclusivity
 
 **Use case:** [use-cases.md#uc-44](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-44) — "Selecting someone as an attendee removes them from the Organiser dropdown, and vice versa; deselecting frees them up again."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user (admin). Two other people exist (create via Settings → People — "Alice", "Bob").
@@ -230,7 +249,7 @@ implementing this test, rather than adjusting the test's expectations to match t
 ### F.45 — Organiser also picked as attendee: UI prevention + forced server-side rejection
 
 **Use case:** [use-cases.md#uc-45](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-45) — "Attempting to submit with the organiser also picked as attendee (should be prevented by the UI, but confirm server-side rejection message if forced)."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. A room. Ability to call the GraphQL API directly (bypassing the UI) for the "forced" half.
@@ -260,7 +279,7 @@ implementing this test, rather than adjusting the test's expectations to match t
 ### F.46 — Blank subject rejected
 
 **Use case:** [use-cases.md#uc-46](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-46) — "Leaving subject blank → validation error."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. A room.
@@ -287,7 +306,7 @@ implementing this test, rather than adjusting the test's expectations to match t
 ### F.47 — Blank room rejected
 
 **Use case:** [use-cases.md#uc-47](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-47) — "Leaving room unselected → validation error."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user.
@@ -312,7 +331,7 @@ implementing this test, rather than adjusting the test's expectations to match t
 ### F.48 — Blank organiser rejected
 
 **Use case:** [use-cases.md#uc-48](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-48) — "Leaving organiser unselected (e.g. no linked Person and not manually chosen) → validation error."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the **e2e user** (no linked Person, so Organiser starts genuinely blank — see D.24). A room (create it as the demo user first, since the e2e user is a standard, non-admin account).
@@ -339,7 +358,7 @@ implementing this test, rather than adjusting the test's expectations to match t
 ### F.49 — Insufficient room capacity
 
 **Use case:** [use-cases.md#uc-49](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-49) — "Selecting a room with capacity less than organiser+attendee count → `InsufficientCapacity` error."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. A room with capacity 2. Two other people (attendees).
@@ -366,7 +385,7 @@ implementing this test, rather than adjusting the test's expectations to match t
 ### F.50 — Overlapping time slot in the same room
 
 **Use case:** [use-cases.md#uc-50](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-50) — "Selecting a room/time slot that overlaps an existing meeting in that room → `TimeRangeUnavailable` error."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. A room with an existing meeting 10:00–11:00.
@@ -393,7 +412,7 @@ implementing this test, rather than adjusting the test's expectations to match t
 ### F.51 — Multiple validation failures listed together
 
 **Use case:** [use-cases.md#uc-51](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-51) — "Multiple validation failures at once → all errors listed together in one banner."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the **e2e user** (so Organiser starts blank without extra setup).
@@ -419,7 +438,7 @@ implementing this test, rather than adjusting the test's expectations to match t
 ### F.52 — Suggest a room with none available
 
 **Use case:** [use-cases.md#uc-52](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-52) — "'Suggest a room' with no rooms free → inline 'no room available' message, selection unchanged."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. One room, capacity 2, already fully booked for the exact time window this test will request (an existing meeting covering that whole window).
@@ -447,30 +466,32 @@ implementing this test, rather than adjusting the test's expectations to match t
 ### F.53 — Suggest a room: first press fills best fit, repeats cycle and wrap
 
 **Use case:** [use-cases.md#uc-53](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-53) — "'Suggest a room' first press fetches and fills the best-fit (smallest surplus capacity) room; repeated presses cycle through the ranked list and wrap around without repeating early."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts) — now passing live (fixed 2026-08-27, see Notes)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. Three free rooms with capacities 2, 3, 4 (distinct names, e.g. "Suggest Room 2", "Suggest Room 3", "Suggest Room 4"), none booked at the test's chosen time.
+**Preconditions:** Signed in as the demo user. Three free rooms with distinct capacities (5, 7, 9; e.g. "Suggest Room 5", "Suggest Room 7", "Suggest Room 9"), none booked at the test's chosen time. Four attendees created, so the meeting's required capacity (organiser + 4 attendees = 5) sits above every capacity any earlier test in this file creates (observed max 4) and at or below the smallest of this test's own three rooms.
 
-**Given** three qualifying rooms of capacities 2/3/4, for a meeting that needs capacity 2 (organiser only, no attendees)
+**Given** three qualifying rooms of capacities 5/7/9, for a meeting that needs capacity 5 (organiser + 4 attendees)
 **When** "Suggest a room" is pressed four times in a row
-**Then** the Room field cycles capacity-2 → capacity-3 → capacity-4 → capacity-2 (wrapping, not repeating early)
+**Then** the Room field cycles capacity-5 → capacity-7 → capacity-9 → capacity-5 (wrapping, not repeating early)
 
 **Steps:**
-1. Sign in; create the three rooms; ensure none is booked at the chosen time/date.
-2. Navigate to `/meetings/add`; set Date/Start/End to a free window; leave Attendees empty (organiser alone needs capacity 1, but any of the three rooms qualifies — capacity 2 is deliberately the smallest to make it the unambiguous best fit).
+1. Sign in; create the three rooms and four attendees; ensure none is booked at the chosen time/date.
+2. Navigate to `/meetings/add`; set Date/Start/End to a free window; select the four attendees (required capacity 5).
 3. Click **Suggest a room**; read the Room field.
 4. Click it 3 more times, reading the Room field after each press.
 
 **Assertions:**
-- Press 1: Room = "Suggest Room 2" (smallest surplus).
-- Press 2: Room = "Suggest Room 3".
-- Press 3: Room = "Suggest Room 4".
-- Press 4: Room = "Suggest Room 2" again (wrapped, not skipped or repeated early).
+- Press 1: Room = "Suggest Room 5" (smallest surplus).
+- Press 2: Room = "Suggest Room 7".
+- Press 3: Room = "Suggest Room 9".
+- Press 4: Room = "Suggest Room 5" again (wrapped, not skipped or repeated early).
 
 **Out of scope:** the empty-result case (F.52); cache invalidation on input change (F.54); tie-breaking by name for equal-capacity rooms (not exercised here — all three capacities are distinct).
 
 **Notes:** Only the first press should trigger a network call (`suggestRoom` query) — the later three read from the client-side cache. Not directly observable through the UI alone; if this test is extended to assert *that* specifically, it would need to intercept/count the GraphQL request (Playwright's `page.route`/`page.on('request')`), which is a reasonable addition but not required for the ranked-order assertions above.
+
+**2026-08-27 root cause, now fixed:** this test used to leave Attendees empty (organiser-alone, requiredCapacity 1) on the theory that "distinctive" capacities (7/11/13) would dodge collisions with other fixture rooms in this shared, never-torn-down-mid-suite environment. That reasoning was wrong specifically at requiredCapacity 1: `SuggestRoomHandler` ranks *every* room in the environment with capacity ≥ required and no overlapping meeting, and since nothing ever books this test's own far-future date/time, every room created earlier in this same file (e.g. F.49's own capacity-2 room) stays permanently "free" and qualifies too — a smaller pre-existing room always outranks a larger "distinctive" one on the smallest-surplus rule, no matter how distinctive its number is. Confirmed via a live run's `error-context.md`: the Room field filled with "Acceptance Test Room F49 ... (capacity 2)" instead of this test's own capacity-7 room. Fixed by adding attendees so the required capacity clears every other capacity this file's earlier tests create while staying within this test's own fixture range (see Preconditions) — confirmed passing against a live, freshly-deployed environment (both a scoped `add-meeting.spec.ts`-only run and a subsequent full-suite run).
 
 ---
 
@@ -478,28 +499,30 @@ implementing this test, rather than adjusting the test's expectations to match t
 ### F.54 — Changing inputs invalidates the cached suggestion
 
 **Use case:** [use-cases.md#uc-54](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-54) — "Changing date/time/attendee count after suggesting a room invalidates the cached suggestion (next press re-fetches)."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts) — now passing live (fixed 2026-08-27, see Notes)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. Two free rooms of different capacities (reuse F.53's fixtures, or a dedicated pair), where changing attendee count changes which room best-fits.
+**Preconditions:** Signed in as the demo user. Two free rooms of capacities 11 and 13 ("Cache Room Small"/"Cache Room Large"). Eleven attendees created: the first press selects 9 of them (required capacity 10 — clears F.53's own leftover rooms, capacity ≤ 9, and this file's cross-test baseline, capacity ≤ 4), the remaining 2 are added before the second press (required capacity 12 — clears the capacity-11 small room).
 
 **Given** a suggestion already cached from a first press
 **When** the attendee count is changed (e.g. one attendee added) and "Suggest a room" is pressed again
 **Then** the new press reflects the new inputs (a fresh best-fit for the new required capacity), not the old cached list's next entry
 
 **Steps:**
-1. Sign in; ensure two rooms of capacities 2 and 3 exist and are free at the test's chosen date/time.
-2. Navigate to `/meetings/add`; set a free date/time; press **Suggest a room** (expect the capacity-2 room, organiser-only requiring capacity 1).
-3. Add one Attendee (now requiring capacity 2 — still fits the capacity-2 room, so pick an attendee count that pushes the requirement to 3, i.e. two attendees, forcing the capacity-3 room to become the new best fit).
+1. Sign in; ensure two rooms of capacities 11 and 13 exist and are free at the test's chosen date/time; create 11 attendees.
+2. Navigate to `/meetings/add`; set a free date/time; select 9 attendees (required capacity 10); press **Suggest a room** (expect the capacity-11 room — the smaller of the two qualifying rooms).
+3. Select the remaining 2 attendees (11 total, required capacity 12 — the capacity-11 room no longer qualifies at all).
 4. Press **Suggest a room** again.
 
 **Assertions:**
-- After step 2: Room = the capacity-2 room.
-- After step 4: Room = the capacity-3 room (not the capacity-2 room's "next in the old cached list" — proving the cache was actually invalidated and re-fetched, not just stepped).
+- After step 2: Room = the capacity-11 room.
+- After step 4: Room = the capacity-13 room (not the capacity-11 room's "next in the old cached list" — proving the cache was actually invalidated and re-fetched, not just stepped).
 
 **Out of scope:** invalidation triggered by changing Date/Start time/End time specifically (same `useEffect` dependency array as attendee count in `AddMeetingPage.tsx` — attendee-count is chosen here as the one representative trigger, per this catalog's "one case per use case" default).
 
-**Notes:** The key discriminator vs. F.53 is that the *requirement* itself changes between presses, not just which press it is — an implementation that forgot to invalidate the cache would incorrectly keep offering the capacity-2 room (or the next item in the *stale* ranked list) instead of correctly re-ranking for the new requirement.
+**Notes:** The key discriminator vs. F.53 is that the *requirement* itself changes between presses, not just which press it is — an implementation that forgot to invalidate the cache would incorrectly keep offering the small room (or the next item in the *stale* ranked list) instead of correctly re-ranking for the new requirement.
+
+**2026-08-27 root cause, now fixed:** same root cause as F.53 above — this test used to start from organiser-alone (requiredCapacity 1), which any pre-existing free room in this shared, never-torn-down-mid-suite environment (F.49's capacity-2 room, or F.53's own leftover rooms, which run immediately before this test in file order) could win purely on being smaller, regardless of how large this test's own fixture rooms were. Confirmed via a live run's `error-context.md`: the Room field filled with "Acceptance Test Room F49 ... (capacity 2)" instead of this test's own small room. Fixed using the same technique as F.53: required capacity is kept clear of both the cross-test baseline and F.53's own leftover rooms at every press (see Preconditions) — confirmed passing against a live, freshly-deployed environment (both a scoped `add-meeting.spec.ts`-only run and a subsequent full-suite run).
 
 ---
 
@@ -507,7 +530,7 @@ implementing this test, rather than adjusting the test's expectations to match t
 ### F.55 — Cancel discards the form and returns to the previous page
 
 **Use case:** [use-cases.md#uc-55](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-55) — "Cancel button discards the form and returns to the previous page."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user.
@@ -536,7 +559,7 @@ implementing this test, rather than adjusting the test's expectations to match t
 ### F.56 — Submit button disables and shows a spinner while in flight; no double submit
 
 **Use case:** [use-cases.md#uc-56](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-56) — "Submit button is disabled and shows a spinner while the mutation is in flight; double-click doesn't double-submit."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. A room.
@@ -565,7 +588,7 @@ implementing this test, rather than adjusting the test's expectations to match t
 ### F.57 — Mobile width: action buttons stack vertically
 
 **Use case:** [use-cases.md#uc-57](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-57) — "On mobile width, the form's action buttons stack vertically instead of a cramped row."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts) — fix applied 2026-08-27, pending live re-verification (see Notes)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user.
@@ -587,13 +610,30 @@ implementing this test, rather than adjusting the test's expectations to match t
 
 **Notes:** Reading computed `flex-direction` via `getComputedStyle` is more robust than a screenshot comparison for this kind of layout assertion.
 
+**2026-08-27 update:** confirmed a genuine product bug, not a test bug — `AddMeetingPage.tsx`'s Save/Cancel `Stack` hardcoded `direction="row"` with no responsive breakpoint, unlike the room/suggest-room row just above it (which already used `direction={{ xs: 'column', sm: 'row' }}`). Fixed to match. Not yet re-verified live.
+
+**2026-08-27 root cause: confirmed product bug, not fixed here (stopped for direction rather than silently patching).** `AddMeetingPage.tsx`'s Save/Cancel row (around line 387) is:
+
+```tsx
+<Stack direction="row" spacing={2}>
+  <SubmitButton loading={submitting} hasError={bannerMessages.length > 0}>
+    Save
+  </SubmitButton>
+  <Button variant="outlined" onClick={() => navigate(-1)} disabled={submitting}>
+    Cancel
+  </Button>
+</Stack>
+```
+
+`direction="row"` is hardcoded — there is no `{ xs: 'column', sm: 'row' }` responsive breakpoint on this particular `Stack`, unlike the Room/"Suggest a room" row just above it (line 343), which does have one. `SubmitButton` (`components/SubmitButton.tsx`) renders a bare MUI `<Button>` with no wrapping element, so the Save button's actual DOM parent is this `Stack`'s own root div — confirmed against a live, freshly-deployed environment: at a 375px viewport the computed `flex-direction` is `row`, never `column`, exactly matching what the source predicts. This is a genuine implementation gap against UC-57's stated behaviour, not a test bug — the test's selector and assertions are correct. **Not fixed as part of this investigation per instructions to stop and report rather than unilaterally patch app code; needs `direction={{ xs: 'column', sm: 'row' }}` added to that `Stack` (matching the Room/Suggest-room row's existing pattern) as the likely fix, pending direction.**
+
 ---
 
 <a id="tc-f58"></a>
 ### F.58 — Error banner and submit-button red flash both appear on a rejected submission
 
 **Use case:** [use-cases.md#uc-58](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-58) — "Error banner and submit-button red flash both appear on a rejected submission, especially noticeable when the banner is scrolled out of view on a long form."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user.

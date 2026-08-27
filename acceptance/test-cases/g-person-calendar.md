@@ -10,7 +10,7 @@ confirmed implementation gap** (no navigation UI exists on this page at all) —
 ### G.59 — View your own calendar by default
 
 **Use case:** [use-cases.md#uc-59](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-59) — "View your own calendar (default when navigating from Home/sidebar)."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user.
@@ -37,7 +37,7 @@ confirmed implementation gap** (no navigation UI exists on this page at all) —
 ### G.60 — Switch to a different person's calendar via the person selector
 
 **Use case:** [use-cases.md#uc-60](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-60) — "Navigate to a different person's calendar via the person selector (admin and standard user, if permitted)."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** A second Person exists ("Alice", created by the demo user via Settings). A confirmed standard test account with its own linked Person (`createConfirmedTestAccount`), to check the "standard user" half.
@@ -66,7 +66,7 @@ confirmed implementation gap** (no navigation UI exists on this page at all) —
 ### G.61 — Six-week view shows only work days (Mon–Fri)
 
 **Use case:** [use-cases.md#uc-61](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-61) — "Six-week view shows only work days (Mon–Fri) per week."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user.
@@ -94,7 +94,7 @@ confirmed implementation gap** (no navigation UI exists on this page at all) —
 ### G.62 — Navigating between weeks/months
 
 **Use case:** [use-cases.md#uc-62](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-62) — "Navigating between weeks/months."
-**Status:** ⬜ Planned — **not currently possible; see Notes**
+**Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts) (week nav now implemented; see Notes)
 **Android:** not yet automated
 
 **Preconditions:** N/A — see Notes.
@@ -125,7 +125,7 @@ Left as a named gap here rather than silently dropped, so it isn't lost.
 ### G.63 — A day with no meetings vs. a day with several, sorted correctly
 
 **Use case:** [use-cases.md#uc-63](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-63) — "A day with no meetings vs a day with several, sorted correctly."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. A room. Three meetings on the same day (within the current 6-week window) at non-chronological creation order (e.g. 14:00, then 09:00, then 11:00), all organised by the demo user.
@@ -154,7 +154,7 @@ Left as a named gap here rather than silently dropped, so it isn't lost.
 ### G.64 — No people exist yet shows an empty state
 
 **Use case:** [use-cases.md#uc-64](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-64) — "No people exist yet → empty state (edge case, admin-only-created scenario)."
-**Status:** ⬜ Planned — **feasibility caveat, see Notes**
+**Status:** ❓ Infeasible as designed — see Notes
 **Android:** not yet automated
 
 **Preconditions:** A genuinely fresh environment with zero people — same class of precondition as E.30.
@@ -172,7 +172,22 @@ Left as a named gap here rather than silently dropped, so it isn't lost.
 
 **Out of scope:** N/A.
 
-**Notes:** Same ordering fragility as E.30 — **this must run before any other test in this catalog creates a Person** (nearly every other section does, including via `createConfirmedTestAccount`, which auto-creates one via the PostConfirmation trigger). Practically the *most* order-sensitive case in the whole catalog, since so many other tests incidentally create People as a side effect of just signing someone up. Consider running this, if at all, as the very first thing against a brand-new ephemeral environment, before even A.1.
+**Notes:** **Confirmed infeasible, not just order-sensitive** — checked directly against a freshly
+created ephemeral environment (`web-acc-260826-u4j2`, deployed 2026-08-26, before any test ran
+against it): `aws dynamodb scan` on its People table already returned 1 item (`"Demo Strater"`).
+`mootmaker-api/deploy/terraform/cognito.tf`'s `aws_dynamodb_table_item.demo_person` seeds the demo
+user's linked Person directly via Terraform as part of every deploy - not through the app - so
+**every environment this project can create already has exactly one Person from the moment it
+exists, before any test (or even a human) touches it.** This isn't the same class of problem as
+E.30: E.30's zero-rooms precondition is genuinely reachable (rooms really do start at zero and are
+only ever added through the app); this one structurally never is, regardless of test ordering. This
+is a decision for whoever owns the demo-data seeding and this test case, not something an
+acceptance suite can route around: (a) accept this use case can't be automated against this
+project's standard environments (an environment deployed with the demo-person seeding skipped would
+need its own bespoke path, undermining the "same deploy every time" model), (b) change the seeding
+so the demo user's Person is created lazily on first use instead of via Terraform, freeing up a
+genuinely empty starting state, or (c) drop/reword this use case, since "no people exist yet" may
+not be a reachable real-world state for this product at all. Left unautomated pending that decision.
 
 ---
 
@@ -180,7 +195,7 @@ Left as a named gap here rather than silently dropped, so it isn't lost.
 ### G.65 — Clicking a meeting row navigates to Meeting Details
 
 **Use case:** [use-cases.md#uc-65](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-65) — "Clicking a meeting row navigates to its Meeting Details page."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. A room and one meeting on a date within the visible window.
@@ -206,7 +221,7 @@ Left as a named gap here rather than silently dropped, so it isn't lost.
 ### G.66 — Room colour dot matches Room Availability's colour for the same room
 
 **Use case:** [use-cases.md#uc-66](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-66) — "Room colour dot next to each meeting matches the same room's colour on Room Availability."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Same as E.35 — this is the same check, initiated from the opposite page.
@@ -229,7 +244,7 @@ Left as a named gap here rather than silently dropped, so it isn't lost.
 ### G.67 — "Calendar" nav item disabled with no linked Person
 
 **Use case:** [use-cases.md#uc-67](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-67) — "'Calendar' nav item disabled for a signed-in user with no linked Person."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the e2e user (no linked Person).

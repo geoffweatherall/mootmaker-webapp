@@ -46,7 +46,7 @@ whole point is proving the real sign-up + email + PostConfirmation-trigger chain
 ### A.2 — Password below the minimum strength is rejected
 
 **Use case:** [use-cases.md#uc-2](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-2) — "Password below the minimum (10 chars, needs a lowercase letter + a number) is rejected before submission."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/sign-up.spec.ts`](../tests/sign-up.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed out. A fresh email address.
@@ -75,7 +75,7 @@ whole point is proving the real sign-up + email + PostConfirmation-trigger chain
 ### A.3 — Signing up with an email that already has an account
 
 **Use case:** [use-cases.md#uc-3](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-3) — "Signing up with an email that already has an account."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/sign-up.spec.ts`](../tests/sign-up.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** A confirmed account already exists (create via `createConfirmedTestAccount` — no need for the real code path, since this test isn't the thing proving sign-up-with-a-code works).
@@ -104,7 +104,7 @@ whole point is proving the real sign-up + email + PostConfirmation-trigger chain
 ### A.4 — Wrong verification code is rejected; correct code afterward still succeeds
 
 **Use case:** [use-cases.md#uc-4](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-4) — "Wrong verification code is rejected; correct code after a wrong attempt still succeeds."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/sign-up.spec.ts`](../tests/sign-up.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed out. A fresh email address.
@@ -165,7 +165,7 @@ whole point is proving the real sign-up + email + PostConfirmation-trigger chain
 ### A.6 — Can immediately schedule a meeting as themselves right after signing up
 
 **Use case:** [use-cases.md#uc-6](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-6) — "Can immediately schedule a meeting as themselves right after signing up (organiser defaults to them)."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/sign-up.spec.ts`](../tests/sign-up.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** A room must already exist (created by the demo user first, since a freshly signed-up standard user can't create one). A fresh email address for the sign-up itself.

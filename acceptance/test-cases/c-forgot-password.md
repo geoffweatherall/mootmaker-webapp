@@ -9,7 +9,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### C.16 — Reset password with a valid account and the real emailed code
 
 **Use case:** [use-cases.md#uc-16](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-16) — "Request a reset code for a valid account → enter code + new password → signed in automatically with the new password."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/forgot-password.spec.ts`](../tests/forgot-password.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** A confirmed account exists (`createConfirmedTestAccount`, which also sets `email_verified: true` — required, since the pool's `account_recovery_setting` is `verified_email`).
@@ -41,7 +41,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### C.17 — Requesting a reset code for an unknown email behaves identically to a known one
 
 **Use case:** [use-cases.md#uc-17](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-17) — "Request a reset code for an email with no account behaves identically (no information leak about account existence)."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/forgot-password.spec.ts`](../tests/forgot-password.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** None beyond a known-existing account (the demo user, or a freshly created one) to compare against, and a fresh never-registered email.
@@ -70,7 +70,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### C.18 — Wrong reset code is rejected
 
 **Use case:** [use-cases.md#uc-18](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-18) — "Wrong reset code is rejected."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/forgot-password.spec.ts`](../tests/forgot-password.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** A confirmed account exists (`createConfirmedTestAccount`).
@@ -100,7 +100,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### C.19 — New password failing the strength rule is rejected
 
 **Use case:** [use-cases.md#uc-19](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-19) — "New password failing the strength rule is rejected."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/forgot-password.spec.ts`](../tests/forgot-password.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** A confirmed account exists (`createConfirmedTestAccount`).
@@ -129,7 +129,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### C.20 — Sign-in ↔ Forgot Password cross-links
 
 **Use case:** [use-cases.md#uc-20](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-20) — "Sign-in form links to Forgot Password; Forgot Password flow links back to sign-in."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/forgot-password.spec.ts`](../tests/forgot-password.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed out.
@@ -151,3 +151,5 @@ See [README.md](README.md) for the entry format and test-data conventions.
 **Out of scope:** the sign-up page's own "Already have an account? Sign in" link (not part of this use case's wording, though structurally identical — arguably worth its own tiny case later if this area ever gets a broader link-audit pass).
 
 **Notes:** Purely a navigation/routing check — no real Cognito interaction needed, cheapest test in this section.
+
+**2026-08-27 root cause: test bug, fixed.** Step 4's `getByRole('link', { name: 'Sign in' })` was unscoped - confirmed against a real run: "strict mode violation ... resolved to 2 elements" - because while signed out, `Layout.tsx`'s own sidebar (`MenuContent`) always renders its own "Sign in" nav link too (at this desktop viewport it's visible, not just present-but-hidden), alongside `ForgotPasswordPage`'s "Remembered it? Sign in" link the test actually means to click. Fixed by scoping to `page.getByRole('main')` first (`Layout.tsx`'s `<Box component="main">` gives the page's own content a `main` landmark distinct from the sidebar). Re-verified live and passing.

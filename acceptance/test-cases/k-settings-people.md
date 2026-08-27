@@ -9,7 +9,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### K.84 — Standard user does not see the People section
 
 **Use case:** [use-cases.md#uc-84](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-84) — "Standard user does not see the People section."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/settings-people.spec.ts`](../tests/settings-people.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the e2e user.
@@ -26,7 +26,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### K.85 — Admin adds a guest person; usable as organiser/attendee/calendar subject
 
 **Use case:** [use-cases.md#uc-85](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-85) — "Admin adds a new person (e.g. a guest with no login) → appears in People, selectable as organiser/attendee/calendar subject."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/settings-people.spec.ts`](../tests/settings-people.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user.
@@ -55,7 +55,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### K.86 — Blank person name rejected
 
 **Use case:** [use-cases.md#uc-86](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-86) — "Add a person with a blank name → validation error."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/settings-people.spec.ts`](../tests/settings-people.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user.
@@ -81,7 +81,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### K.87 — Admin edits another person's name: propagates to calendar, meetings, and (if linked) Cognito
 
 **Use case:** [use-cases.md#uc-87](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-87) — "Admin edits another person's name → reflected in their calendar, past/future meetings, and (if linked to a Cognito account) that account's next sign-in / display name."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/settings-people.spec.ts`](../tests/settings-people.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** A confirmed standard test account (`createConfirmedTestAccount`) — Cognito-linked, so the "if linked" half is actually exercised, not skipped. A meeting involving that person.
@@ -112,7 +112,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### K.88 — Admin renames a person with no Cognito account
 
 **Use case:** [use-cases.md#uc-88](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-88) — "Admin renaming a person NOT linked to a Cognito account (no auth-side propagation needed)."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/settings-people.spec.ts`](../tests/settings-people.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. A guest Person with no Cognito account (K.85's kind of fixture), involved in a meeting.

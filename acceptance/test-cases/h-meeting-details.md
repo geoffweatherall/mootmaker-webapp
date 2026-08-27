@@ -9,7 +9,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### H.68 — View details of a meeting you organise
 
 **Use case:** [use-cases.md#uc-68](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-68) — "View details of a meeting you organise."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. A room and a meeting organised by the demo user, with one attendee.
@@ -39,7 +39,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### H.69 — View details of a meeting you attend but didn't organise
 
 **Use case:** [use-cases.md#uc-69](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-69) — "View details of a meeting you attend but didn't organise."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user, but as the **attendee** this time. A room, another Person as organiser (created via Settings), the demo user added as an attendee.
@@ -67,7 +67,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### H.70 — View details of a meeting you're neither organiser nor attendee of
 
 **Use case:** [use-cases.md#uc-70](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-70) — "View details of a meeting where you're neither organiser nor attendee (if reachable via a direct link/other calendar)."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. A meeting organised by and attended only by *other* people (two Persons created via Settings, neither the demo user).
@@ -93,7 +93,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### H.71 — Date shown once; time shown as a start–end range
 
 **Use case:** [use-cases.md#uc-71](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-71) — "Date shown once, time shown as a start–end range (not two full date-times)."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. A room and a meeting with a known date/start/end (e.g. `2026-08-24`, `10:00`–`11:00`).
@@ -123,7 +123,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### H.72 — "Back" returns to the previous page
 
 **Use case:** [use-cases.md#uc-72](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-72) — "'Back' button returns to the previous page (room availability / calendar / home, depending on entry point)."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. A room and a meeting, reachable from both Room Availability and Home's agenda list.
@@ -150,7 +150,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### H.73 — Navigating directly to a nonexistent meeting id
 
 **Use case:** [use-cases.md#uc-73](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-73) — "Navigating directly to a nonexistent/invalid meeting id."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user.

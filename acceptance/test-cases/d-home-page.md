@@ -9,7 +9,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### D.21 — Signed-out home page shows the sign-in form, demo credentials, and sign-up steps
 
 **Use case:** [use-cases.md#uc-21](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-21) — "Signed out: shows sign-in form + demo credentials + sign-up steps."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/home-page.spec.ts`](../tests/home-page.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed out.
@@ -37,7 +37,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### D.22 — Signed in with a linked Person: entry points + Today/Tomorrow agenda
 
 **Use case:** [use-cases.md#uc-22](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-22) — "Signed in with a linked Person: shows Calendar/Room availability/Add Meeting entry points plus 'Today' and 'Tomorrow' agenda lists, sorted by start time, each linking to its meeting's details."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/home-page.spec.ts`](../tests/home-page.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. Two meetings created for today (different start times, deliberately out of chronological order when created) and one for tomorrow, all organised by or attending the demo user, via the real Add Meeting form. A room must exist first.
@@ -71,7 +71,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### D.23 — No meetings today/tomorrow shows an empty state
 
 **Use case:** [use-cases.md#uc-23](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-23) — "Signed in with a linked Person but no meetings today/tomorrow: empty state shown instead of an empty list."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/home-page.spec.ts`](../tests/home-page.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** A freshly signed-up account (`createConfirmedTestAccount`) — guaranteed to have zero meetings, unlike the demo user whose meeting history depends on what else has run against the environment.
@@ -97,7 +97,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### D.24 — Signed in with no linked Person: degraded Home page
 
 **Use case:** [use-cases.md#uc-24](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-24) — "Signed in with **no** linked Person (e.g. demo/e2e-style account): 'account hasn't been set up' message replaces Calendar/agenda; 'Room availability today' and 'Add Meeting' still work but Add Meeting has no organiser pre-filled."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/home-page.spec.ts`](../tests/home-page.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the e2e user (`E2E_USER_EMAIL`/`E2E_USER_PASSWORD` — standard, no linked Person; see [README.md](README.md)'s account matrix).
@@ -129,7 +129,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### D.25 — "Add Meeting" and "Room availability today" deep-link correctly
 
 **Use case:** [use-cases.md#uc-25](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-25) — "'Add Meeting' and 'Room availability today' both correctly navigate/deep-link (today's date)."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/home-page.spec.ts`](../tests/home-page.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. Clock pinned to a known date.

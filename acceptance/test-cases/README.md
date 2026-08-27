@@ -4,7 +4,10 @@ A detailed, per-use-case design for every test in the `acceptance/` suite — on
 [mootmaker/use-cases.md](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md),
 written to be reviewed by a human before any test code exists, and precise enough for Claude to
 generate that code from later. This catalog is the *design*; [`../tests/`](../tests/) is the
-*implementation* — only two entries have one so far (see each entry's **Status**).
+*implementation* — every one of the 99 use cases now has a spec (see each entry's **Status**),
+except G.64, confirmed infeasible against this project's standard environments (see its own
+Notes). A handful of specs (F.53, F.54, F.57) are currently failing live and under investigation —
+flagged individually in [f-add-meeting.md](f-add-meeting.md).
 
 **Scope**: full coverage — every one of the 99 use cases gets a complete real-browser test case
 here, including ones that are also (or better) provable at the mocked `webapp/tests/` integration

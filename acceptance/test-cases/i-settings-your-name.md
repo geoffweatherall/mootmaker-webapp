@@ -9,7 +9,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### I.74 — Update your own display name
 
 **Use case:** [use-cases.md#uc-74](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-74) — "Update your own display name → saved, reflected immediately in the sidebar without a page refresh."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/settings-your-name.spec.ts`](../tests/settings-your-name.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** A freshly signed-up account (`createConfirmedTestAccount`) — avoids permanently renaming the shared demo user's Person, which every other test in this catalog relies on reading as "Demo Strater."
@@ -39,7 +39,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### I.75 — Blank name rejected
 
 **Use case:** [use-cases.md#uc-75](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-75) — "Submit a blank name → validation error."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/settings-your-name.spec.ts`](../tests/settings-your-name.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** A freshly signed-up account.
@@ -66,7 +66,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### I.76 — Section disabled with no linked Person
 
 **Use case:** [use-cases.md#uc-76](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-76) — "Section disabled with an explanatory note for an account with no linked Person."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/settings-your-name.spec.ts`](../tests/settings-your-name.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the e2e user (no linked Person).

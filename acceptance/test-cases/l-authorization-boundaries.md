@@ -12,7 +12,7 @@ specific J/K/I mechanics, not because they need wholly separate test code.
 ### L.89 — Standard user cannot reach admin-only UI
 
 **Use case:** [use-cases.md#uc-89](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-89) — "Standard user cannot reach admin-only UI (Rooms/People sections hidden) — a presentation-only check."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/authorization-boundaries.spec.ts`](../tests/authorization-boundaries.spec.ts)
 **Android:** not yet automated
 
 **Preconditions/Steps/Assertions:** Identical to [J.77](j-settings-rooms.md#tc-j77) + [K.84](k-settings-people.md#tc-k84) combined (both sections hidden, checked in the same `/settings` visit as a standard user).
@@ -27,7 +27,7 @@ specific J/K/I mechanics, not because they need wholly separate test code.
 ### L.90 — Standard user directly invoking an admin mutation is rejected
 
 **Use case:** [use-cases.md#uc-90](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-90) — "Standard user directly invoking an admin mutation is rejected (belongs more in API-level testing, but worth a UI-adjacent smoke test)."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/authorization-boundaries.spec.ts`](../tests/authorization-boundaries.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** A confirmed standard test account, signed in (for its auth token).
@@ -51,7 +51,7 @@ specific J/K/I mechanics, not because they need wholly separate test code.
 ### L.91 — Self-rename works for a standard user; renaming someone else does not
 
 **Use case:** [use-cases.md#uc-91](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-91) — "Self-rename works for a standard user; renaming someone else does not (UI shouldn't offer it, and server should reject if forced)."
-**Status:** ⬜ Planned
+**Status:** ✅ Automated — [`tests/authorization-boundaries.spec.ts`](../tests/authorization-boundaries.spec.ts) (parts (b)/(c); part (a) intentionally references [I.74](i-settings-your-name.md#tc-i74) rather than re-implementing it)
 **Android:** not yet automated
 
 **Preconditions:** Two confirmed standard test accounts (`accountA`, `accountB`), each with its own linked Person.

@@ -187,7 +187,7 @@ export default function HomePage() {
   }
 
   // personId is only null here once personLoading has settled - i.e. we've confirmed there's no
-  // Person linked to this account (e.g. the demo user, or the e2e test user), not just that the
+  // Person linked to this account (e.g. the e2e test user), not just that the
   // lookup hasn't finished yet. Showing someone else's calendar/meetings in that case would be
   // showing the wrong person's data, so this shows an explicit error instead.
   if (!personId && !personLoading) {

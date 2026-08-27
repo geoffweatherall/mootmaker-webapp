@@ -1,9 +1,13 @@
 import { useQuery } from '@apollo/client/react'
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
+import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import {
   Autocomplete,
   Box,
+  Button,
   ButtonBase,
   CircularProgress,
+  IconButton,
   LinearProgress,
   Paper,
   Stack,
@@ -81,7 +85,13 @@ export default function PersonCalendarPage() {
     return undefined
   }, [people, personId, ownPersonId, ownDisplayName])
 
-  const firstMonday = useMemo(() => startOfWorkWeek(dayjs()), [])
+  // The visible 6-week window's start - navigable via the Previous/Next week controls below,
+  // rather than fixed to "now" forever. Shifting by one week per press (rather than by the whole
+  // 6-week block) gives the finer-grained "weeks" half of the use case's "weeks/months" wording
+  // directly, while still reaching any month after enough presses.
+  const [firstMonday, setFirstMonday] = useState(() => startOfWorkWeek(dayjs()))
+  const thisWeek = useMemo(() => startOfWorkWeek(dayjs()), [])
+  const isShowingThisWeek = firstMonday.isSame(thisWeek, 'day')
 
   const weeks = useMemo(
     () =>
@@ -142,11 +152,38 @@ export default function PersonCalendarPage() {
   const bannerMessages = [...errorMessages(peopleError), ...errorMessages(meetingsError)]
   const today = dayjs().format(DATE_KEY_FORMAT)
 
+  const lastFridayShown = firstMonday.add((WEEKS_SHOWN - 1) * 7 + (WORK_DAYS_PER_WEEK - 1), 'day')
+
   return (
     <Stack spacing={3}>
-      <Typography variant="h4" component="h1">
-        Calendar
-      </Typography>
+      <Stack
+        direction="row"
+        sx={{ justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}
+      >
+        <Typography variant="h4" component="h1">
+          Calendar
+        </Typography>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+          <IconButton
+            onClick={() => setFirstMonday((current) => current.subtract(7, 'day'))}
+            aria-label="Previous week"
+          >
+            <ChevronLeftIcon />
+          </IconButton>
+          <Typography variant="body2" sx={{ minWidth: 170, textAlign: 'center' }}>
+            {firstMonday.format('D MMM')} – {lastFridayShown.format('D MMM YYYY')}
+          </Typography>
+          <IconButton
+            onClick={() => setFirstMonday((current) => current.add(7, 'day'))}
+            aria-label="Next week"
+          >
+            <ChevronRightIcon />
+          </IconButton>
+          <Button size="small" disabled={isShowingThisWeek} onClick={() => setFirstMonday(thisWeek)}>
+            This week
+          </Button>
+        </Stack>
+      </Stack>
 
       <Autocomplete
         sx={{ maxWidth: 320 }}

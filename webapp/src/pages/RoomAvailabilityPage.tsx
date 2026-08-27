@@ -189,6 +189,7 @@ export default function RoomAvailabilityPage() {
           <Button
             component={Link}
             to="/meetings/add"
+            state={{ date: selectedDate.format(DATE_PARAM_FORMAT) }}
             variant="contained"
             startIcon={<AddIcon />}
             sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
@@ -401,6 +402,7 @@ export default function RoomAvailabilityPage() {
       <Button
         component={Link}
         to="/meetings/add"
+        state={{ date: selectedDate.format(DATE_PARAM_FORMAT) }}
         variant="contained"
         startIcon={<AddIcon />}
         fullWidth

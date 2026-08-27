@@ -85,6 +85,7 @@ function validateMeetingInput(input: MeetingInput): MeetingError[] {
   if (!isFifteenMinuteAligned(input.startTime)) errors.push('StartMissaligned')
   if (!isFifteenMinuteAligned(input.endTime)) errors.push('EndMissaligned')
   if (input.startTime.slice(0, 10) !== input.endTime.slice(0, 10)) errors.push('SpansMultipleDays')
+  else if (input.endTime <= input.startTime) errors.push('EndBeforeStart')
 
   const room = rooms.find((candidate) => candidate.id === input.roomId)
   if (room) {

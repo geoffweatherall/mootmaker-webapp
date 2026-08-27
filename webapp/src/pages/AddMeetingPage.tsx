@@ -20,7 +20,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import { TimePicker } from '@mui/x-date-pickers/TimePicker'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useEffect, useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/authContext'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { SubmitButton } from '../components/SubmitButton'
@@ -51,7 +51,18 @@ function nextFifteenMinuteBoundary(from: Dayjs): Dayjs {
   return remainder === 0 ? rounded : rounded.add(15 - remainder, 'minute')
 }
 
-function defaultDate(): Dayjs {
+// Matches RoomAvailabilityPage's own DATE_PARAM_PATTERN - the shape of the date it passes via
+// router state when linking here (see below), so a malformed/unexpected state value falls back
+// to today rather than producing an invalid Dayjs.
+const VIEWED_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
+
+function defaultDate(viewedDate?: string): Dayjs {
+  if (viewedDate && VIEWED_DATE_PATTERN.test(viewedDate)) {
+    const parsed = dayjs(viewedDate)
+    if (parsed.isValid()) {
+      return parsed.startOf('day')
+    }
+  }
   return dayjs().startOf('day')
 }
 
@@ -78,7 +89,13 @@ function combineDateAndTime(date: Dayjs | null, time: Dayjs | null): string {
 
 export default function AddMeetingPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { personId } = useAuth()
+  // RoomAvailabilityPage's "Add Meeting" links pass the date currently being viewed via router
+  // state, so the form defaults to that date rather than always today - see defaultDate() above.
+  // Only read once, on mount: this is a one-time initial value, not something that should keep
+  // resetting the field if location.state were to change later on the same mounted page.
+  const viewedDate = (location.state as { date?: string } | null)?.date
 
   const {
     data: roomsData,
@@ -96,7 +113,7 @@ export default function AddMeetingPage() {
   const [organiserId, setOrganiserId] = useState('')
   const [organiserTouched, setOrganiserTouched] = useState(false)
   const [attendeeIds, setAttendeeIds] = useState<string[]>([])
-  const [date, setDate] = useState<Dayjs | null>(defaultDate)
+  const [date, setDate] = useState<Dayjs | null>(() => defaultDate(viewedDate))
   const [startTime, setStartTime] = useState<Dayjs | null>(defaultStartTime)
   const [endTime, setEndTime] = useState<Dayjs | null>(() => defaultEndTime(defaultStartTime()))
   const [meetingErrors, setMeetingErrors] = useState<string[]>([])
@@ -367,7 +384,7 @@ export default function AddMeetingPage() {
               </Button>
             </Stack>
 
-            <Stack direction="row" spacing={2}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <SubmitButton loading={submitting} hasError={bannerMessages.length > 0}>
                 Save
               </SubmitButton>

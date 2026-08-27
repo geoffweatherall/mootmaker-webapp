@@ -43,6 +43,7 @@ describe('MEETING_ERROR_MESSAGES', () => {
     'StartMissaligned',
     'EndMissaligned',
     'SpansMultipleDays',
+    'EndBeforeStart',
     'InsufficientCapacity',
     'TimeRangeUnavailable',
     'RoomRequired',

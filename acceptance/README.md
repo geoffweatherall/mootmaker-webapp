@@ -7,6 +7,18 @@ DNS/TLS/CloudFront) is wired correctly, with a deliberately small, curated set o
 [../testing-strategy.md](../testing-strategy.md#acceptance-tests) for how this fits the overall
 layering.
 
+## Run output
+
+Every `./run.sh` run writes a full record to `test-output/` (git-ignored — see `.gitignore` — so
+it's never accidentally committed): an HTML report (`test-output/html-report/`, open with `npx
+playwright show-report acceptance/test-output/html-report`) with a full step-by-step breakdown,
+screenshot, and Trace Viewer recording for *every* test, pass or fail — not just failures, since
+`trace`/`screenshot` are both set to `'on'` rather than an on-failure-only mode (see
+`playwright.config.ts`'s own comments for the size/completeness trade-off). Alongside it,
+`test-output/results.json` is the same result set as structured JSON — meant for a tool (or an AI)
+to read programmatically rather than browse. A fresh run overwrites the previous one; nothing here
+is meant to be kept long-term.
+
 ## Test case catalog
 
 [test-cases/](test-cases/) has a detailed, reviewable design (Given/When/Then, UI-level steps with
@@ -21,14 +33,15 @@ drift" and "Known implementation gap" sections.
 
 ## Status
 
-Two use cases automated so far, as a thin first slice rather than an attempt at all ~99 in
-`use-cases.md` at once:
-
-- **`sign-up.spec.ts`** — section A, case 1 (plus a touch of case 5): a real sign-up with a real
-  emailed verification code, asserting the business-level effect (a linked Person auto-created
-  with the entered name), not just that Cognito accepted the code.
-- **`add-meeting.spec.ts`** — section F, case 38: the add-meeting happy path, asserting the
-  meeting actually appears on the room's schedule afterward.
+Every one of the 99 catalogued use cases now has a spec, across `sign-up.spec.ts`,
+`sign-in-sign-out.spec.ts`, `forgot-password.spec.ts`, `add-meeting.spec.ts`,
+`00-room-availability-empty.spec.ts`, `room-availability.spec.ts`, `person-calendar.spec.ts`,
+`meeting-details.spec.ts`, `home-page.spec.ts`, `settings-your-name.spec.ts`,
+`settings-rooms.spec.ts`, `settings-people.spec.ts`, `authorization-boundaries.spec.ts`, and
+`cross-cutting.spec.ts` — except G.64, confirmed infeasible against this project's standard
+environments (see its own catalog entry). A few specs are still being verified/fixed against a
+live environment (see [test-cases/](test-cases/)'s own per-case **Status** lines, which are the
+source of truth for coverage, not this list).
 
 Everything else in `use-cases.md` is still just a checklist. Adding a case here should follow the
 same shape: pick the *use case*, not the UI flow, as the thing under test — assert the business

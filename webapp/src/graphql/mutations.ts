@@ -47,6 +47,12 @@ export const UPDATE_PERSON = gql`
   }
 `
 
+export const DELETE_MY_ACCOUNT = gql`
+  mutation DeleteMyAccount {
+    deleteMyAccount
+  }
+`
+
 export const CREATE_MEETING = gql`
   mutation CreateMeeting($meeting: MeetingInput!) {
     createMeeting(meeting: $meeting) {

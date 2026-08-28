@@ -19,12 +19,13 @@ import {
   Typography,
 } from '@mui/material'
 import { useEffect, useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/authContext'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { SubmitButton } from '../components/SubmitButton'
 import { SuccessToast } from '../components/SuccessToast'
 import { errorMessages } from '../graphql/errorMessages'
-import { CREATE_PERSON, CREATE_ROOM, UPDATE_PERSON, UPDATE_ROOM } from '../graphql/mutations'
+import { CREATE_PERSON, CREATE_ROOM, DELETE_MY_ACCOUNT, UPDATE_PERSON, UPDATE_ROOM } from '../graphql/mutations'
 import { LIST_PEOPLE, LIST_ROOMS } from '../graphql/queries'
 import {
   PERSON_ERROR_MESSAGES,
@@ -47,6 +48,7 @@ export default function SettingsPage() {
       <NameSection />
       {isAdmin && <RoomsSection />}
       {isAdmin && <PeopleSection />}
+      <DeleteAccountSection />
     </Stack>
   )
 }
@@ -368,5 +370,74 @@ function PersonDialog({ person, onClose, onSaved }: PersonDialogProps) {
         </DialogActions>
       </Stack>
     </Dialog>
+  )
+}
+
+/**
+ * Everyone gets this section - self-service account deletion, not gated on isAdmin. A simple
+ * confirmation dialog (no re-authentication step - see mootmaker/delete-my-account.md's "Confirm
+ * friction" decision) that explicitly warns about organised-meeting cancellation before the user
+ * commits, since that's a real side effect on other people's data, not just their own.
+ */
+function DeleteAccountSection() {
+  const navigate = useNavigate()
+  const { signOut } = useAuth()
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [deleteMyAccount, { loading, error, reset }] = useMutation<{ deleteMyAccount: boolean }>(DELETE_MY_ACCOUNT)
+
+  async function handleConfirm() {
+    const result = await deleteMyAccount()
+    if (result.data?.deleteMyAccount) {
+      // No session to return to afterwards - sign out and land back on the public home page,
+      // the same place a fresh visitor lands.
+      signOut()
+      navigate('/')
+    }
+  }
+
+  function closeDialog() {
+    setConfirmOpen(false)
+    reset()
+  }
+
+  return (
+    <Paper sx={{ p: 3 }}>
+      <Stack spacing={2}>
+        <Typography variant="h6" component="h2">
+          Delete account
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Permanently deletes your account and everything linked to it. This can&apos;t be undone.
+        </Typography>
+        <Box>
+          <Button color="error" variant="outlined" onClick={() => setConfirmOpen(true)}>
+            Delete my account
+          </Button>
+        </Box>
+      </Stack>
+      {confirmOpen && (
+        <Dialog open onClose={loading ? undefined : closeDialog} fullWidth maxWidth="xs">
+          <DialogTitle>Delete your account?</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2}>
+              <ErrorBanner messages={errorMessages(error)} onDismiss={reset} />
+              <Typography>
+                This permanently deletes your account. <strong>All meetings you organise will be cancelled</strong> -
+                other attendees will no longer see them. Meetings you only attend will just have you removed from
+                them. This can&apos;t be undone.
+              </Typography>
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={closeDialog} disabled={loading}>
+              Cancel
+            </Button>
+            <Button color="error" variant="contained" onClick={handleConfirm} disabled={loading}>
+              {loading ? <CircularProgress size={20} color="inherit" /> : 'Delete my account'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
+    </Paper>
   )
 }

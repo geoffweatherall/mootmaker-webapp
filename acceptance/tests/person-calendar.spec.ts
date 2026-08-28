@@ -86,7 +86,11 @@ async function addMeeting(page: Page, fixture: MeetingFixture) {
 }
 
 async function goToOwnCalendar(page: Page) {
-  await page.getByRole('link', { name: 'Calendar' }).click()
+  // exact: true matters here - a meeting row on this same page can have an accessible name like
+  // "Calendar click meeting <id>: 10:00-10:30" (built from a test fixture's own subject text), a
+  // non-exact match against 'Calendar' would ambiguously match both that row and this sidebar
+  // link, and Playwright's strict mode rejects a click on an ambiguous locator.
+  await page.getByRole('link', { name: 'Calendar', exact: true }).click()
   await expect(page).toHaveURL(/\/persons\/[^/]+\/calendar$/)
 }
 

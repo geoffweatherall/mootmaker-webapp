@@ -143,7 +143,11 @@ function dateNavGroup(page: Page): Locator {
 }
 
 async function goToOwnCalendar(page: Page): Promise<void> {
-  await page.getByRole('link', { name: 'Calendar' }).click()
+  // exact: true matters here - a meeting row can have an accessible name like "Calendar click
+  // meeting <id>: 10:00-10:30" (built from a test fixture's own subject text elsewhere in the
+  // suite), which a non-exact match against 'Calendar' would ambiguously match alongside this
+  // sidebar link - see person-calendar.spec.ts's goToOwnCalendar for the same fix.
+  await page.getByRole('link', { name: 'Calendar', exact: true }).click()
   await expect(page).toHaveURL(/\/persons\/[^/]+\/calendar$/)
 }
 

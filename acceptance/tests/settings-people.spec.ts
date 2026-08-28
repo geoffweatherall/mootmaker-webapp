@@ -136,8 +136,10 @@ test.describe('K. Settings - People (admin only)', () => {
 
     // Own Calendar's Person selector - navigated via the persistent sidebar link (a real
     // client-side route change, not a fresh page load) so this is genuinely "no reload in
-    // between" for this last check.
-    await page.getByRole('link', { name: 'Calendar' }).click()
+    // between" for this last check. exact: true avoids ambiguity with a meeting row's own
+    // accessible name (e.g. "Calendar click meeting <id>: 10:00-10:30" elsewhere in the suite) -
+    // see person-calendar.spec.ts's goToOwnCalendar for the same fix.
+    await page.getByRole('link', { name: 'Calendar', exact: true }).click()
     await expect(page).toHaveURL(/\/persons\/.+\/calendar/)
     await page.getByRole('combobox', { name: 'Person' }).click()
     await expect(page.getByRole('option', { name: personName, exact: true })).toBeVisible()

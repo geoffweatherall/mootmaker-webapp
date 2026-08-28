@@ -106,6 +106,15 @@ async function selectAttendees(page: Page, names: string[]): Promise<void> {
     await page.getByRole('option', { name, exact: true }).click()
   }
   await page.keyboard.press('Escape')
+  // Escape closes the Autocomplete's open listbox but does not blur the input itself - it stays
+  // focused (confirmed via a real deployed environment: screenshotting right before the next
+  // click still showed the field with focus styling). Against real network latency (never against
+  // the near-instant mocked layer, which is why this never surfaced there), a single subsequent
+  // click elsewhere - e.g. the "Suggest a room" button right after selectAttendees - can land while
+  // the field is still focused and simply not register on the intended target: no error, no
+  // network call, no re-render, just a silently absorbed click. Explicitly clicking a neutral,
+  // always-present element blurs the field for real before any caller's next interaction.
+  await page.getByRole('heading', { name: 'Add Meeting' }).click()
 }
 
 // MUI X's TimePicker renders each field as several keyboard-editable sections (Hours/Minutes/

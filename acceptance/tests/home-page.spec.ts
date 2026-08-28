@@ -117,12 +117,10 @@ function pageMain(page: Page) {
   return page.getByRole('main')
 }
 
-// Mirrors add-meeting.spec.ts's roomFieldIsEmpty: MUI's Select falls back to a zero-width-space
-// placeholder rather than genuinely empty text when nothing is selected, so this strips it out
-// before comparing.
+// Mirrors add-meeting.spec.ts's roomFieldIsEmpty.
 async function comboboxIsEmpty(page: Page, name: string): Promise<boolean> {
-  const text = (await page.getByRole('combobox', { name }).textContent()) ?? ''
-  return text.replace(/​/g, '').trim().length === 0
+  const value = await page.getByRole('combobox', { name }).inputValue()
+  return value.trim().length === 0
 }
 
 test('D.21 - signed-out home page shows the sign-in form pre-filled with demo credentials, the credentials in plain text, and the sign-up steps', async ({

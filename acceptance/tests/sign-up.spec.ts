@@ -178,7 +178,7 @@ test('can immediately schedule a meeting as themselves right after signing up', 
 
   // Organiser is already pre-filled with the freshly-signed-up user's own name, before any
   // interaction with that field.
-  await expect(page.getByRole('combobox', { name: 'Organiser' })).toHaveText(account.name)
+  await expect(page.getByRole('combobox', { name: 'Organiser' })).toHaveValue(account.name)
 
   await page.getByLabel('Subject').fill(subject)
   await page.getByRole('combobox', { name: 'Room' }).click()

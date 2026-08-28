@@ -21,11 +21,16 @@ test.describe('Suggest a room', () => {
     const suggestButton = page.getByRole('button', { name: 'Suggest a room' })
 
     // Waiting for the button to re-enable (its loading spinner clears once the query resolves)
-    // rules out reading the Room field's text while the request is still in flight.
+    // rules out reading the Room field's text while the request is still in flight. The field's
+    // displayed text is Autocomplete's own internal state, synced from the `value` prop via an
+    // effect rather than in the same render pass - so also wait (auto-retrying) for it to actually
+    // reflect the new selection before reading it with a raw, non-retrying inputValue() call, the
+    // same reasoning as add-meeting.spec.ts's organiser-default check.
     await suggestButton.click()
     await expect(suggestButton).toBeEnabled()
-    const firstSuggestion = (await roomSelect.textContent())?.trim()
-    expect(firstSuggestion?.length).toBeGreaterThan(0)
+    await expect(roomSelect).not.toHaveValue('')
+    const firstSuggestion = (await roomSelect.inputValue()).trim()
+    expect(firstSuggestion.length).toBeGreaterThan(0)
 
     // Once the ranked list has been fetched, every further click is served from the cached list
     // (no further loading state), stepping to the next room without repeating the API call.
@@ -33,7 +38,8 @@ test.describe('Suggest a room', () => {
     let current = firstSuggestion
     for (let i = 0; i < 10; i += 1) {
       await suggestButton.click()
-      current = (await roomSelect.textContent())?.trim()
+      await expect(roomSelect).not.toHaveValue('')
+      current = (await roomSelect.inputValue()).trim()
       if (current === firstSuggestion) {
         // Wrapped back around to the start of the ranked list - the whole list has been seen.
         break

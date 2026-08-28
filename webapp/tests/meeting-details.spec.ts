@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { people } from '../src/testSupport/mocks/fixtures'
 
 // Covers MeetingDetailsPage's "Date" + "Time" rows - split apart so a meeting's date is shown
 // once, rather than the full start and end date-times (each repeating the same date) shown
@@ -22,14 +23,14 @@ test.describe('Meeting details - date shown once, not per start/end', () => {
     await page.goto('/meetings/add')
     await page.getByLabel('Subject').fill(subject)
 
+    // A fixed person from the mock data (rather than "whichever option is first"), so the id
+    // needed afterwards to reach their Person Calendar (see below) - unlike RoomAvailabilityPage's
+    // timeline, that view lists every meeting for the day as plain rows with no business-hours
+    // clamping, so it works regardless of what time of day this test happens to run - can be read
+    // straight from the fixture instead of an option element's DOM attributes.
+    const organiser = people[0]
     await page.getByRole('combobox', { name: 'Organiser' }).click()
-    const organiserOption = page.getByRole('option').first()
-    // Captured so this meeting can be found afterwards via the organiser's own Person Calendar
-    // (see below) - unlike RoomAvailabilityPage's timeline, that view lists every meeting for the
-    // day as plain rows with no business-hours clamping, so it works regardless of what time of
-    // day this test happens to run.
-    const organiserId = await organiserOption.getAttribute('data-value')
-    await organiserOption.click()
+    await page.getByRole('option', { name: organiser.name, exact: true }).click()
 
     await page.getByRole('combobox', { name: 'Attendees' }).click()
     await page.getByRole('option').first().click()
@@ -44,7 +45,7 @@ test.describe('Meeting details - date shown once, not per start/end', () => {
     await page.getByRole('button', { name: 'Save' }).click()
     await page.waitForURL(/\/rooms\/.+\/availability/)
 
-    await page.goto(`/persons/${organiserId}/calendar`)
+    await page.goto(`/persons/${organiser.id}/calendar`)
     await page.getByRole('link', { name: new RegExp(subject) }).click()
     await page.waitForURL(/\/meetings\/.+/)
     await expect(page.getByRole('heading', { name: subject })).toBeVisible()

@@ -30,6 +30,15 @@ function uniqueId(): string {
   return `${Date.now()}-${Math.floor(Math.random() * 10_000)}`
 }
 
+// The Room field's combobox is now an Autocomplete <input> (see AddMeetingPage.tsx), whose
+// displayed text lives in its `value` attribute, not textContent - so matching a suggested room's
+// name needs toHaveValue(regex), not toContainText (which checks textContent, always empty for an
+// <input>, and would silently never match here). The regex form does the same "contains" check
+// toContainText used to, since the field's full value also has " (capacity N)" appended.
+function containsValue(text: string): RegExp {
+  return new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+}
+
 async function signInAsDemo(page: Page): Promise<void> {
   const demoEmail = requireEnv('DEMO_USER_EMAIL')
   const demoPassword = requireEnv('DEMO_USER_PASSWORD')
@@ -113,12 +122,9 @@ async function setTime(page: Page, groupName: 'Start time' | 'End time', hour24:
   await page.keyboard.type(meridiem)
 }
 
-// The Room field has no renderValue when nothing is selected, so MUI falls back to a zero-width
-// space placeholder rather than genuinely empty text - stripping it out before comparing keeps
-// this assertion robust to that implementation detail rather than hardcoding the exact character.
 async function roomFieldIsEmpty(page: Page): Promise<boolean> {
-  const text = (await page.getByRole('combobox', { name: 'Room' }).textContent()) ?? ''
-  return text.replace(/\u200B/g, '').trim().length === 0
+  const value = await page.getByRole('combobox', { name: 'Room' }).inputValue()
+  return value.trim().length === 0
 }
 
 // The signed-in browser session's real Cognito ID token, as amazon-cognito-identity-js stores it -
@@ -257,10 +263,10 @@ test('organiser defaults to the signed-in user\'s own Person without any interac
   await goToAddMeeting(page)
 
   // Cheapest possible version of this check - no submission needed, just reading the field's
-  // initial state (see F.39's catalog Notes). Uses toHaveText (auto-retrying) rather than a raw
-  // textContent() read: the default is applied by a useEffect once personId resolves, which can
+  // initial state (see F.39's catalog Notes). Uses toHaveValue (auto-retrying) rather than a raw
+  // inputValue() read: the default is applied by a useEffect once personId resolves, which can
   // genuinely lag the initial render by a tick or two.
-  await expect(page.getByRole('combobox', { name: 'Organiser' })).toHaveText('Demo Strater')
+  await expect(page.getByRole('combobox', { name: 'Organiser' })).toHaveValue('Demo Strater')
 })
 
 test('start and end time default to the next 15-minute boundary and one hour later, same day', async ({ page }) => {
@@ -640,13 +646,13 @@ test('suggest a room fills the best-fit room on first press, then cycles through
   const roomCombo = page.getByRole('combobox', { name: 'Room' })
 
   await suggestButton.click()
-  await expect(roomCombo).toContainText(room5)
+  await expect(roomCombo).toHaveValue(containsValue(room5))
   await suggestButton.click()
-  await expect(roomCombo).toContainText(room7)
+  await expect(roomCombo).toHaveValue(containsValue(room7))
   await suggestButton.click()
-  await expect(roomCombo).toContainText(room9)
+  await expect(roomCombo).toHaveValue(containsValue(room9))
   await suggestButton.click()
-  await expect(roomCombo).toContainText(room5)
+  await expect(roomCombo).toHaveValue(containsValue(room5))
 })
 
 test('changing the attendee count invalidates the cached suggestion, re-ranking for the new required capacity', async ({
@@ -698,14 +704,14 @@ test('changing the attendee count invalidates the cached suggestion, re-ranking 
   // the best fit (smallest surplus) of the two qualifying rooms.
   await selectAttendees(page, firstPressAttendees)
   await suggestButton.click()
-  await expect(roomCombo).toContainText(roomSmall)
+  await expect(roomCombo).toHaveValue(containsValue(roomSmall))
 
   // Adding 2 more attendees (11 total) pushes requiredCapacity to 12 - the small room (capacity
   // 11) no longer qualifies at all, so a correctly-invalidated cache must re-fetch and offer the
   // large room fresh, not just step to "whatever was next" in the old (stale) ranked list.
   await selectAttendees(page, attendeeNames.slice(9))
   await suggestButton.click()
-  await expect(roomCombo).toContainText(roomLarge)
+  await expect(roomCombo).toHaveValue(containsValue(roomLarge))
 })
 
 test('Cancel discards the form and returns to the previously-viewed Room Availability page', async ({ page }) => {

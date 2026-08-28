@@ -1,17 +1,12 @@
 import { useLazyQuery, useMutation, useQuery } from '@apollo/client/react'
 import {
+  Autocomplete,
   Box,
   Button,
   Checkbox,
   CircularProgress,
-  FormControl,
-  InputLabel,
   ListItemText,
-  MenuItem,
-  OutlinedInput,
   Paper,
-  Select,
-  type SelectChangeEvent,
   Stack,
   TextField,
   Typography,
@@ -187,14 +182,17 @@ export default function AddMeetingPage() {
     reset()
   }
 
-  function handleAttendeesChange(event: SelectChangeEvent<string[]>) {
-    const value = event.target.value
-    setAttendeeIds(typeof value === 'string' ? value.split(',') : value)
+  function handleAttendeesChange(selected: Person[]) {
+    setAttendeeIds(selected.map((person) => person.id))
   }
 
-  function handleOrganiserChange(event: SelectChangeEvent) {
+  function handleOrganiserChange(selected: Person | null) {
     setOrganiserTouched(true)
-    setOrganiserId(event.target.value)
+    setOrganiserId(selected?.id ?? '')
+  }
+
+  function handleRoomChange(selected: Room | null) {
+    setRoomId(selected?.id ?? '')
   }
 
   async function handleSuggestRoom() {
@@ -279,45 +277,37 @@ export default function AddMeetingPage() {
               fullWidth
             />
 
-            <FormControl fullWidth>
-              <InputLabel id="organiser-label">Organiser</InputLabel>
-              <Select
-                labelId="organiser-label"
-                label="Organiser"
-                value={organiserId}
-                onChange={handleOrganiserChange}
-              >
-                {organiserOptions.map((person) => (
-                  <MenuItem key={person.id} value={person.id}>
-                    {person.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Autocomplete
+              options={organiserOptions}
+              getOptionLabel={(person) => person.name}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              value={people.find((person) => person.id === organiserId) ?? null}
+              onChange={(_event, selected) => handleOrganiserChange(selected)}
+              autoHighlight
+              renderInput={(params) => <TextField {...params} label="Organiser" />}
+            />
 
-            <FormControl fullWidth>
-              <InputLabel id="attendees-label">Attendees</InputLabel>
-              <Select
-                labelId="attendees-label"
-                multiple
-                value={attendeeIds}
-                onChange={handleAttendeesChange}
-                input={<OutlinedInput label="Attendees" />}
-                renderValue={(selected) =>
-                  people
-                    .filter((person) => selected.includes(person.id))
-                    .map((person) => person.name)
-                    .join(', ')
-                }
-              >
-                {attendeeOptions.map((person) => (
-                  <MenuItem key={person.id} value={person.id}>
-                    <Checkbox checked={attendeeIds.includes(person.id)} />
-                    <ListItemText primary={person.name} />
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Autocomplete
+              multiple
+              disableCloseOnSelect
+              limitTags={3}
+              options={attendeeOptions}
+              getOptionLabel={(person) => person.name}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              value={people.filter((person) => attendeeIds.includes(person.id))}
+              onChange={(_event, selected) => handleAttendeesChange(selected)}
+              autoHighlight
+              renderOption={(props, option, { selected }) => {
+                const { key, ...optionProps } = props
+                return (
+                  <li key={key} {...optionProps}>
+                    <Checkbox checked={selected} />
+                    <ListItemText primary={option.name} />
+                  </li>
+                )
+              }}
+              renderInput={(params) => <TextField {...params} label="Attendees" />}
+            />
 
             <DatePicker
               label="Date"
@@ -341,21 +331,16 @@ export default function AddMeetingPage() {
             />
 
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { xs: 'stretch', sm: 'flex-start' } }}>
-              <FormControl fullWidth>
-                <InputLabel id="room-label">Room</InputLabel>
-                <Select
-                  labelId="room-label"
-                  label="Room"
-                  value={roomId}
-                  onChange={(event) => setRoomId(event.target.value)}
-                >
-                  {rooms.map((room) => (
-                    <MenuItem key={room.id} value={room.id}>
-                      {room.name} (capacity {room.capacity})
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                fullWidth
+                options={rooms}
+                getOptionLabel={(room) => `${room.name} (capacity ${room.capacity})`}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                value={rooms.find((room) => room.id === roomId) ?? null}
+                onChange={(_event, selected) => handleRoomChange(selected)}
+                autoHighlight
+                renderInput={(params) => <TextField {...params} label="Room" />}
+              />
               <Button
                 onClick={handleSuggestRoom}
                 disabled={suggesting}

@@ -148,11 +148,12 @@ export default function AddMeetingPage() {
   const meetingStartTime = combineDateAndTime(date, startTime)
   const meetingEndTime = combineDateAndTime(date, endTime)
 
-  // The cached suggestion list is only valid for the time/attendee-count it was fetched for, so
-  // clear it whenever any of those change - the next button press will fetch a fresh ranked list.
-  useEffect(() => {
-    setSuggestionCache(initialSuggestionCache())
-  }, [meetingStartTime, meetingEndTime, attendeeIds.length])
+  // The cached suggestion list is only valid for the time/attendee-count it was fetched for -
+  // handleSuggestRoom compares this against suggestionCache.key on every press and re-fetches
+  // whenever they differ, rather than a separate effect clearing the cache asynchronously
+  // whenever these inputs change (see addMeetingLogic.ts's SuggestionCache doc comment for why
+  // that shape had a real race under genuine network latency).
+  const suggestionKey = `${meetingStartTime}|${meetingEndTime}|${attendeeIds.length}`
 
   // Sorted alphabetically, matching the convention SettingsPage/RoomAvailabilityPage/
   // PersonCalendarPage already use for these same lists.
@@ -201,7 +202,7 @@ export default function AddMeetingPage() {
     setSuggestionErrors([])
 
     let fetchedRooms: Room[] | undefined
-    if (suggestionCache.candidates === null) {
+    if (suggestionCache.key !== suggestionKey || suggestionCache.candidates === null) {
       const result = await suggestRoom({
         variables: {
           startTime: meetingStartTime,
@@ -212,7 +213,7 @@ export default function AddMeetingPage() {
       fetchedRooms = result.data?.suggestRoom ?? []
     }
 
-    const { cache, room } = advanceSuggestion(suggestionCache, fetchedRooms)
+    const { cache, room } = advanceSuggestion(suggestionCache, suggestionKey, fetchedRooms)
     setSuggestionCache(cache)
 
     if (room === null) {

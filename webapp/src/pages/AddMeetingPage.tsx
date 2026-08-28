@@ -154,8 +154,10 @@ export default function AddMeetingPage() {
     setSuggestionCache(initialSuggestionCache())
   }, [meetingStartTime, meetingEndTime, attendeeIds.length])
 
-  const rooms = roomsData?.rooms ?? []
-  const people = peopleData?.people ?? []
+  // Sorted alphabetically, matching the convention SettingsPage/RoomAvailabilityPage/
+  // PersonCalendarPage already use for these same lists.
+  const rooms = [...(roomsData?.rooms ?? [])].sort((a, b) => a.name.localeCompare(b.name))
+  const people = [...(peopleData?.people ?? [])].sort((a, b) => a.name.localeCompare(b.name))
 
   // The organiser and attendees are kept mutually exclusive: whoever is picked as one is not
   // offered as a choice for the other. This is enforced authoritatively server-side (the

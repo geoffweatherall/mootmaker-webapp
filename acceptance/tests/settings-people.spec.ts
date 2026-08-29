@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { freshTestAccount } from '../../support/testAccount'
 
-// mootmaker/use-cases.md, section K (Settings - People, admin only), cases 84-88. See
+// mootmaker/docs/reference/use-cases.md, section K (Settings - People, admin only), cases 84-88. See
 // acceptance/test-cases/k-settings-people.md for the full per-case Given/When/Then/Steps/Assertions
 // this file implements one at a time. Every case except K.84 (standard user) signs in as the demo
 // user, matching this catalog's general "which account to sign in as" convention (see

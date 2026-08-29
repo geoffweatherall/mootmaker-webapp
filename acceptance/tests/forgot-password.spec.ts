@@ -3,7 +3,7 @@ import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { uniqueTestEmail, waitForVerificationCode } from '../../support/email'
 import { freshTestAccount } from '../../support/testAccount'
 
-// mootmaker/use-cases.md, section C (Forgot password), cases 16-20. See e2e/tests/forgot-password.spec.ts
+// mootmaker/docs/reference/use-cases.md, section C (Forgot password), cases 16-20. See e2e/tests/forgot-password.spec.ts
 // for the same underlying infrastructure (real Cognito forgot-password flow, real SES->SNS->SQS
 // emailed code) proven in isolation - these tests instead prove the *use cases* around it: the
 // real success path plus its business-level effect (signed in with the NEW password, old one no

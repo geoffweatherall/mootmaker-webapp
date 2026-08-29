@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { freshTestAccount } from '../../support/testAccount'
 
-// mootmaker/use-cases.md, section L (Authorization boundaries), cases 89-91.
+// mootmaker/docs/reference/use-cases.md, section L (Authorization boundaries), cases 89-91.
 //
 // L.89 and (half of) L.91 are explicitly framed by the catalog as the general
 // authorization-boundary restatement of mechanics already built for their own sections (J.77,

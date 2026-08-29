@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { freshTestAccount } from '../../support/testAccount'
 
-// mootmaker/use-cases.md, section G (Person Calendar), cases 59-63 and 65-67. Case 64 ("no people
+// mootmaker/docs/reference/use-cases.md, section G (Person Calendar), cases 59-63 and 65-67. Case 64 ("no people
 // exist yet") is left unautomated - see g-person-calendar.md's own Notes on that case: every
 // environment this project can deploy already has exactly one seeded Person (the demo user's own,
 // via mootmaker-api's cognito.tf) before any test runs, so a genuinely empty People table isn't a

@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { darkTokens, lightTokens } from '../../webapp/src/theme/tokens'
 
-// mootmaker/use-cases.md, section M (Cross-cutting / non-functional), cases 92-99. M.98 is
+// mootmaker/docs/reference/use-cases.md, section M (Cross-cutting / non-functional), cases 92-99. M.98 is
 // deliberately NOT re-implemented here - the catalog explicitly treats J.81's own test as already
 // satisfying it (same Apollo InMemoryCache-normalization mechanism, same fixture shape), rather
 // than writing a second, separately-fixtured copy - see m-cross-cutting.md's own Notes on tc-m98.

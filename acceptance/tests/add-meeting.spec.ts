@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
-// mootmaker/use-cases.md, section F (Add Meeting), cases 38-58. Signs in as the demo user rather
+// mootmaker/docs/reference/use-cases.md, section F (Add Meeting), cases 38-58. Signs in as the demo user rather
 // than creating a fresh account for most cases: it's a real, pre-verified Cognito account that
 // already exists in every environment (see mootmaker-api/deploy/terraform/cognito.tf, "the demo
 // user is the one always-present admin") with a linked Person already resolved, so most of these

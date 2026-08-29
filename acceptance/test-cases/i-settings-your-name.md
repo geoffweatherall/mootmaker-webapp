@@ -1,6 +1,6 @@
 # I. Settings — Your name (all users)
 
-Use cases [mootmaker/use-cases.md § I](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#i-settings--your-name-all-users).
+Use cases [mootmaker/use-cases.md § I](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#i-settings--your-name-all-users).
 See [README.md](README.md) for the entry format and test-data conventions.
 
 ---
@@ -8,7 +8,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-i74"></a>
 ### I.74 — Update your own display name
 
-**Use case:** [use-cases.md#uc-74](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-74) — "Update your own display name → saved, reflected immediately in the sidebar without a page refresh."
+**Use case:** [use-cases.md#uc-74](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-74) — "Update your own display name → saved, reflected immediately in the sidebar without a page refresh."
 **Status:** ✅ Automated — [`tests/settings-your-name.spec.ts`](../tests/settings-your-name.spec.ts)
 **Android:** not yet automated
 
@@ -38,7 +38,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-i75"></a>
 ### I.75 — Blank name rejected
 
-**Use case:** [use-cases.md#uc-75](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-75) — "Submit a blank name → validation error."
+**Use case:** [use-cases.md#uc-75](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-75) — "Submit a blank name → validation error."
 **Status:** ✅ Automated — [`tests/settings-your-name.spec.ts`](../tests/settings-your-name.spec.ts)
 **Android:** not yet automated
 
@@ -65,7 +65,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-i76"></a>
 ### I.76 — Section disabled with no linked Person
 
-**Use case:** [use-cases.md#uc-76](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-76) — "Section disabled with an explanatory note for an account with no linked Person."
+**Use case:** [use-cases.md#uc-76](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-76) — "Section disabled with an explanatory note for an account with no linked Person."
 **Status:** ✅ Automated — [`tests/settings-your-name.spec.ts`](../tests/settings-your-name.spec.ts)
 **Android:** not yet automated
 

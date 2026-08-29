@@ -1,7 +1,7 @@
 # Acceptance test case catalog
 
 A detailed, per-use-case design for every test in the `acceptance/` suite — one entry per case in
-[mootmaker/use-cases.md](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md),
+[mootmaker/use-cases.md](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md),
 written to be reviewed by a human before any test code exists, and precise enough for Claude to
 generate that code from later. This catalog is the *design*; [`../tests/`](../tests/) is the
 *implementation* — every one of the 99 use cases now has a spec (see each entry's **Status**),

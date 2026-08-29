@@ -1,6 +1,6 @@
 # A. Sign up
 
-Use cases [mootmaker/use-cases.md § A](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#a-sign-up).
+Use cases [mootmaker/use-cases.md § A](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#a-sign-up).
 See [README.md](README.md) for the entry format and test-data conventions referenced below (the
 demo user, the e2e user, `freshTestAccount`/`waitForVerificationCode`, `createConfirmedTestAccount`).
 
@@ -13,7 +13,7 @@ whole point is proving the real sign-up + email + PostConfirmation-trigger chain
 <a id="tc-a1"></a>
 ### A.1 — Sign up with a valid name, email, and password
 
-**Use case:** [use-cases.md#uc-1](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-1) — "Sign up with a valid name, email, and password → verification code step → correct code confirms and signs the user in automatically."
+**Use case:** [use-cases.md#uc-1](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-1) — "Sign up with a valid name, email, and password → verification code step → correct code confirms and signs the user in automatically."
 **Status:** ✅ Automated — [`tests/sign-up.spec.ts`](../tests/sign-up.spec.ts)
 **Android:** not yet automated
 
@@ -45,7 +45,7 @@ whole point is proving the real sign-up + email + PostConfirmation-trigger chain
 <a id="tc-a2"></a>
 ### A.2 — Password below the minimum strength is rejected
 
-**Use case:** [use-cases.md#uc-2](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-2) — "Password below the minimum (10 chars, needs a lowercase letter + a number) is rejected before submission."
+**Use case:** [use-cases.md#uc-2](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-2) — "Password below the minimum (10 chars, needs a lowercase letter + a number) is rejected before submission."
 **Status:** ✅ Automated — [`tests/sign-up.spec.ts`](../tests/sign-up.spec.ts)
 **Android:** not yet automated
 
@@ -74,7 +74,7 @@ whole point is proving the real sign-up + email + PostConfirmation-trigger chain
 <a id="tc-a3"></a>
 ### A.3 — Signing up with an email that already has an account
 
-**Use case:** [use-cases.md#uc-3](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-3) — "Signing up with an email that already has an account."
+**Use case:** [use-cases.md#uc-3](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-3) — "Signing up with an email that already has an account."
 **Status:** ✅ Automated — [`tests/sign-up.spec.ts`](../tests/sign-up.spec.ts)
 **Android:** not yet automated
 
@@ -103,7 +103,7 @@ whole point is proving the real sign-up + email + PostConfirmation-trigger chain
 <a id="tc-a4"></a>
 ### A.4 — Wrong verification code is rejected; correct code afterward still succeeds
 
-**Use case:** [use-cases.md#uc-4](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-4) — "Wrong verification code is rejected; correct code after a wrong attempt still succeeds."
+**Use case:** [use-cases.md#uc-4](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-4) — "Wrong verification code is rejected; correct code after a wrong attempt still succeeds."
 **Status:** ✅ Automated — [`tests/sign-up.spec.ts`](../tests/sign-up.spec.ts)
 **Android:** not yet automated
 
@@ -133,7 +133,7 @@ whole point is proving the real sign-up + email + PostConfirmation-trigger chain
 <a id="tc-a5"></a>
 ### A.5 — Confirming sign-up auto-creates a linked Person with the entered name, `standard` class
 
-**Use case:** [use-cases.md#uc-5](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-5) — "Newly confirmed account has a linked Person auto-created with the entered name (visible in sidebar/Settings), and is `standard` class (no admin sections in Settings)."
+**Use case:** [use-cases.md#uc-5](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-5) — "Newly confirmed account has a linked Person auto-created with the entered name (visible in sidebar/Settings), and is `standard` class (no admin sections in Settings)."
 **Status:** ✅ Automated (partial — the linked-Person name check only) — [`tests/sign-up.spec.ts`](../tests/sign-up.spec.ts)
 **Android:** not yet automated
 
@@ -164,7 +164,7 @@ whole point is proving the real sign-up + email + PostConfirmation-trigger chain
 <a id="tc-a6"></a>
 ### A.6 — Can immediately schedule a meeting as themselves right after signing up
 
-**Use case:** [use-cases.md#uc-6](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-6) — "Can immediately schedule a meeting as themselves right after signing up (organiser defaults to them)."
+**Use case:** [use-cases.md#uc-6](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-6) — "Can immediately schedule a meeting as themselves right after signing up (organiser defaults to them)."
 **Status:** ✅ Automated — [`tests/sign-up.spec.ts`](../tests/sign-up.spec.ts)
 **Android:** not yet automated
 

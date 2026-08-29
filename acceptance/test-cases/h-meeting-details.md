@@ -1,6 +1,6 @@
 # H. Meeting Details
 
-Use cases [mootmaker/use-cases.md § H](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#h-meeting-details).
+Use cases [mootmaker/use-cases.md § H](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#h-meeting-details).
 See [README.md](README.md) for the entry format and test-data conventions.
 
 ---
@@ -8,7 +8,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-h68"></a>
 ### H.68 — View details of a meeting you organise
 
-**Use case:** [use-cases.md#uc-68](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-68) — "View details of a meeting you organise."
+**Use case:** [use-cases.md#uc-68](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-68) — "View details of a meeting you organise."
 **Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts)
 **Android:** not yet automated
 
@@ -38,7 +38,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-h69"></a>
 ### H.69 — View details of a meeting you attend but didn't organise
 
-**Use case:** [use-cases.md#uc-69](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-69) — "View details of a meeting you attend but didn't organise."
+**Use case:** [use-cases.md#uc-69](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-69) — "View details of a meeting you attend but didn't organise."
 **Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts)
 **Android:** not yet automated
 
@@ -66,7 +66,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-h70"></a>
 ### H.70 — View details of a meeting you're neither organiser nor attendee of
 
-**Use case:** [use-cases.md#uc-70](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-70) — "View details of a meeting where you're neither organiser nor attendee (if reachable via a direct link/other calendar)."
+**Use case:** [use-cases.md#uc-70](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-70) — "View details of a meeting where you're neither organiser nor attendee (if reachable via a direct link/other calendar)."
 **Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts)
 **Android:** not yet automated
 
@@ -92,7 +92,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-h71"></a>
 ### H.71 — Date shown once; time shown as a start–end range
 
-**Use case:** [use-cases.md#uc-71](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-71) — "Date shown once, time shown as a start–end range (not two full date-times)."
+**Use case:** [use-cases.md#uc-71](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-71) — "Date shown once, time shown as a start–end range (not two full date-times)."
 **Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts)
 **Android:** not yet automated
 
@@ -122,7 +122,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-h72"></a>
 ### H.72 — "Back" returns to the previous page
 
-**Use case:** [use-cases.md#uc-72](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-72) — "'Back' button returns to the previous page (room availability / calendar / home, depending on entry point)."
+**Use case:** [use-cases.md#uc-72](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-72) — "'Back' button returns to the previous page (room availability / calendar / home, depending on entry point)."
 **Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts)
 **Android:** not yet automated
 
@@ -149,7 +149,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-h73"></a>
 ### H.73 — Navigating directly to a nonexistent meeting id
 
-**Use case:** [use-cases.md#uc-73](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-73) — "Navigating directly to a nonexistent/invalid meeting id."
+**Use case:** [use-cases.md#uc-73](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-73) — "Navigating directly to a nonexistent/invalid meeting id."
 **Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts)
 **Android:** not yet automated
 

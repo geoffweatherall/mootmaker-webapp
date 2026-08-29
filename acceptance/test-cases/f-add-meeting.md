@@ -1,6 +1,6 @@
 # F. Add Meeting
 
-Use cases [mootmaker/use-cases.md § F](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#f-add-meeting).
+Use cases [mootmaker/use-cases.md § F](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#f-add-meeting).
 See [README.md](README.md) for the entry format and test-data conventions. **F.42 below documents a
 real, source-confirmed implementation gap** found while writing this section — see its Notes. (F.40
 originally flagged a 5-vs-15-minute doc drift here too; that's now fixed system-wide as of
@@ -16,7 +16,7 @@ business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 <a id="tc-f38"></a>
 ### F.38 — Add a meeting with all required fields (happy path)
 
-**Use case:** [use-cases.md#uc-38](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-38) — "Add a meeting with all required fields filled in correctly → success, navigates to a relevant view with a confirmation toast."
+**Use case:** [use-cases.md#uc-38](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-38) — "Add a meeting with all required fields filled in correctly → success, navigates to a relevant view with a confirmation toast."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
@@ -46,7 +46,7 @@ business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 <a id="tc-f39"></a>
 ### F.39 — Organiser defaults to the signed-in user's own Person
 
-**Use case:** [use-cases.md#uc-39](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-39) — "Organiser defaults to the signed-in user's own Person (when resolved and not already changed)."
+**Use case:** [use-cases.md#uc-39](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-39) — "Organiser defaults to the signed-in user's own Person (when resolved and not already changed)."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
@@ -73,7 +73,7 @@ business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 <a id="tc-f40"></a>
 ### F.40 — Start/end time defaults
 
-**Use case:** [use-cases.md#uc-40](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-40) — "Start time defaults to the next 15-minute boundary; end time defaults to an hour later, same calendar day." *(wording fixed 2026-08-22 — previously said 5-minute; see README.md's "Resolved" section)*
+**Use case:** [use-cases.md#uc-40](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-40) — "Start time defaults to the next 15-minute boundary; end time defaults to an hour later, same calendar day." *(wording fixed 2026-08-22 — previously said 5-minute; see README.md's "Resolved" section)*
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
@@ -101,7 +101,7 @@ business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 <a id="tc-f41"></a>
 ### F.41 — Time pickers only offer 15-minute-boundary minutes
 
-**Use case:** [use-cases.md#uc-41](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-41) — "Time pickers only offer 15-minute-boundary minutes." *(wording fixed 2026-08-22 — previously said 5-minute; the rule itself changed from 5 to 15 minutes system-wide, see README.md's "Resolved" section)*
+**Use case:** [use-cases.md#uc-41](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-41) — "Time pickers only offer 15-minute-boundary minutes." *(wording fixed 2026-08-22 — previously said 5-minute; the rule itself changed from 5 to 15 minutes system-wide, see README.md's "Resolved" section)*
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
@@ -129,7 +129,7 @@ business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 <a id="tc-f42"></a>
 ### F.42 — End time before or equal to start time
 
-**Use case:** [use-cases.md#uc-42](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-42) — "Picking an end time before the start time / equal to it."
+**Use case:** [use-cases.md#uc-42](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-42) — "Picking an end time before the start time / equal to it."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts) (two tests: end-before-start, end-equals-start)
 **Android:** not yet automated
 
@@ -166,7 +166,7 @@ now automated and pass against the real, deployed, fixed API.
 <a id="tc-f43"></a>
 ### F.43 — Start/end time pair spanning midnight
 
-**Use case:** [use-cases.md#uc-43](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-43) — "Picking a start/end time pair that would span midnight."
+**Use case:** [use-cases.md#uc-43](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-43) — "Picking a start/end time pair that would span midnight."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts) (direct GraphQL call — see Notes)
 **Android:** not yet automated
 
@@ -215,7 +215,7 @@ values rather than colliding on the same one.
 <a id="tc-f44"></a>
 ### F.44 — Organiser/Attendees mutual exclusivity
 
-**Use case:** [use-cases.md#uc-44](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-44) — "Selecting someone as an attendee removes them from the Organiser dropdown, and vice versa; deselecting frees them up again."
+**Use case:** [use-cases.md#uc-44](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-44) — "Selecting someone as an attendee removes them from the Organiser dropdown, and vice versa; deselecting frees them up again."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
@@ -248,7 +248,7 @@ values rather than colliding on the same one.
 <a id="tc-f45"></a>
 ### F.45 — Organiser also picked as attendee: UI prevention + forced server-side rejection
 
-**Use case:** [use-cases.md#uc-45](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-45) — "Attempting to submit with the organiser also picked as attendee (should be prevented by the UI, but confirm server-side rejection message if forced)."
+**Use case:** [use-cases.md#uc-45](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-45) — "Attempting to submit with the organiser also picked as attendee (should be prevented by the UI, but confirm server-side rejection message if forced)."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
@@ -278,7 +278,7 @@ values rather than colliding on the same one.
 <a id="tc-f46"></a>
 ### F.46 — Blank subject rejected
 
-**Use case:** [use-cases.md#uc-46](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-46) — "Leaving subject blank → validation error."
+**Use case:** [use-cases.md#uc-46](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-46) — "Leaving subject blank → validation error."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
@@ -305,7 +305,7 @@ values rather than colliding on the same one.
 <a id="tc-f47"></a>
 ### F.47 — Blank room rejected
 
-**Use case:** [use-cases.md#uc-47](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-47) — "Leaving room unselected → validation error."
+**Use case:** [use-cases.md#uc-47](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-47) — "Leaving room unselected → validation error."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
@@ -330,7 +330,7 @@ values rather than colliding on the same one.
 <a id="tc-f48"></a>
 ### F.48 — Blank organiser rejected
 
-**Use case:** [use-cases.md#uc-48](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-48) — "Leaving organiser unselected (e.g. no linked Person and not manually chosen) → validation error."
+**Use case:** [use-cases.md#uc-48](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-48) — "Leaving organiser unselected (e.g. no linked Person and not manually chosen) → validation error."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
@@ -357,7 +357,7 @@ values rather than colliding on the same one.
 <a id="tc-f49"></a>
 ### F.49 — Insufficient room capacity
 
-**Use case:** [use-cases.md#uc-49](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-49) — "Selecting a room with capacity less than organiser+attendee count → `InsufficientCapacity` error."
+**Use case:** [use-cases.md#uc-49](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-49) — "Selecting a room with capacity less than organiser+attendee count → `InsufficientCapacity` error."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
@@ -384,7 +384,7 @@ values rather than colliding on the same one.
 <a id="tc-f50"></a>
 ### F.50 — Overlapping time slot in the same room
 
-**Use case:** [use-cases.md#uc-50](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-50) — "Selecting a room/time slot that overlaps an existing meeting in that room → `TimeRangeUnavailable` error."
+**Use case:** [use-cases.md#uc-50](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-50) — "Selecting a room/time slot that overlaps an existing meeting in that room → `TimeRangeUnavailable` error."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
@@ -411,7 +411,7 @@ values rather than colliding on the same one.
 <a id="tc-f51"></a>
 ### F.51 — Multiple validation failures listed together
 
-**Use case:** [use-cases.md#uc-51](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-51) — "Multiple validation failures at once → all errors listed together in one banner."
+**Use case:** [use-cases.md#uc-51](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-51) — "Multiple validation failures at once → all errors listed together in one banner."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
@@ -437,7 +437,7 @@ values rather than colliding on the same one.
 <a id="tc-f52"></a>
 ### F.52 — Suggest a room with none available
 
-**Use case:** [use-cases.md#uc-52](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-52) — "'Suggest a room' with no rooms free → inline 'no room available' message, selection unchanged."
+**Use case:** [use-cases.md#uc-52](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-52) — "'Suggest a room' with no rooms free → inline 'no room available' message, selection unchanged."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
@@ -465,7 +465,7 @@ values rather than colliding on the same one.
 <a id="tc-f53"></a>
 ### F.53 — Suggest a room: first press fills best fit, repeats cycle and wrap
 
-**Use case:** [use-cases.md#uc-53](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-53) — "'Suggest a room' first press fetches and fills the best-fit (smallest surplus capacity) room; repeated presses cycle through the ranked list and wrap around without repeating early."
+**Use case:** [use-cases.md#uc-53](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-53) — "'Suggest a room' first press fetches and fills the best-fit (smallest surplus capacity) room; repeated presses cycle through the ranked list and wrap around without repeating early."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts) — now passing live (fixed 2026-08-27, see Notes)
 **Android:** not yet automated
 
@@ -498,7 +498,7 @@ values rather than colliding on the same one.
 <a id="tc-f54"></a>
 ### F.54 — Changing inputs invalidates the cached suggestion
 
-**Use case:** [use-cases.md#uc-54](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-54) — "Changing date/time/attendee count after suggesting a room invalidates the cached suggestion (next press re-fetches)."
+**Use case:** [use-cases.md#uc-54](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-54) — "Changing date/time/attendee count after suggesting a room invalidates the cached suggestion (next press re-fetches)."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts) — now passing live (fixed 2026-08-27, see Notes)
 **Android:** not yet automated
 
@@ -529,7 +529,7 @@ values rather than colliding on the same one.
 <a id="tc-f55"></a>
 ### F.55 — Cancel discards the form and returns to the previous page
 
-**Use case:** [use-cases.md#uc-55](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-55) — "Cancel button discards the form and returns to the previous page."
+**Use case:** [use-cases.md#uc-55](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-55) — "Cancel button discards the form and returns to the previous page."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
@@ -558,7 +558,7 @@ values rather than colliding on the same one.
 <a id="tc-f56"></a>
 ### F.56 — Submit button disables and shows a spinner while in flight; no double submit
 
-**Use case:** [use-cases.md#uc-56](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-56) — "Submit button is disabled and shows a spinner while the mutation is in flight; double-click doesn't double-submit."
+**Use case:** [use-cases.md#uc-56](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-56) — "Submit button is disabled and shows a spinner while the mutation is in flight; double-click doesn't double-submit."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
@@ -587,7 +587,7 @@ values rather than colliding on the same one.
 <a id="tc-f57"></a>
 ### F.57 — Mobile width: action buttons stack vertically
 
-**Use case:** [use-cases.md#uc-57](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-57) — "On mobile width, the form's action buttons stack vertically instead of a cramped row."
+**Use case:** [use-cases.md#uc-57](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-57) — "On mobile width, the form's action buttons stack vertically instead of a cramped row."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts) — fix applied 2026-08-27, pending live re-verification (see Notes)
 **Android:** not yet automated
 
@@ -632,7 +632,7 @@ values rather than colliding on the same one.
 <a id="tc-f58"></a>
 ### F.58 — Error banner and submit-button red flash both appear on a rejected submission
 
-**Use case:** [use-cases.md#uc-58](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-58) — "Error banner and submit-button red flash both appear on a rejected submission, especially noticeable when the banner is scrolled out of view on a long form."
+**Use case:** [use-cases.md#uc-58](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-58) — "Error banner and submit-button red flash both appear on a rejected submission, especially noticeable when the banner is scrolled out of view on a long form."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 

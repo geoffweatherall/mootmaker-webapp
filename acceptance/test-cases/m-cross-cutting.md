@@ -1,6 +1,6 @@
 # M. Cross-cutting / non-functional
 
-Use cases [mootmaker/use-cases.md § M](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#m-cross-cutting--non-functional).
+Use cases [mootmaker/use-cases.md § M](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#m-cross-cutting--non-functional).
 See [README.md](README.md) for the entry format and test-data conventions. Several cases here need
 deliberate network manipulation (`page.route`) on top of the real deployed environment to make an
 otherwise-fast, hard-to-catch transient state reliably observable — each says so explicitly.
@@ -10,7 +10,7 @@ otherwise-fast, hard-to-catch transient state reliably observable — each says 
 <a id="tc-m92"></a>
 ### M.92 — Loading states: first-load spinner vs. background-refetch progress bar
 
-**Use case:** [use-cases.md#uc-92](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-92) — "Loading states: spinner on first load, slim progress bar on background refetch with stale data still shown."
+**Use case:** [use-cases.md#uc-92](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-92) — "Loading states: spinner on first load, slim progress bar on background refetch with stale data still shown."
 **Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
 **Android:** not yet automated
 
@@ -42,7 +42,7 @@ otherwise-fast, hard-to-catch transient state reliably observable — each says 
 <a id="tc-m93"></a>
 ### M.93 — Network/transport error surfaces a readable message
 
-**Use case:** [use-cases.md#uc-93](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-93) — "Network/transport error (e.g. API unreachable) surfaces a readable message in the error banner, not a blank/broken page."
+**Use case:** [use-cases.md#uc-93](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-93) — "Network/transport error (e.g. API unreachable) surfaces a readable message in the error banner, not a blank/broken page."
 **Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
 **Android:** not yet automated
 
@@ -70,7 +70,7 @@ otherwise-fast, hard-to-catch transient state reliably observable — each says 
 <a id="tc-m94"></a>
 ### M.94 — Expired/invalid session mid-use fails gracefully
 
-**Use case:** [use-cases.md#uc-94](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-94) — "Expired/invalid session mid-use → next API call fails gracefully, ideally prompting re-authentication."
+**Use case:** [use-cases.md#uc-94](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-94) — "Expired/invalid session mid-use → next API call fails gracefully, ideally prompting re-authentication."
 **Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
 **Android:** not yet automated
 
@@ -100,7 +100,7 @@ otherwise-fast, hard-to-catch transient state reliably observable — each says 
 <a id="tc-m95"></a>
 ### M.95 — Deep link to a client-side route loads the SPA correctly
 
-**Use case:** [use-cases.md#uc-95](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-95) — "Deep link directly to a client-side route (e.g. `/meetings/add`) loads the SPA correctly rather than 404ing."
+**Use case:** [use-cases.md#uc-95](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-95) — "Deep link directly to a client-side route (e.g. `/meetings/add`) loads the SPA correctly rather than 404ing."
 **Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
 **Android:** not yet automated
 
@@ -127,7 +127,7 @@ otherwise-fast, hard-to-catch transient state reliably observable — each says 
 <a id="tc-m96"></a>
 ### M.96 — Light/dark mode follows OS `prefers-color-scheme`
 
-**Use case:** [use-cases.md#uc-96](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-96) — "Light/dark mode follows OS `prefers-color-scheme` correctly on every page."
+**Use case:** [use-cases.md#uc-96](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-96) — "Light/dark mode follows OS `prefers-color-scheme` correctly on every page."
 **Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
 **Android:** not yet automated
 
@@ -155,7 +155,7 @@ otherwise-fast, hard-to-catch transient state reliably observable — each says 
 <a id="tc-m97"></a>
 ### M.97 — Mobile nav flyout opens/closes, auto-closing after navigation
 
-**Use case:** [use-cases.md#uc-97](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-97) — "Mobile nav flyout opens/closes correctly, including auto-closing after navigating to any page (Settings included)."
+**Use case:** [use-cases.md#uc-97](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-97) — "Mobile nav flyout opens/closes correctly, including auto-closing after navigating to any page (Settings included)."
 **Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
 **Android:** not yet automated
 
@@ -189,7 +189,7 @@ otherwise-fast, hard-to-catch transient state reliably observable — each says 
 <a id="tc-m98"></a>
 ### M.98 — Same-session cache consistency without a manual refresh
 
-**Use case:** [use-cases.md#uc-98](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-98) — "Data edited in one place (e.g. a room renamed in Settings) is consistent everywhere it's cached (meeting lists, availability grid) without needing a manual refresh."
+**Use case:** [use-cases.md#uc-98](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-98) — "Data edited in one place (e.g. a room renamed in Settings) is consistent everywhere it's cached (meeting lists, availability grid) without needing a manual refresh."
 **Status:** ✅ Satisfied by [`tests/settings-rooms.spec.ts`](../tests/settings-rooms.spec.ts)'s J.81 test — see Notes
 **Android:** not yet automated
 
@@ -204,7 +204,7 @@ otherwise-fast, hard-to-catch transient state reliably observable — each says 
 <a id="tc-m99"></a>
 ### M.99 — Refreshing picks up changes made outside the current session
 
-**Use case:** [use-cases.md#uc-99](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-99) — "Refreshing the page picks up any changes made outside the current session (cache reset)."
+**Use case:** [use-cases.md#uc-99](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-99) — "Refreshing the page picks up any changes made outside the current session (cache reset)."
 **Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
 **Android:** not yet automated
 

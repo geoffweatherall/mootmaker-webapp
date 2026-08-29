@@ -1,6 +1,6 @@
 # G. Person Calendar
 
-Use cases [mootmaker/use-cases.md § G](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#g-person-calendar).
+Use cases [mootmaker/use-cases.md § G](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#g-person-calendar).
 See [README.md](README.md) for the entry format and test-data conventions. **G.62 documents a
 confirmed implementation gap** (no navigation UI exists on this page at all) — see its Notes.
 
@@ -9,7 +9,7 @@ confirmed implementation gap** (no navigation UI exists on this page at all) —
 <a id="tc-g59"></a>
 ### G.59 — View your own calendar by default
 
-**Use case:** [use-cases.md#uc-59](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-59) — "View your own calendar (default when navigating from Home/sidebar)."
+**Use case:** [use-cases.md#uc-59](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-59) — "View your own calendar (default when navigating from Home/sidebar)."
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
 **Android:** not yet automated
 
@@ -36,7 +36,7 @@ confirmed implementation gap** (no navigation UI exists on this page at all) —
 <a id="tc-g60"></a>
 ### G.60 — Switch to a different person's calendar via the person selector
 
-**Use case:** [use-cases.md#uc-60](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-60) — "Navigate to a different person's calendar via the person selector (admin and standard user, if permitted)."
+**Use case:** [use-cases.md#uc-60](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-60) — "Navigate to a different person's calendar via the person selector (admin and standard user, if permitted)."
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
 **Android:** not yet automated
 
@@ -65,7 +65,7 @@ confirmed implementation gap** (no navigation UI exists on this page at all) —
 <a id="tc-g61"></a>
 ### G.61 — Six-week view shows only work days (Mon–Fri)
 
-**Use case:** [use-cases.md#uc-61](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-61) — "Six-week view shows only work days (Mon–Fri) per week."
+**Use case:** [use-cases.md#uc-61](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-61) — "Six-week view shows only work days (Mon–Fri) per week."
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
 **Android:** not yet automated
 
@@ -93,7 +93,7 @@ confirmed implementation gap** (no navigation UI exists on this page at all) —
 <a id="tc-g62"></a>
 ### G.62 — Navigating between weeks/months
 
-**Use case:** [use-cases.md#uc-62](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-62) — "Navigating between weeks/months."
+**Use case:** [use-cases.md#uc-62](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-62) — "Navigating between weeks/months."
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts) (week nav now implemented; see Notes)
 **Android:** not yet automated
 
@@ -124,7 +124,7 @@ Left as a named gap here rather than silently dropped, so it isn't lost.
 <a id="tc-g63"></a>
 ### G.63 — A day with no meetings vs. a day with several, sorted correctly
 
-**Use case:** [use-cases.md#uc-63](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-63) — "A day with no meetings vs a day with several, sorted correctly."
+**Use case:** [use-cases.md#uc-63](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-63) — "A day with no meetings vs a day with several, sorted correctly."
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
 **Android:** not yet automated
 
@@ -153,7 +153,7 @@ Left as a named gap here rather than silently dropped, so it isn't lost.
 <a id="tc-g64"></a>
 ### G.64 — No people exist yet shows an empty state
 
-**Use case:** [use-cases.md#uc-64](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-64) — "No people exist yet → empty state (edge case, admin-only-created scenario)."
+**Use case:** [use-cases.md#uc-64](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-64) — "No people exist yet → empty state (edge case, admin-only-created scenario)."
 **Status:** ❓ Infeasible as designed — see Notes
 **Android:** not yet automated
 
@@ -194,7 +194,7 @@ not be a reachable real-world state for this product at all. Left unautomated pe
 <a id="tc-g65"></a>
 ### G.65 — Clicking a meeting row navigates to Meeting Details
 
-**Use case:** [use-cases.md#uc-65](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-65) — "Clicking a meeting row navigates to its Meeting Details page."
+**Use case:** [use-cases.md#uc-65](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-65) — "Clicking a meeting row navigates to its Meeting Details page."
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
 **Android:** not yet automated
 
@@ -220,7 +220,7 @@ not be a reachable real-world state for this product at all. Left unautomated pe
 <a id="tc-g66"></a>
 ### G.66 — Room colour dot matches Room Availability's colour for the same room
 
-**Use case:** [use-cases.md#uc-66](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-66) — "Room colour dot next to each meeting matches the same room's colour on Room Availability."
+**Use case:** [use-cases.md#uc-66](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-66) — "Room colour dot next to each meeting matches the same room's colour on Room Availability."
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
 **Android:** not yet automated
 
@@ -243,7 +243,7 @@ not be a reachable real-world state for this product at all. Left unautomated pe
 <a id="tc-g67"></a>
 ### G.67 — "Calendar" nav item disabled with no linked Person
 
-**Use case:** [use-cases.md#uc-67](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-67) — "'Calendar' nav item disabled for a signed-in user with no linked Person."
+**Use case:** [use-cases.md#uc-67](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-67) — "'Calendar' nav item disabled for a signed-in user with no linked Person."
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
 **Android:** not yet automated
 

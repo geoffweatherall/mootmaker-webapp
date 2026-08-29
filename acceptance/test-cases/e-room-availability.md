@@ -1,6 +1,6 @@
 # E. Room Availability
 
-Use cases [mootmaker/use-cases.md § E](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#e-room-availability-viewing-a-rooms-schedule).
+Use cases [mootmaker/use-cases.md § E](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#e-room-availability-viewing-a-rooms-schedule).
 See [README.md](README.md) for the entry format and test-data conventions. Every case here signs in
 as the demo user unless noted, and most need `page.clock.setFixedTime` pinned to a known
 business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` already documents.
@@ -10,7 +10,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 <a id="tc-e26"></a>
 ### E.26 — View room availability for today
 
-**Use case:** [use-cases.md#uc-26](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-26) — "View room availability for today."
+**Use case:** [use-cases.md#uc-26](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-26) — "View room availability for today."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
@@ -39,7 +39,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 <a id="tc-e27"></a>
 ### E.27 — Navigate to a future date
 
-**Use case:** [use-cases.md#uc-27](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-27) — "Navigate to a future date and view that day's schedule."
+**Use case:** [use-cases.md#uc-27](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-27) — "Navigate to a future date and view that day's schedule."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
@@ -68,7 +68,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 <a id="tc-e28"></a>
 ### E.28 — Navigate to a past date
 
-**Use case:** [use-cases.md#uc-28](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-28) — "Navigate to a past date and view that day's schedule."
+**Use case:** [use-cases.md#uc-28](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-28) — "Navigate to a past date and view that day's schedule."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
@@ -95,7 +95,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 <a id="tc-e29"></a>
 ### E.29 — Date picker jumps to an arbitrary date
 
-**Use case:** [use-cases.md#uc-29](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-29) — "Date picker jump to an arbitrary date (not just next/prev day)."
+**Use case:** [use-cases.md#uc-29](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-29) — "Date picker jump to an arbitrary date (not just next/prev day)."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
@@ -124,7 +124,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 <a id="tc-e30"></a>
 ### E.30 — No rooms exist yet shows an empty state
 
-**Use case:** [use-cases.md#uc-30](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-30) — "No rooms exist yet → empty state."
+**Use case:** [use-cases.md#uc-30](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-30) — "No rooms exist yet → empty state."
 **Status:** ✅ Automated — [`tests/00-room-availability-empty.spec.ts`](../tests/00-room-availability-empty.spec.ts)
 **Android:** not yet automated
 
@@ -150,7 +150,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 <a id="tc-e31"></a>
 ### E.31 — Rooms exist but none has meetings that day
 
-**Use case:** [use-cases.md#uc-31](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-31) — "Rooms exist but none has meetings that day → grid shows with empty lanes."
+**Use case:** [use-cases.md#uc-31](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-31) — "Rooms exist but none has meetings that day → grid shows with empty lanes."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
@@ -180,7 +180,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 <a id="tc-e32"></a>
 ### E.32 — Meeting block tooltip and click-through to details
 
-**Use case:** [use-cases.md#uc-32](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-32) — "A meeting block's tooltip shows subject + time range; clicking it navigates to Meeting Details."
+**Use case:** [use-cases.md#uc-32](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-32) — "A meeting block's tooltip shows subject + time range; clicking it navigates to Meeting Details."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
@@ -212,7 +212,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 <a id="tc-e33"></a>
 ### E.33 — Overlapping meetings in different rooms render in their own lanes
 
-**Use case:** [use-cases.md#uc-33](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-33) — "Multiple overlapping-in-time meetings across different rooms render in their own room's lane without visual confusion."
+**Use case:** [use-cases.md#uc-33](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-33) — "Multiple overlapping-in-time meetings across different rooms render in their own room's lane without visual confusion."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
@@ -242,7 +242,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 <a id="tc-e34"></a>
 ### E.34 — Back-to-back meetings in the same room render distinctly
 
-**Use case:** [use-cases.md#uc-34](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-34) — "Same room, back-to-back meetings (one ending exactly when another starts) both render distinctly, non-overlapping."
+**Use case:** [use-cases.md#uc-34](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-34) — "Same room, back-to-back meetings (one ending exactly when another starts) both render distinctly, non-overlapping."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
@@ -271,7 +271,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 <a id="tc-e35"></a>
 ### E.35 — Room colour is consistent between Room Availability and Person Calendar
 
-**Use case:** [use-cases.md#uc-35](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-35) — "Room identity colour is consistent for the same room across this page and Person Calendar."
+**Use case:** [use-cases.md#uc-35](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-35) — "Room identity colour is consistent for the same room across this page and Person Calendar."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
@@ -298,7 +298,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 <a id="tc-e36"></a>
 ### E.36 — Mobile viewport: horizontal scroll, pinned room column, scroll-fade hints
 
-**Use case:** [use-cases.md#uc-36](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-36) — "On a narrow/mobile viewport: grid scrolls horizontally, room name column stays pinned, scroll-fade hints appear/disappear correctly at the edges."
+**Use case:** [use-cases.md#uc-36](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-36) — "On a narrow/mobile viewport: grid scrolls horizontally, room name column stays pinned, scroll-fade hints appear/disappear correctly at the edges."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
@@ -338,7 +338,7 @@ Fixed properly by switching `gridScrollRef`/`gridContentRef` from `useRef` to re
 <a id="tc-e37"></a>
 ### E.37 — "Add Meeting" from this page pre-fills the currently viewed date
 
-**Use case:** [use-cases.md#uc-37](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-37) — "'Add Meeting' button from this page pre-fills the currently viewed date."
+**Use case:** [use-cases.md#uc-37](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-37) — "'Add Meeting' button from this page pre-fills the currently viewed date."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 

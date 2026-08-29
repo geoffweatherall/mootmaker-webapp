@@ -1,6 +1,6 @@
 # D. Home page
 
-Use cases [mootmaker/use-cases.md § D](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#d-home-page).
+Use cases [mootmaker/use-cases.md § D](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#d-home-page).
 See [README.md](README.md) for the entry format and test-data conventions.
 
 ---
@@ -8,7 +8,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-d21"></a>
 ### D.21 — Signed-out home page shows the sign-in form, demo credentials, and sign-up steps
 
-**Use case:** [use-cases.md#uc-21](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-21) — "Signed out: shows sign-in form + demo credentials + sign-up steps."
+**Use case:** [use-cases.md#uc-21](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-21) — "Signed out: shows sign-in form + demo credentials + sign-up steps."
 **Status:** ✅ Automated — [`tests/home-page.spec.ts`](../tests/home-page.spec.ts)
 **Android:** not yet automated
 
@@ -36,7 +36,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-d22"></a>
 ### D.22 — Signed in with a linked Person: entry points + Today/Tomorrow agenda
 
-**Use case:** [use-cases.md#uc-22](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-22) — "Signed in with a linked Person: shows Calendar/Room availability/Add Meeting entry points plus 'Today' and 'Tomorrow' agenda lists, sorted by start time, each linking to its meeting's details."
+**Use case:** [use-cases.md#uc-22](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-22) — "Signed in with a linked Person: shows Calendar/Room availability/Add Meeting entry points plus 'Today' and 'Tomorrow' agenda lists, sorted by start time, each linking to its meeting's details."
 **Status:** ✅ Automated — [`tests/home-page.spec.ts`](../tests/home-page.spec.ts)
 **Android:** not yet automated
 
@@ -70,7 +70,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-d23"></a>
 ### D.23 — No meetings today/tomorrow shows an empty state
 
-**Use case:** [use-cases.md#uc-23](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-23) — "Signed in with a linked Person but no meetings today/tomorrow: empty state shown instead of an empty list."
+**Use case:** [use-cases.md#uc-23](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-23) — "Signed in with a linked Person but no meetings today/tomorrow: empty state shown instead of an empty list."
 **Status:** ✅ Automated — [`tests/home-page.spec.ts`](../tests/home-page.spec.ts)
 **Android:** not yet automated
 
@@ -96,7 +96,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-d24"></a>
 ### D.24 — Signed in with no linked Person: degraded Home page
 
-**Use case:** [use-cases.md#uc-24](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-24) — "Signed in with **no** linked Person (e.g. demo/e2e-style account): 'account hasn't been set up' message replaces Calendar/agenda; 'Room availability today' and 'Add Meeting' still work but Add Meeting has no organiser pre-filled."
+**Use case:** [use-cases.md#uc-24](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-24) — "Signed in with **no** linked Person (e.g. demo/e2e-style account): 'account hasn't been set up' message replaces Calendar/agenda; 'Room availability today' and 'Add Meeting' still work but Add Meeting has no organiser pre-filled."
 **Status:** ✅ Automated — [`tests/home-page.spec.ts`](../tests/home-page.spec.ts)
 **Android:** not yet automated
 
@@ -128,7 +128,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-d25"></a>
 ### D.25 — "Add Meeting" and "Room availability today" deep-link correctly
 
-**Use case:** [use-cases.md#uc-25](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-25) — "'Add Meeting' and 'Room availability today' both correctly navigate/deep-link (today's date)."
+**Use case:** [use-cases.md#uc-25](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-25) — "'Add Meeting' and 'Room availability today' both correctly navigate/deep-link (today's date)."
 **Status:** ✅ Automated — [`tests/home-page.spec.ts`](../tests/home-page.spec.ts)
 **Android:** not yet automated
 

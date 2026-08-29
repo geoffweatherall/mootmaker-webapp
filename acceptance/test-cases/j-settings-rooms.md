@@ -1,6 +1,6 @@
 # J. Settings — Rooms (admin only)
 
-Use cases [mootmaker/use-cases.md § J](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#j-settings--rooms-admin-only).
+Use cases [mootmaker/use-cases.md § J](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#j-settings--rooms-admin-only).
 See [README.md](README.md) for the entry format and test-data conventions.
 
 ---
@@ -8,7 +8,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-j77"></a>
 ### J.77 — Standard user does not see the Rooms section
 
-**Use case:** [use-cases.md#uc-77](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-77) — "Standard user does not see the Rooms section."
+**Use case:** [use-cases.md#uc-77](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-77) — "Standard user does not see the Rooms section."
 **Status:** ✅ Automated — [`tests/settings-rooms.spec.ts`](../tests/settings-rooms.spec.ts)
 **Android:** not yet automated
 
@@ -36,7 +36,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-j78"></a>
 ### J.78 — Admin adds a room; it's immediately usable elsewhere
 
-**Use case:** [use-cases.md#uc-78](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-78) — "Admin adds a new room with a valid name + capacity ≥ 2 → appears in the room list and is immediately selectable in Add Meeting / Room Availability."
+**Use case:** [use-cases.md#uc-78](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-78) — "Admin adds a new room with a valid name + capacity ≥ 2 → appears in the room list and is immediately selectable in Add Meeting / Room Availability."
 **Status:** ✅ Automated — [`tests/settings-rooms.spec.ts`](../tests/settings-rooms.spec.ts)
 **Android:** not yet automated
 
@@ -67,7 +67,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-j79"></a>
 ### J.79 — Blank room name rejected
 
-**Use case:** [use-cases.md#uc-79](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-79) — "Add a room with a blank name → validation error."
+**Use case:** [use-cases.md#uc-79](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-79) — "Add a room with a blank name → validation error."
 **Status:** ✅ Automated — [`tests/settings-rooms.spec.ts`](../tests/settings-rooms.spec.ts)
 **Android:** not yet automated
 
@@ -93,7 +93,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-j80"></a>
 ### J.80 — Capacity below 2 rejected
 
-**Use case:** [use-cases.md#uc-80](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-80) — "Add a room with capacity 1 (or 0/negative) → `CapacityTooLow` error."
+**Use case:** [use-cases.md#uc-80](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-80) — "Add a room with capacity 1 (or 0/negative) → `CapacityTooLow` error."
 **Status:** ✅ Automated — [`tests/settings-rooms.spec.ts`](../tests/settings-rooms.spec.ts)
 **Android:** not yet automated
 
@@ -119,7 +119,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-j81"></a>
 ### J.81 — Editing a room propagates everywhere it's referenced
 
-**Use case:** [use-cases.md#uc-81](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-81) — "Edit an existing room's name/capacity → change reflected everywhere it's referenced (existing meetings, availability view) without a manual refresh."
+**Use case:** [use-cases.md#uc-81](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-81) — "Edit an existing room's name/capacity → change reflected everywhere it's referenced (existing meetings, availability view) without a manual refresh."
 **Status:** ✅ Automated — [`tests/settings-rooms.spec.ts`](../tests/settings-rooms.spec.ts)
 **Android:** not yet automated
 
@@ -148,7 +148,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-j82"></a>
 ### J.82 — Reducing capacity below an already-booked meeting is allowed
 
-**Use case:** [use-cases.md#uc-82](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-82) — "Reduce a room's capacity below a meeting already booked into it → allowed (not retroactively validated)."
+**Use case:** [use-cases.md#uc-82](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-82) — "Reduce a room's capacity below a meeting already booked into it → allowed (not retroactively validated)."
 **Status:** ✅ Automated — [`tests/settings-rooms.spec.ts`](../tests/settings-rooms.spec.ts)
 **Android:** not yet automated
 
@@ -175,7 +175,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-j83"></a>
 ### J.83 — Standard user calling `createRoom`/`updateRoom` directly is rejected server-side
 
-**Use case:** [use-cases.md#uc-83](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-83) — "A standard user attempting the `updateRoom`/`createRoom` operations directly (bypassing the UI) is rejected server-side regardless of what the UI would show."
+**Use case:** [use-cases.md#uc-83](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-83) — "A standard user attempting the `updateRoom`/`createRoom` operations directly (bypassing the UI) is rejected server-side regardless of what the UI would show."
 **Status:** ✅ Automated — [`tests/settings-rooms.spec.ts`](../tests/settings-rooms.spec.ts)
 **Android:** not yet automated
 

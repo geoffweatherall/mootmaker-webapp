@@ -1,6 +1,6 @@
 # C. Forgot password
 
-Use cases [mootmaker/use-cases.md § C](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#c-forgot-password).
+Use cases [mootmaker/use-cases.md § C](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#c-forgot-password).
 See [README.md](README.md) for the entry format and test-data conventions.
 
 ---
@@ -8,7 +8,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-c16"></a>
 ### C.16 — Reset password with a valid account and the real emailed code
 
-**Use case:** [use-cases.md#uc-16](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-16) — "Request a reset code for a valid account → enter code + new password → signed in automatically with the new password."
+**Use case:** [use-cases.md#uc-16](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-16) — "Request a reset code for a valid account → enter code + new password → signed in automatically with the new password."
 **Status:** ✅ Automated — [`tests/forgot-password.spec.ts`](../tests/forgot-password.spec.ts)
 **Android:** not yet automated
 
@@ -40,7 +40,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-c17"></a>
 ### C.17 — Requesting a reset code for an unknown email behaves identically to a known one
 
-**Use case:** [use-cases.md#uc-17](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-17) — "Request a reset code for an email with no account behaves identically (no information leak about account existence)."
+**Use case:** [use-cases.md#uc-17](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-17) — "Request a reset code for an email with no account behaves identically (no information leak about account existence)."
 **Status:** ✅ Automated — [`tests/forgot-password.spec.ts`](../tests/forgot-password.spec.ts)
 **Android:** not yet automated
 
@@ -69,7 +69,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-c18"></a>
 ### C.18 — Wrong reset code is rejected
 
-**Use case:** [use-cases.md#uc-18](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-18) — "Wrong reset code is rejected."
+**Use case:** [use-cases.md#uc-18](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-18) — "Wrong reset code is rejected."
 **Status:** ✅ Automated — [`tests/forgot-password.spec.ts`](../tests/forgot-password.spec.ts)
 **Android:** not yet automated
 
@@ -99,7 +99,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-c19"></a>
 ### C.19 — New password failing the strength rule is rejected
 
-**Use case:** [use-cases.md#uc-19](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-19) — "New password failing the strength rule is rejected."
+**Use case:** [use-cases.md#uc-19](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-19) — "New password failing the strength rule is rejected."
 **Status:** ✅ Automated — [`tests/forgot-password.spec.ts`](../tests/forgot-password.spec.ts)
 **Android:** not yet automated
 
@@ -128,7 +128,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-c20"></a>
 ### C.20 — Sign-in ↔ Forgot Password cross-links
 
-**Use case:** [use-cases.md#uc-20](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-20) — "Sign-in form links to Forgot Password; Forgot Password flow links back to sign-in."
+**Use case:** [use-cases.md#uc-20](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-20) — "Sign-in form links to Forgot Password; Forgot Password flow links back to sign-in."
 **Status:** ✅ Automated — [`tests/forgot-password.spec.ts`](../tests/forgot-password.spec.ts)
 **Android:** not yet automated
 

@@ -1,6 +1,6 @@
 # K. Settings — People (admin only)
 
-Use cases [mootmaker/use-cases.md § K](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#k-settings--people-admin-only).
+Use cases [mootmaker/use-cases.md § K](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#k-settings--people-admin-only).
 See [README.md](README.md) for the entry format and test-data conventions.
 
 ---
@@ -8,7 +8,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-k84"></a>
 ### K.84 — Standard user does not see the People section
 
-**Use case:** [use-cases.md#uc-84](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-84) — "Standard user does not see the People section."
+**Use case:** [use-cases.md#uc-84](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-84) — "Standard user does not see the People section."
 **Status:** ✅ Automated — [`tests/settings-people.spec.ts`](../tests/settings-people.spec.ts)
 **Android:** not yet automated
 
@@ -25,7 +25,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-k85"></a>
 ### K.85 — Admin adds a guest person; usable as organiser/attendee/calendar subject
 
-**Use case:** [use-cases.md#uc-85](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-85) — "Admin adds a new person (e.g. a guest with no login) → appears in People, selectable as organiser/attendee/calendar subject."
+**Use case:** [use-cases.md#uc-85](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-85) — "Admin adds a new person (e.g. a guest with no login) → appears in People, selectable as organiser/attendee/calendar subject."
 **Status:** ✅ Automated — [`tests/settings-people.spec.ts`](../tests/settings-people.spec.ts)
 **Android:** not yet automated
 
@@ -54,7 +54,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-k86"></a>
 ### K.86 — Blank person name rejected
 
-**Use case:** [use-cases.md#uc-86](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-86) — "Add a person with a blank name → validation error."
+**Use case:** [use-cases.md#uc-86](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-86) — "Add a person with a blank name → validation error."
 **Status:** ✅ Automated — [`tests/settings-people.spec.ts`](../tests/settings-people.spec.ts)
 **Android:** not yet automated
 
@@ -80,7 +80,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-k87"></a>
 ### K.87 — Admin edits another person's name: propagates to calendar, meetings, and (if linked) Cognito
 
-**Use case:** [use-cases.md#uc-87](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-87) — "Admin edits another person's name → reflected in their calendar, past/future meetings, and (if linked to a Cognito account) that account's next sign-in / display name."
+**Use case:** [use-cases.md#uc-87](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-87) — "Admin edits another person's name → reflected in their calendar, past/future meetings, and (if linked to a Cognito account) that account's next sign-in / display name."
 **Status:** ✅ Automated — [`tests/settings-people.spec.ts`](../tests/settings-people.spec.ts)
 **Android:** not yet automated
 
@@ -111,7 +111,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-k88"></a>
 ### K.88 — Admin renames a person with no Cognito account
 
-**Use case:** [use-cases.md#uc-88](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-88) — "Admin renaming a person NOT linked to a Cognito account (no auth-side propagation needed)."
+**Use case:** [use-cases.md#uc-88](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-88) — "Admin renaming a person NOT linked to a Cognito account (no auth-side propagation needed)."
 **Status:** ✅ Automated — [`tests/settings-people.spec.ts`](../tests/settings-people.spec.ts)
 **Android:** not yet automated
 

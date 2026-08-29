@@ -1,6 +1,6 @@
 # L. Authorization boundaries
 
-Use cases [mootmaker/use-cases.md § L](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#l-authorization-boundaries).
+Use cases [mootmaker/use-cases.md § L](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#l-authorization-boundaries).
 See [README.md](README.md) for the entry format and test-data conventions. This section is
 largely a cross-reference layer over cases already built in sections J/K/I — `use-cases.md` lists
 these as their own items because they're the general *authorization-boundary* framing of
@@ -11,7 +11,7 @@ specific J/K/I mechanics, not because they need wholly separate test code.
 <a id="tc-l89"></a>
 ### L.89 — Standard user cannot reach admin-only UI
 
-**Use case:** [use-cases.md#uc-89](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-89) — "Standard user cannot reach admin-only UI (Rooms/People sections hidden) — a presentation-only check."
+**Use case:** [use-cases.md#uc-89](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-89) — "Standard user cannot reach admin-only UI (Rooms/People sections hidden) — a presentation-only check."
 **Status:** ✅ Automated — [`tests/authorization-boundaries.spec.ts`](../tests/authorization-boundaries.spec.ts)
 **Android:** not yet automated
 
@@ -26,7 +26,7 @@ specific J/K/I mechanics, not because they need wholly separate test code.
 <a id="tc-l90"></a>
 ### L.90 — Standard user directly invoking an admin mutation is rejected
 
-**Use case:** [use-cases.md#uc-90](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-90) — "Standard user directly invoking an admin mutation is rejected (belongs more in API-level testing, but worth a UI-adjacent smoke test)."
+**Use case:** [use-cases.md#uc-90](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-90) — "Standard user directly invoking an admin mutation is rejected (belongs more in API-level testing, but worth a UI-adjacent smoke test)."
 **Status:** ✅ Automated — [`tests/authorization-boundaries.spec.ts`](../tests/authorization-boundaries.spec.ts)
 **Android:** not yet automated
 
@@ -50,7 +50,7 @@ specific J/K/I mechanics, not because they need wholly separate test code.
 <a id="tc-l91"></a>
 ### L.91 — Self-rename works for a standard user; renaming someone else does not
 
-**Use case:** [use-cases.md#uc-91](https://github.com/geoffweatherall/mootmaker/blob/main/use-cases.md#uc-91) — "Self-rename works for a standard user; renaming someone else does not (UI shouldn't offer it, and server should reject if forced)."
+**Use case:** [use-cases.md#uc-91](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-91) — "Self-rename works for a standard user; renaming someone else does not (UI shouldn't offer it, and server should reject if forced)."
 **Status:** ✅ Automated — [`tests/authorization-boundaries.spec.ts`](../tests/authorization-boundaries.spec.ts) (parts (b)/(c); part (a) intentionally references [I.74](i-settings-your-name.md#tc-i74) rather than re-implementing it)
 **Android:** not yet automated
 

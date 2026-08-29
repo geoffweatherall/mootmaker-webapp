@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { freshTestAccount } from '../../support/testAccount'
 
-// mootmaker/use-cases.md, section J (Settings - Rooms, admin only), cases 77-83. See
+// mootmaker/docs/reference/use-cases.md, section J (Settings - Rooms, admin only), cases 77-83. See
 // acceptance/test-cases/j-settings-rooms.md for the full per-case Given/When/Then/Steps/Assertions
 // this file implements one at a time. Every case except J.77 (standard user) and J.83 (a fresh
 // standard test account, for the direct-mutation half) signs in as the demo user, matching this

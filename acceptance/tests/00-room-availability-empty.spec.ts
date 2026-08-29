@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-// mootmaker/use-cases.md, section E (Room Availability), case 30 - "No rooms exist yet -> empty
+// mootmaker/docs/reference/use-cases.md, section E (Room Availability), case 30 - "No rooms exist yet -> empty
 // state." Named 00- (and the only test in this file) so it sorts and runs before any other spec
 // in this suite that creates a room - see e-room-availability.md's tc-e30 Notes: rooms are never
 // deleted through this app, so this precondition (zero rooms) can only ever be true once, right

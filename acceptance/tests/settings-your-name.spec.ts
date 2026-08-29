@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { freshTestAccount } from '../../support/testAccount'
 
-// mootmaker/use-cases.md, section I (Settings - Your name), cases 74-76.
+// mootmaker/docs/reference/use-cases.md, section I (Settings - Your name), cases 74-76.
 //
 // I.74 and I.75 deliberately use a fresh signed-up account rather than the demo user: renaming
 // the demo user's Person would leave "Demo Strater" changed for every other test in this whole

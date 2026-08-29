@@ -71,7 +71,7 @@ interface MeetingInput {
 // Mirrors the subset of mootmaker-api's createMeeting validation rules (see the API README's
 // "Rules" section) that webapp/tests/*.spec.ts actually exercises - not a full reimplementation
 // of the server's own acceptance-tested rule set, which stays covered by mootmaker-api's own
-// tests instead (see mootmaker/testing-strategy.md's layering table).
+// tests instead (see mootmaker/docs/reference/testing-strategy.md's layering table).
 function validateMeetingInput(input: MeetingInput): MeetingError[] {
   const errors: MeetingError[] = []
 

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { uniqueTestEmail } from '../../support/email'
 
-// mootmaker/use-cases.md, section B (Sign in / sign out), cases 7-15. See
+// mootmaker/docs/reference/use-cases.md, section B (Sign in / sign out), cases 7-15. See
 // acceptance/test-cases/b-sign-in-sign-out.md for the full Given/When/Then/Steps/Assertions this
 // file was generated from.
 function requireEnv(name: string): string {

@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
-// mootmaker/use-cases.md, section E (Room Availability), cases 26-37 except 30. E.30 ("no rooms
+// mootmaker/docs/reference/use-cases.md, section E (Room Availability), cases 26-37 except 30. E.30 ("no rooms
 // exist yet") is covered separately by 00-room-availability-empty.spec.ts, which must run before
 // any room-creating test in this environment - see that file's own header comment and
 // e-room-availability.md's tc-e30 Notes. This file's name sorts after "00-...", so nothing special

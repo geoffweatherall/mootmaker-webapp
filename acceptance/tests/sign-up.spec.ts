@@ -11,7 +11,7 @@ function requireEnv(name: string): string {
   return value
 }
 
-// mootmaker/use-cases.md, section A (Sign up), case 1 - plus a touch of case 5. Unlike
+// mootmaker/docs/reference/use-cases.md, section A (Sign up), case 1 - plus a touch of case 5. Unlike
 // e2e/sign-up.spec.ts (which only proves the real Cognito + SES infrastructure wiring works),
 // this test's job is proving the *use case* is satisfied: not just that the account got
 // confirmed, but that its business-level effects are correct - a linked Person auto-created with

@@ -4,7 +4,7 @@ import { freshTestAccount } from '../../support/testAccount'
 
 // The one thing only this layer can prove: a real sign-up, through the real deployed webapp,
 // against a real Cognito pool, receiving a real emailed code via the SES->SNS->SQS pipeline (see
-// mootmaker/testing-strategy.md#reading-cognitos-emails-in-tests) and successfully confirming with
+// mootmaker/docs/reference/testing-strategy.md#reading-cognitos-emails-in-tests) and successfully confirming with
 // it. webapp/'s own mocked-API integration suite already covers the sign-up form's UI logic
 // (validation, step transitions, a fake code) - this test's only job is proving the real
 // infrastructure behind it actually works end to end, so it deliberately doesn't re-check anything

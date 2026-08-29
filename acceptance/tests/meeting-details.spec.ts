@@ -1,6 +1,6 @@
 import { expect, type Page, test } from '@playwright/test'
 
-// mootmaker/use-cases.md, section H (Meeting Details), cases 68-73. All sign in as the demo user
+// mootmaker/docs/reference/use-cases.md, section H (Meeting Details), cases 68-73. All sign in as the demo user
 // (a real, pre-verified, always-admin Cognito account with a linked Person already resolved - see
 // acceptance/README.md's "Which account to sign in as") except where a case is specifically about
 // what an unauthenticated-relationship user sees, which is still the demo user, just with other

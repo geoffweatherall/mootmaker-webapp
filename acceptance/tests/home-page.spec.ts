@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { freshTestAccount } from '../../support/testAccount'
 
-// mootmaker/use-cases.md, section D (Home page), cases 21-25 - see
+// mootmaker/docs/reference/use-cases.md, section D (Home page), cases 21-25 - see
 // acceptance/test-cases/d-home-page.md for the full Given/When/Then design each test below
 // translates directly from. Signs in as whichever account each case's own Preconditions call for:
 // the demo user (D.22, D.25 - a working, Person-linked, admin account), a freshly signed-up

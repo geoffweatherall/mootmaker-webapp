@@ -5,7 +5,7 @@ import { simpleParser } from 'mailparser'
 const MAIL_DOMAIN = 'mail.mootmaker.com'
 
 // Shared, persistent pipeline, owned by mootmaker-test-infra (see
-// mootmaker/testing-strategy.md#reading-cognitos-emails-in-tests - one SQS queue, not one per
+// mootmaker/docs/reference/testing-strategy.md#reading-cognitos-emails-in-tests - one SQS queue, not one per
 // environment, per test, or per frontend), so concurrent runs/tests distinguish their own mail
 // purely by address, not by infrastructure. Every test that needs a real emailed code should call
 // this once and use the result as the account's email - never reuse an address across tests, or a

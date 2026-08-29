@@ -45,7 +45,7 @@ export const DEMO_USER = MOCK_USERS[1]
 // The verification code every mock sign-up/reset flow accepts - there's no real inbox to read a
 // code from, so this stands in for "the code Cognito emailed". The real API's own
 // ephemeral-environment tests instead read a genuinely emailed code (see
-// mootmaker/testing-strategy.md's "Reading Cognito's emails in tests") - this mock never needed
+// mootmaker/docs/reference/testing-strategy.md's "Reading Cognito's emails in tests") - this mock never needed
 // that at all, since it never talks to real Cognito in the first place.
 export const MOCK_VERIFICATION_CODE = '111111'
 

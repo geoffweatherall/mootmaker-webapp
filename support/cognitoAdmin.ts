@@ -23,7 +23,7 @@ function requireEnv(name: string): string {
 /**
  * Creates a confirmed, working test account WITHOUT going through the real code-entry UI -
  * `AdminConfirmSignUp` confirms a sign-up with no code at all (see
- * mootmaker/testing-strategy.md#reading-cognitos-emails-in-tests's "Bypassing the code
+ * mootmaker/docs/reference/testing-strategy.md#reading-cognitos-emails-in-tests's "Bypassing the code
  * requirement entirely"). Use this for anything that needs a working signed-up account as a
  * *precondition* rather than as the thing actually under test - e.g. forgot-password's own test
  * needs an existing account before it can test resetting that account's password; it is not

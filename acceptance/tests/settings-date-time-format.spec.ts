@@ -55,39 +55,120 @@ async function setFormats(page: Page, options: { date?: string; time?: string })
   }
   // The "Date and time format" section's own Save - the page has several.
   await page
-    .getByRole('heading', { name: 'Date and time format' })
-    .locator('xpath=ancestor::*[self::div][1]')
+    .locator('section')
+    .filter({ has: page.getByRole('heading', { name: 'Date and time format' }) })
     .getByRole('button', { name: 'Save' })
     .click()
   await expect(page.getByText('Your date and time formats were updated.')).toBeVisible()
+}
+
+// These tests sign in as fresh standard accounts, which cannot create rooms (that section is
+// admin-only), and a deployed environment's rooms have generated names - so no room name is safe
+// to hardcode. An earlier version used 'Boardroom' from the webapp's MSW mock fixtures, which
+// exists only in the mocked integration layer and never in a real deployment.
+//
+// Business hours (08:00-17:00) are exactly the range sample-data fills, so no time slot is free by
+// construction either. Rather than gamble on one room being idle, book into whichever room accepts:
+// each room gets only 0-2 generated meetings a day, so a free one is found almost immediately.
+async function selectRoomByIndex(page: Page, index: number): Promise<void> {
+  await page.getByRole('combobox', { name: 'Room' }).click()
+  await page.getByRole('option').nth(index).click()
+}
+
+// Navigates first: this is called before any attempt, so the Add Meeting form is not open yet.
+async function roomCount(page: Page): Promise<number> {
+  await page.goto('/meetings/add')
+  await expect(page.getByRole('heading', { name: 'Add Meeting' })).toBeVisible()
+  await page.getByRole('combobox', { name: 'Room' }).click()
+  const count = await page.getByRole('option').count()
+  await page.keyboard.press('Escape')
+  return count
+}
+
+// Books into a weekday well beyond the 6-week window sample-data-topup fills, so the chosen room
+// is actually free. An earlier version left the Date field at its default (today) and booked the
+// same slot in the same room from every test, which collided both with the generated sample data
+// and with the other tests here - the form rejected it with "The room already has a meeting
+// scheduled during that time range."
+function weekdayDaysAhead(days: number): { year: number; month: number; day: number } {
+  const d = new Date()
+  d.setDate(d.getDate() + days)
+  while (d.getDay() === 0 || d.getDay() === 6) {
+    d.setDate(d.getDate() + 1)
+  }
+  return { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate() }
+}
+
+// The Date field's sections are ordered by the viewer's own format, so the digits have to be typed
+// in that order and typing has to start at whichever section comes first.
+async function typeDate(
+  page: Page,
+  date: { year: number; month: number; day: number },
+  dateFormat: 'Iso' | 'British' | 'Usa',
+): Promise<void> {
+  const yyyy = String(date.year)
+  const mm = String(date.month).padStart(2, '0')
+  const dd = String(date.day).padStart(2, '0')
+  const order = {
+    Iso: { first: 'Year', digits: `${yyyy}${mm}${dd}` },
+    British: { first: 'Day', digits: `${dd}${mm}${yyyy}` },
+    Usa: { first: 'Month', digits: `${mm}${dd}${yyyy}` },
+  }[dateFormat]
+  const group = page.getByRole('group', { name: 'Date' })
+  await group.getByRole('spinbutton', { name: order.first }).click()
+  await page.keyboard.type(order.digits)
 }
 
 // Books a meeting through the real Add Meeting form, typing into the pickers the way the viewer's
 // own format renders them. `hour24`/`minute` are the wall-clock time meant, regardless of format:
 // under AmPm the field has a Meridiem section and takes the 12-hour hour plus an AM/PM keystroke,
 // under TwentyFourHour it has neither and takes the hour as-is.
-async function addMeeting(
-  page: Page,
-  fixture: {
-    subject: string
-    roomName: string
-    hour24: number
-    minute: number
-    endHour24: number
-  },
-  format: { dateSectionsStartAt: 'Year' | 'Month'; amPm: boolean },
-): Promise<void> {
+interface Fixture {
+  subject: string
+  hour24: number
+  minute: number
+  endHour24: number
+  date: { year: number; month: number; day: number }
+}
+
+interface Format {
+  amPm: boolean
+  dateFormat: 'Iso' | 'British' | 'Usa'
+}
+
+async function fillAndSave(page: Page, fixture: Fixture, format: Format, roomIndex: number): Promise<boolean> {
   await page.goto('/meetings/add')
   await expect(page.getByRole('heading', { name: 'Add Meeting' })).toBeVisible()
   await page.getByLabel('Subject').fill(fixture.subject)
-  await page.getByRole('combobox', { name: 'Room' }).click()
-  await page.getByRole('option', { name: fixture.roomName, exact: false }).click()
-
+  await selectRoomByIndex(page, roomIndex)
+  await typeDate(page, fixture.date, format.dateFormat)
   await typeTime(page, 'Start time', fixture.hour24, fixture.minute, format.amPm)
   await typeTime(page, 'End time', fixture.endHour24, fixture.minute, format.amPm)
-
   await page.getByRole('button', { name: 'Save' }).click()
-  await expect(page).toHaveURL(/\/rooms\/.+\/availability/)
+
+  // Either the form navigates away (created) or it stays put with an error banner - most likely
+  // "The room already has a meeting scheduled during that time range."
+  await Promise.race([
+    page.waitForURL(/\/rooms\/.+\/availability/, { timeout: 15_000 }).catch(() => undefined),
+    page
+      .getByRole('alert')
+      .waitFor({ timeout: 15_000 })
+      .catch(() => undefined),
+  ])
+  return /\/rooms\/.+\/availability/.test(page.url())
+}
+
+/** Books the meeting, trying each room in turn, and returns the created meeting's details URL. */
+async function addMeeting(page: Page, fixture: Fixture, format: Format): Promise<string> {
+  const rooms = await roomCount(page)
+  for (let i = 0; i < rooms; i++) {
+    if (await fillAndSave(page, fixture, format, i)) {
+      await page.getByText(fixture.subject, { exact: true }).click()
+      await expect(page).toHaveURL(/\/meetings\/[^/]+$/)
+      return page.url()
+    }
+  }
+  throw new Error(`Could not find a free room for ${fixture.subject} across ${rooms} room(s)`)
 }
 
 async function typeTime(page: Page, groupName: string, hour24: number, minute: number, amPm: boolean): Promise<void> {
@@ -102,10 +183,16 @@ async function typeTime(page: Page, groupName: string, hour24: number, minute: n
   }
 }
 
-async function openMeetingDetails(page: Page, subject: string): Promise<void> {
-  await page.goto('/')
-  await page.getByText(subject, { exact: false }).first().click()
-  await expect(page).toHaveURL(/\/meetings\/[^/]+$/)
+// The same two renderings the app produces, restated so each assertion derives from the time
+// actually booked rather than a literal that goes stale when the booking moves - which is exactly
+// what happened when N.103's slot was shifted to fit inside business hours.
+function asAmPm(hour24: number, minute: number): string {
+  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12
+  return `${String(hour12).padStart(2, '0')}:${String(minute).padStart(2, '0')} ${hour24 < 12 ? 'AM' : 'PM'}`
+}
+
+function asTwentyFourHour(hour24: number, minute: number): string {
+  return `${String(hour24).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
 }
 
 function detailRow(page: Page, label: string) {
@@ -117,21 +204,18 @@ test('N.100: changing your date format switches every date shown to you, and per
 }) => {
   await signInAsFreshAccount(page)
   const subject = `N100 ${Date.now()}`
-  await addMeeting(
+  const meetingUrl = await addMeeting(
     page,
-    { subject, roomName: 'Boardroom', hour24: 14, minute: 0, endHour24: 15 },
-    {
-      dateSectionsStartAt: 'Year',
-      amPm: false,
-    },
+    { subject, hour24: 9, minute: 0, endHour24: 10, date: weekdayDaysAhead(70) },
+    { amPm: false, dateFormat: 'Iso' },
   )
 
-  await openMeetingDetails(page, subject)
+  await page.goto(meetingUrl)
   await expect(detailRow(page, 'Date')).toHaveText(/^\d{4}-\d{2}-\d{2}$/)
 
   await setFormats(page, { date: DATE_OPTION.british })
 
-  await openMeetingDetails(page, subject)
+  await page.goto(meetingUrl)
   await expect(detailRow(page, 'Date')).toHaveText(/^\d{2}\/\d{2}\/\d{4}$/)
 
   // Persisted server-side, not just held in component state.
@@ -146,21 +230,18 @@ test('N.101: changing your time format switches every time shown to you, and per
   const subject = `N101 ${Date.now()}`
   // Deliberately an afternoon time: a morning one renders the same in both formats apart from the
   // marker, so a substring assertion could pass by accident.
-  await addMeeting(
+  const meetingUrl = await addMeeting(
     page,
-    { subject, roomName: 'Boardroom', hour24: 14, minute: 30, endHour24: 15 },
-    {
-      dateSectionsStartAt: 'Year',
-      amPm: false,
-    },
+    { subject, hour24: 14, minute: 30, endHour24: 15, date: weekdayDaysAhead(72) },
+    { amPm: false, dateFormat: 'Iso' },
   )
 
-  await openMeetingDetails(page, subject)
+  await page.goto(meetingUrl)
   await expect(detailRow(page, 'Time')).toContainText('14:30')
 
   await setFormats(page, { time: TIME_OPTION.amPm })
 
-  await openMeetingDetails(page, subject)
+  await page.goto(meetingUrl)
   await expect(detailRow(page, 'Time')).toContainText('02:30 PM')
   await expect(detailRow(page, 'Time')).not.toContainText('14:30')
 
@@ -191,20 +272,18 @@ test("N.103/N.104: a meeting booked in one viewer's format is the same instant f
   await setFormats(page, { date: DATE_OPTION.usa, time: TIME_OPTION.amPm })
 
   const subject = `N103 ${Date.now()}`
-  await addMeeting(
+  const startHour = 15
+  const startMinute = 30
+  const meetingUrl = await addMeeting(
     page,
-    { subject, roomName: 'Boardroom', hour24: 14, minute: 30, endHour24: 15 },
-    {
-      dateSectionsStartAt: 'Month',
-      amPm: true,
-    },
+    { subject, hour24: startHour, minute: startMinute, endHour24: 16, date: weekdayDaysAhead(74) },
+    { amPm: true, dateFormat: 'Usa' },
   )
 
-  await openMeetingDetails(page, subject)
+  await page.goto(meetingUrl)
   await expect(detailRow(page, 'Date')).toHaveText(/^\d{2}\/\d{2}\/\d{4}$/)
-  await expect(detailRow(page, 'Time')).toContainText('02:30 PM')
+  await expect(detailRow(page, 'Time')).toContainText(asAmPm(startHour, startMinute))
   const usaDate = await detailRow(page, 'Date').textContent()
-  const meetingUrl = page.url()
 
   // A second, default-format account viewing the same meeting.
   await page.getByText('Sign out').click()
@@ -212,7 +291,7 @@ test("N.103/N.104: a meeting booked in one viewer's format is the same instant f
   await page.goto(meetingUrl)
 
   await expect(detailRow(page, 'Date')).toHaveText(/^\d{4}-\d{2}-\d{2}$/)
-  await expect(detailRow(page, 'Time')).toContainText('14:30')
+  await expect(detailRow(page, 'Time')).toContainText(asTwentyFourHour(startHour, startMinute))
 
   // Same instant, written two ways: B's ISO date must be A's USA date reordered.
   const [month, day, year] = (usaDate ?? '').split('/')

@@ -7,7 +7,16 @@
 // operations are dispatched by `operationName`, matching the names the `gql` tags in
 // graphql/queries.ts and graphql/mutations.ts declare (e.g. `query ListRooms { ... }`).
 import { http, HttpResponse, type HttpHandler } from 'msw'
-import type { CreateMeetingResult, Meeting, MeetingError, MeetingsFilter, Room } from '../../graphql/types'
+import type {
+  CreateMeetingResult,
+  DateFormat,
+  Meeting,
+  MeetingError,
+  MeetingsFilter,
+  Room,
+  TimeFormat,
+  UpdateMyPreferencesResult,
+} from '../../graphql/types'
 import { createMeetingFixture, linkedPersonByEmail, meetings, people, rooms } from './fixtures'
 
 const GRAPHQL_ENDPOINT = '/graphql'
@@ -169,6 +178,25 @@ export const handlers: HttpHandler[] = [
         })
         const result: CreateMeetingResult = { meeting, errors: [] }
         return HttpResponse.json({ data: { createMeeting: result } })
+      }
+
+      case 'UpdateMyPreferences': {
+        const { preferences } = variables as {
+          preferences: { dateFormat: DateFormat; timeFormat: TimeFormat }
+        }
+        const email = emailFromAuthHeader(request)
+        const person = (email && linkedPersonByEmail[email]) ?? null
+        if (!person) {
+          const result: UpdateMyPreferencesResult = { person: null, errors: ['NoLinkedPerson'] }
+          return HttpResponse.json({ data: { updateMyPreferences: result } })
+        }
+        // Mutates the fixture in place so a later MyPerson query reflects it, the way the real
+        // API's stored record would - the Settings section reads its saved value back via
+        // refreshPerson() immediately after saving.
+        person.dateFormat = preferences.dateFormat
+        person.timeFormat = preferences.timeFormat
+        const result: UpdateMyPreferencesResult = { person, errors: [] }
+        return HttpResponse.json({ data: { updateMyPreferences: result } })
       }
 
       default:

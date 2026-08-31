@@ -45,7 +45,7 @@ export default function PersonCalendarPage() {
   const { personId } = useParams<{ personId: string }>()
   const navigate = useNavigate()
   const [dismissedError, setDismissedError] = useState(false)
-  const { personId: ownPersonId, displayName: ownDisplayName } = useAuth()
+  const { personId: ownPersonId, displayName: ownDisplayName, timeFormat } = useAuth()
   const theme = useTheme()
 
   // People change rarely, so fetch once and read from the cache from then on (`cache-first`)
@@ -295,7 +295,8 @@ export default function PersonCalendarPage() {
                               }}
                             />
                             <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
-                              {formatLocalTime(meeting.startTime)}–{formatLocalTime(meeting.endTime)}{' '}
+                              {formatLocalTime(meeting.startTime, timeFormat)}–
+                              {formatLocalTime(meeting.endTime, timeFormat)}{' '}
                               {meeting.subject} – {meeting.room.name}
                             </Typography>
                           </ButtonBase>

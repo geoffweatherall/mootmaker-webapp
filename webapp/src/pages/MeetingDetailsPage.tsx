@@ -4,6 +4,7 @@ import { Box, Button, CircularProgress, Divider, Paper, Stack, Typography } from
 import { useNavigate, useParams } from 'react-router-dom'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { errorMessages } from '../graphql/errorMessages'
+import { useAuth } from '../auth/authContext'
 import { formatLocalDate, formatLocalTime } from '../graphql/formatDateTime'
 import { LIST_MEETINGS } from '../graphql/queries'
 import type { Meeting } from '../graphql/types'
@@ -26,6 +27,7 @@ function DetailRow({ label, value }: DetailRowProps) {
 }
 
 export default function MeetingDetailsPage() {
+  const { dateFormat, timeFormat } = useAuth()
   const { meetingId } = useParams<{ meetingId: string }>()
   const navigate = useNavigate()
   const [dismissedError, setDismissedError] = useState(false)
@@ -66,10 +68,10 @@ export default function MeetingDetailsPage() {
                 label="Attendees"
                 value={meeting.attendees.map((attendee) => attendee.name).join(', ') || 'None'}
               />
-              <DetailRow label="Date" value={formatLocalDate(meeting.startTime)} />
+              <DetailRow label="Date" value={formatLocalDate(meeting.startTime, dateFormat)} />
               <DetailRow
                 label="Time"
-                value={`${formatLocalTime(meeting.startTime)}–${formatLocalTime(meeting.endTime)}`}
+                value={`${formatLocalTime(meeting.startTime, timeFormat)}–${formatLocalTime(meeting.endTime, timeFormat)}`}
               />
             </Stack>
           </Stack>

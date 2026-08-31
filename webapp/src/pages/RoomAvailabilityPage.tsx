@@ -24,6 +24,7 @@ import { EmptyState } from '../components/EmptyState'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { BUSINESS_END_HOUR, BUSINESS_START_HOUR } from '../constants/businessHours'
 import { errorMessages } from '../graphql/errorMessages'
+import { useAuth } from '../auth/authContext'
 import { formatLocalTime } from '../graphql/formatDateTime'
 import { LIST_MEETINGS, LIST_ROOMS } from '../graphql/queries'
 import type { Meeting, MeetingsFilter, Room } from '../graphql/types'
@@ -63,6 +64,7 @@ function percentThroughBusinessDay(minutes: number): number {
 }
 
 export default function RoomAvailabilityPage() {
+  const { timeFormat } = useAuth()
   const { date } = useParams<{ date: string }>()
   const navigate = useNavigate()
   const [dismissedError, setDismissedError] = useState(false)
@@ -346,7 +348,7 @@ export default function RoomAvailabilityPage() {
                         return (
                           <Tooltip
                             key={meeting.id}
-                            title={`${meeting.subject}: ${formatLocalTime(meeting.startTime)}–${formatLocalTime(meeting.endTime)}`}
+                            title={`${meeting.subject}: ${formatLocalTime(meeting.startTime, timeFormat)}–${formatLocalTime(meeting.endTime, timeFormat)}`}
                           >
                             <ButtonBase
                               component={Link}

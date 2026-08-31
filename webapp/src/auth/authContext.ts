@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react'
+import type { DateFormat, TimeFormat } from '../graphql/formatDateTime'
 
 export interface AuthContextValue {
   /** Signed-in user's email, or null when signed out. Used to gate access, not for display. */
@@ -12,6 +13,12 @@ export interface AuthContextValue {
    * must not treat those two states the same (e.g. by falling back to showing someone else's
    * data while the real answer is still in flight). */
   personLoading: boolean
+  /** The signed-in viewer's own date format. Display only - the API always speaks ISO-8601.
+   * Defaults to Iso when signed out, or while the linked Person is still being fetched, so
+   * callers never have to handle a null format. */
+  dateFormat: DateFormat
+  /** The signed-in viewer's own time format, with the same defaulting as dateFormat. */
+  timeFormat: TimeFormat
   /** True until the initial session check completes on page load. */
   initialising: boolean
   /** True if the signed-in user's class (from the ID token) is "admin". Presentation only - see

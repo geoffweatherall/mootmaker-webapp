@@ -106,7 +106,7 @@ function NameSection() {
   }
 
   return (
-    <Paper sx={{ p: 3 }}>
+    <Paper component="section" sx={{ p: 3 }}>
       <Stack spacing={2}>
         <Typography variant="h6" component="h2">
           Your name
@@ -193,7 +193,7 @@ function DateTimeFormatSection() {
   }
 
   return (
-    <Paper sx={{ p: 3 }}>
+    <Paper component="section" sx={{ p: 3 }}>
       <Stack spacing={2}>
         <Typography variant="h6" component="h2">
           Date and time format
@@ -256,7 +256,7 @@ function RoomsSection() {
   const rooms = [...(data?.rooms ?? [])].sort((a, b) => a.name.localeCompare(b.name))
 
   return (
-    <Paper sx={{ p: 3 }}>
+    <Paper component="section" sx={{ p: 3 }}>
       <Stack spacing={2}>
         <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6" component="h2">
@@ -384,7 +384,7 @@ function PeopleSection() {
   const people = [...(data?.people ?? [])].sort((a, b) => a.name.localeCompare(b.name))
 
   return (
-    <Paper sx={{ p: 3 }}>
+    <Paper component="section" sx={{ p: 3 }}>
       <Stack spacing={2}>
         <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6" component="h2">
@@ -521,7 +521,7 @@ function DeleteAccountSection() {
   }
 
   return (
-    <Paper sx={{ p: 3 }}>
+    <Paper component="section" sx={{ p: 3 }}>
       <Stack spacing={2}>
         <Typography variant="h6" component="h2">
           Delete account

@@ -68,26 +68,23 @@ async function selectRoom(page: Page, roomName: string): Promise<void> {
   await page.getByRole('option', { name: roomName, exact: false }).click()
 }
 
-// MUI X's TimePicker/DatePicker sections are individually keyboard-editable (Hours/Minutes/
-// Meridiem, or Month/Day/Year) rather than a single fillable input - typing digits into the first
-// section auto-advances through the rest. Copied from add-meeting.spec.ts's own setTime, confirmed
-// empirically against the real deployed picker there.
+// MUI X's TimePicker/DatePicker sections are individually keyboard-editable (Hours/Minutes, or
+// Year/Month/Day) rather than a single fillable input - typing digits into the first section
+// auto-advances through the rest. Copied from add-meeting.spec.ts's own setTime.
 async function setTime(page: Page, groupName: 'Start time' | 'End time', hour24: number, minute: number): Promise<void> {
   const group = page.getByRole('group', { name: groupName })
-  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12
-  const meridiem = hour24 < 12 ? 'AM' : 'PM'
   await group.getByRole('spinbutton', { name: 'Hours' }).click()
-  await page.keyboard.type(`${String(hour12).padStart(2, '0')}${String(minute).padStart(2, '0')}`)
-  await page.keyboard.type(meridiem)
+  await page.keyboard.type(`${String(hour24).padStart(2, '0')}${String(minute).padStart(2, '0')}`)
 }
 
-// AddMeetingPage's Date field has no explicit `format` prop, so it uses the dayjs adapter's
-// default "L" (keyboard) format for the "en" locale - MM/DD/YYYY, three numeric sections (Month,
-// Day, Year) with no separate AM/PM section, same auto-advancing-sections mechanism as setTime.
+// AddMeetingPage's Date field now takes an explicit `format` from the signed-in viewer's own
+// date-format setting. The default is Iso, so the sections run Year, Month, Day - not the
+// Month/Day/Year of MUI's US-locale default, which is what this used to type into. Typing starts
+// at Year accordingly.
 async function setDate(page: Page, month: number, day: number, year: number): Promise<void> {
   const group = page.getByRole('group', { name: 'Date' })
-  await group.getByRole('spinbutton', { name: 'Month' }).click()
-  await page.keyboard.type(`${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}${year}`)
+  await group.getByRole('spinbutton', { name: 'Year' }).click()
+  await page.keyboard.type(`${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}`)
 }
 
 const MONTH_ABBREV = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']

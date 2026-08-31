@@ -117,18 +117,18 @@ async function selectAttendees(page: Page, names: string[]): Promise<void> {
   await page.getByRole('heading', { name: 'Add Meeting' }).click()
 }
 
-// MUI X's TimePicker renders each field as several keyboard-editable sections (Hours/Minutes/
-// Meridiem) rather than a single fillable input - typing a 4-digit 24-hour time into the Hours
-// section auto-advances through Hours then Minutes, and a further "AM"/"PM" keystroke sets the
-// Meridiem section. Confirmed empirically against the real deployed picker before relying on it
-// here (typing "0200" then "PM" into a fresh Hours section reliably produces "02:00 PM").
+// MUI X's TimePicker renders each field as several keyboard-editable sections rather than a
+// single fillable input - typing a 4-digit time into the Hours section auto-advances through
+// Hours then Minutes.
+//
+// The default account is 24-hour (see the date/time format setting), so the field has no Meridiem
+// section at all and the hour is typed as-is: "1400" produces 14:00. Under an AM/PM account this
+// same helper would need the 12-hour hour plus a trailing "AM"/"PM" keystroke - which is exactly
+// what n-date-time-format-settings.spec.ts does, deliberately, to prove the setting takes effect.
 async function setTime(page: Page, groupName: 'Start time' | 'End time', hour24: number, minute: number): Promise<void> {
   const group = page.getByRole('group', { name: groupName })
-  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12
-  const meridiem = hour24 < 12 ? 'AM' : 'PM'
   await group.getByRole('spinbutton', { name: 'Hours' }).click()
-  await page.keyboard.type(`${String(hour12).padStart(2, '0')}${String(minute).padStart(2, '0')}`)
-  await page.keyboard.type(meridiem)
+  await page.keyboard.type(`${String(hour24).padStart(2, '0')}${String(minute).padStart(2, '0')}`)
 }
 
 async function roomFieldIsEmpty(page: Page): Promise<boolean> {
@@ -284,8 +284,8 @@ test('start and end time default to the next 15-minute boundary and one hour lat
   await page.clock.setFixedTime(new Date('2026-08-24T10:07:00'))
   await goToAddMeeting(page)
 
-  await expect(page.getByRole('group', { name: 'Start time' }).locator('input')).toHaveValue('10:15 AM')
-  await expect(page.getByRole('group', { name: 'End time' }).locator('input')).toHaveValue('11:15 AM')
+  await expect(page.getByRole('group', { name: 'Start time' }).locator('input')).toHaveValue('10:15')
+  await expect(page.getByRole('group', { name: 'End time' }).locator('input')).toHaveValue('11:15')
 })
 
 test('start/end time pickers only ever offer 15-minute-boundary minutes', async ({ page }) => {

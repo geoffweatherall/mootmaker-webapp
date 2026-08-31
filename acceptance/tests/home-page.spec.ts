@@ -53,23 +53,23 @@ async function createRoom(page: Page, name: string, capacity: number): Promise<v
 // Fills one of AddMeetingPage's MUI X sectioned Time fields (role="group", e.g. "Start time") -
 // the same technique person-calendar.spec.ts's fillTime uses, confirmed against the real deployed
 // form there: clicking the "Hours" section then typing all digits plus an AM/PM marker in one go
-// auto-advances through Hours -> Minutes -> Meridiem, e.g. "0900A" types out to 09:00 AM.
-async function fillTime(page: Page, groupLabel: string, digitsAndMeridiem: string): Promise<void> {
+// auto-advances through Hours -> Minutes. The default account is 24-hour, so there is no
+// Meridiem section and the hour is typed as-is: "0900" produces 09:00, "1400" produces 14:00.
+async function fillTime(page: Page, groupLabel: string, digits: string): Promise<void> {
   const group = page.getByRole('group', { name: groupLabel })
   await group.getByRole('spinbutton', { name: 'Hours' }).click()
-  await page.keyboard.type(digitsAndMeridiem)
+  await page.keyboard.type(digits)
 }
 
-// Same sectioned-field technique as fillTime above, applied to the Date field's Month/Day/Year
-// sections instead of Hours/Minutes/Meridiem - AdapterDayjs's "keyboardDate" format is dayjs's
-// "L" token, which defaults to "MM/DD/YYYY" (dayjs's localizedFormat plugin, no adapterLocale
-// configured in main.tsx), confirmed by reading dayjs/plugin/localizedFormat's own default before
-// relying on it here (matches D.25's catalog Notes, which flagged this as needing confirmation).
-// Only needed by D.22's "tomorrow" fixture, to override the form's default (today).
+// Same sectioned-field technique as fillTime above, applied to the Date field's sections. The
+// field now takes an explicit `format` from the signed-in viewer's own date-format setting rather
+// than falling through to the dayjs adapter's "L" token (which resolved to MM/DD/YYYY for the
+// "en" locale). The default setting is Iso, so the sections run Year, Month, Day and typing
+// starts at Year. Only needed by D.22's "tomorrow" fixture, to override the form's default.
 async function setDate(page: Page, date: { month: number; day: number; year: number }): Promise<void> {
   const group = page.getByRole('group', { name: 'Date' })
-  await group.getByRole('spinbutton', { name: 'Month' }).click()
-  await page.keyboard.type(`${String(date.month).padStart(2, '0')}${String(date.day).padStart(2, '0')}${date.year}`)
+  await group.getByRole('spinbutton', { name: 'Year' }).click()
+  await page.keyboard.type(`${date.year}${String(date.month).padStart(2, '0')}${String(date.day).padStart(2, '0')}`)
 }
 
 interface MeetingFixture {
@@ -172,14 +172,14 @@ test('D.22 - signed in with a linked Person shows Calendar/Room availability/Add
   // Created out of chronological order (14:00 before 10:00) so a passing sort-order assertion
   // below can only be explained by the Home page actually sorting by start time, not by
   // preserving creation/insertion order (same reasoning as person-calendar.spec.ts's G.63).
-  await addMeeting(page, { subject: subjectToday14, roomName, start: '0200P', end: '0230P' })
-  await addMeeting(page, { subject: subjectToday10, roomName, start: '1000A', end: '1030A' })
+  await addMeeting(page, { subject: subjectToday14, roomName, start: '1400', end: '1430' })
+  await addMeeting(page, { subject: subjectToday10, roomName, start: '1000', end: '1030' })
   // Tomorrow relative to the pinned instant above (2027-04-06 -> 2027-04-07).
   await addMeeting(page, {
     subject: subjectTomorrow,
     roomName,
-    start: '1000A',
-    end: '1030A',
+    start: '1000',
+    end: '1030',
     date: { month: 4, day: 7, year: 2027 },
   })
 
@@ -275,5 +275,5 @@ test('D.25 - "Room availability today" and "Add Meeting" deep-link to the pinned
   // Home's "Add Meeting" link carries no router state (unlike RoomAvailabilityPage's - see E.37's
   // known gap), so this is exercising AddMeetingPage's own defaultDate() fallback to today, not a
   // passed-through value.
-  await expect(page.getByRole('group', { name: 'Date' }).locator('input')).toHaveValue('08/24/2026')
+  await expect(page.getByRole('group', { name: 'Date' }).locator('input')).toHaveValue('2026-08-24')
 })

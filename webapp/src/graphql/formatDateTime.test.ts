@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   datePickerFormat,
+  formatHourOfDay,
   formatLocalDate,
   formatLocalTime,
   timePickerUsesAmPm,
@@ -102,5 +103,30 @@ describe('picker formats', () => {
   it('matches what formatLocalDate produces for the same setting', () => {
     expect(formatLocalDate('2026-01-05T09:00:00', 'Usa')).toBe('01/05/2026')
     expect(datePickerFormat('Usa')).toBe('MM/DD/YYYY')
+  })
+})
+
+describe('formatHourOfDay', () => {
+  it('writes a whole hour in 24-hour form', () => {
+    expect(formatHourOfDay(8, 'TwentyFourHour')).toBe('08:00')
+    expect(formatHourOfDay(17, 'TwentyFourHour')).toBe('17:00')
+  })
+
+  it('writes the same hour in AM/PM form', () => {
+    expect(formatHourOfDay(8, 'AmPm')).toBe('08:00 AM')
+    expect(formatHourOfDay(17, 'AmPm')).toBe('05:00 PM')
+  })
+
+  // Midnight and noon are the two hours a naive `hour % 12` renders as "00".
+  it('writes midnight as 12 AM and noon as 12 PM', () => {
+    expect(formatHourOfDay(0, 'AmPm')).toBe('12:00 AM')
+    expect(formatHourOfDay(12, 'AmPm')).toBe('12:00 PM')
+  })
+
+  // The grid's hour labels and a meeting's start time are rendered by the same underlying code,
+  // so a meeting starting on the hour must read identically to the axis label above it.
+  it('agrees with formatLocalTime for a time on the hour', () => {
+    expect(formatHourOfDay(14, 'AmPm')).toBe(formatLocalTime('2026-07-01T14:00:00', 'AmPm'))
+    expect(formatHourOfDay(14, 'TwentyFourHour')).toBe(formatLocalTime('2026-07-01T14:00:00', 'TwentyFourHour'))
   })
 })

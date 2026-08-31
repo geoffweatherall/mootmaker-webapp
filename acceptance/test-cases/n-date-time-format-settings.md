@@ -165,3 +165,26 @@ renames, but far wider, since almost every spec asserts on a date or a time some
 - Dates elsewhere still render in the default format rather than breaking — a missing preference must never mean a missing date.
 
 **Notes:** Mirrors I.76's shape for the "Your name" section. The server-side `NoLinkedPerson` error exists as a backstop for a client that submits anyway; this case covers the UI making that unreachable in the first place.
+
+---
+
+<a id="tc-n106"></a>
+### N.106 — Hour labels that belong to no meeting
+
+**Use case:** [use-cases.md#uc-106](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-106) — "Time labels that are not part of any meeting — the Room Availability hour axis, and its \"Showing business hours\" caption — follow the format too."
+**Status:** ✅ Automated — [`tests/settings-date-time-format.spec.ts`](../tests/settings-date-time-format.spec.ts)
+**Android:** not yet automated
+
+**Preconditions:** A freshly signed-up account, at the defaults. No meeting required — the axis and caption render on an empty grid.
+
+**Given** a signed-in user viewing Room Availability
+**When** they switch their time format to AM/PM
+**Then** the grid's hour-axis labels and the "Showing business hours" caption both change with it
+
+**Assertions:**
+- At the default: the caption reads `Showing business hours (08:00–17:00).` and `08:00` appears as an axis label.
+- After switching to AM/PM: the caption reads `Showing business hours (08:00 AM–05:00 PM).`, and `08:00 AM` / `05:00 PM` appear as axis labels.
+
+**Out of scope:** the day-navigation `DatePicker` above the grid, which deliberately stays fixed at `dddd D MMM YYYY` (see Trade-offs and decisions in the design) — it is a navigation aid whose weekday name is the useful part, not a record of when a meeting is.
+
+**Notes:** These two displays were missed on the first implementation pass, and the gap is instructive: the design's "Impacts on components" was built by grepping for `formatLocalTime`/`formatLocalDate` call sites, so it found every place a *meeting's* time is rendered and none of the places an hour is rendered from a constant. A time shown to a human is in scope however it was derived.

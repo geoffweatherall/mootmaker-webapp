@@ -195,6 +195,13 @@ function asTwentyFourHour(hour24: number, minute: number): string {
   return `${String(hour24).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
 }
 
+// The availability route takes an ISO date regardless of anyone's display preference - it is a
+// URL parameter, not something shown to a human.
+function isoToday(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 function detailRow(page: Page, label: string) {
   return page.getByText(label, { exact: true }).locator('xpath=following-sibling::*[1]')
 }
@@ -311,4 +318,22 @@ test('N.105: an account with no linked Person sees the section disabled with an 
   // A missing preference must never mean a missing date: the defaults still apply for display.
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible()
+})
+
+test('N.106: the Room Availability hour axis and business-hours caption follow the time format', async ({ page }) => {
+  // These two read plain hour numbers out of the business-hours constants rather than any
+  // meeting's data, which is exactly why they were missed on the first pass - they are times
+  // shown to a human all the same. No meeting needed: the axis and caption are always rendered.
+  await signInAsFreshAccount(page)
+  await page.goto(`/rooms/${isoToday()}/availability`)
+
+  await expect(page.getByText('Showing business hours (08:00–17:00).')).toBeVisible()
+  await expect(page.getByText('08:00', { exact: true }).first()).toBeVisible()
+
+  await setFormats(page, { time: TIME_OPTION.amPm })
+  await page.goto(`/rooms/${isoToday()}/availability`)
+
+  await expect(page.getByText('Showing business hours (08:00 AM–05:00 PM).')).toBeVisible()
+  await expect(page.getByText('08:00 AM', { exact: true }).first()).toBeVisible()
+  await expect(page.getByText('05:00 PM', { exact: true }).first()).toBeVisible()
 })

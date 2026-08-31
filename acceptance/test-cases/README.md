@@ -34,7 +34,7 @@ One file per lettered section of `use-cases.md`, same letters, same case numbers
 | [k-settings-people.md](k-settings-people.md) | K. Settings — People | 84–88 |
 | [l-authorization-boundaries.md](l-authorization-boundaries.md) | L. Authorization boundaries | 89–91 |
 | [m-cross-cutting.md](m-cross-cutting.md) | M. Cross-cutting / non-functional | 92–99 |
-| [n-date-time-format-settings.md](n-date-time-format-settings.md) | N. Settings — Date and time format | 100–105 |
+| [n-date-time-format-settings.md](n-date-time-format-settings.md) | N. Settings — Date and time format | 100–106 |
 
 Case numbering matches `use-cases.md` exactly (global 1–99, not restarting per section), so a test
 case's ID is always `<SectionLetter>.<N>` — e.g. `F.38` — with no separate numbering scheme to keep

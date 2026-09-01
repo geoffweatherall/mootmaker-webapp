@@ -4,7 +4,7 @@
 // trying to mirror the sample-data-generator's larger, more realistic data set used against a
 // real deployed API.
 import { DEMO_USER } from '../../auth/cognito.mock'
-import type { Meeting, Person, Room } from '../../graphql/types'
+import type { Meeting, MyPerson, Person, Room } from '../../graphql/types'
 
 export const rooms: Room[] = [
   { id: 'room-boardroom', name: 'Boardroom', capacity: 4 },
@@ -22,8 +22,13 @@ export const people: Person[] = [
 
 // The only account with a linked Person - see cognito.mock.ts's MOCK_USERS doc comment.
 // E2E_USER deliberately has no entry here, matching the real e2e test user's account.
-export const linkedPersonByEmail: Record<string, Person> = {
-  [DEMO_USER.email]: people[4],
+//
+// Typed MyPerson rather than Person: myPerson is one of only two operations that select the
+// viewer's own display preferences, so the mock has to return them or AuthProvider would read
+// undefined where the real API guarantees a value. Left at the defaults, matching a fresh
+// account - a test wanting a non-default format sets it through the Settings page like a user.
+export const linkedPersonByEmail: Record<string, MyPerson> = {
+  [DEMO_USER.email]: { ...people[4], dateFormat: 'Iso', timeFormat: 'TwentyFourHour' },
 }
 
 // Created meetings, persisted to sessionStorage (not just an in-memory variable) so they survive

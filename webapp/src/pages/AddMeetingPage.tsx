@@ -17,6 +17,7 @@ import dayjs, { type Dayjs } from 'dayjs'
 import { useEffect, useState, type FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/authContext'
+import { datePickerFormat, timePickerUsesAmPm } from '../graphql/formatDateTime'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { SubmitButton } from '../components/SubmitButton'
 import { errorMessages } from '../graphql/errorMessages'
@@ -85,7 +86,7 @@ function combineDateAndTime(date: Dayjs | null, time: Dayjs | null): string {
 export default function AddMeetingPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { personId } = useAuth()
+  const { personId, dateFormat, timeFormat } = useAuth()
   // RoomAvailabilityPage's "Add Meeting" links pass the date currently being viewed via router
   // state, so the form defaults to that date rather than always today - see defaultDate() above.
   // Only read once, on mount: this is a one-time initial value, not something that should keep
@@ -312,14 +313,20 @@ export default function AddMeetingPage() {
               renderInput={(params) => <TextField {...params} label="Attendees" />}
             />
 
+            {/* Explicit format/ampm rather than MUI's locale defaults, which are US-style
+                (MM/DD/YYYY, 12-hour) and so used to disagree with the ISO/24-hour strings the
+                rest of the app rendered. This is the one place a format drives input parsing as
+                well as display: what the user types is read back through the same pattern. */}
             <DatePicker
               label="Date"
+              format={datePickerFormat(dateFormat)}
               value={date}
               onChange={(value) => setDate(value)}
               slotProps={{ textField: { fullWidth: true } }}
             />
             <TimePicker
               label="Start time"
+              ampm={timePickerUsesAmPm(timeFormat)}
               value={startTime}
               onChange={(value) => setStartTime(value)}
               timeSteps={MEETING_TIME_STEPS}
@@ -327,6 +334,7 @@ export default function AddMeetingPage() {
             />
             <TimePicker
               label="End time"
+              ampm={timePickerUsesAmPm(timeFormat)}
               value={endTime}
               onChange={(value) => setEndTime(value)}
               timeSteps={MEETING_TIME_STEPS}

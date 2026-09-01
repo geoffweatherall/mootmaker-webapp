@@ -7,6 +7,29 @@ DNS/TLS/CloudFront) is wired correctly, with a deliberately small, curated set o
 [../testing-strategy.md](../testing-strategy.md#acceptance-tests) for how this fits the overall
 layering.
 
+## Which environment to run against
+
+**Run `./run.sh` with no argument.** It creates a fresh ephemeral environment, deploys into it,
+runs the suite, and tears it down. That is the supported path, and the only one the suite is
+actually designed for.
+
+**Do not re-run the suite against a long-lived environment.** Several specs assume a state only a
+freshly deployed environment has, and they fail confusingly once anything has run before them —
+most obviously [`tests/00-room-availability-empty.spec.ts`](tests/00-room-availability-empty.spec.ts),
+whose zero-rooms precondition (rooms are never deleted through this app) can only ever be true
+once, immediately after deployment. The suggest-a-room ranking cases and Person Calendar's "other
+days show none" case are similarly sensitive to accumulated data.
+
+Passing an environment name (`./run.sh <environment>`) is supported and useful for *iterating on a
+single spec* with `-g` while developing, where the deploy-and-teardown cost per attempt would be
+absurd. Just don't mistake a green run there for a green suite: only a fresh-environment run is
+evidence, and this project's definition of done means the no-argument form.
+
+This is worth stating because it is not obvious from a failing run. Ten specs once failed against a
+reused environment with errors that all looked like real regressions — empty-state, room ranking,
+calendar contents — and none of them were. The same commit went green first time on a fresh
+environment.
+
 ## Run output
 
 Every `./run.sh` run writes a full record to `test-output/` (git-ignored — see `.gitignore` — so

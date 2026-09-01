@@ -14,6 +14,8 @@ export const MY_PERSON = gql`
     myPerson {
       id
       name
+      dateFormat
+      timeFormat
     }
   }
 `

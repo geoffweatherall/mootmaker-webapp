@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { freshTestAccount } from '../../support/testAccount'
 
@@ -11,6 +11,14 @@ import { freshTestAccount } from '../../support/testAccount'
 // Notes). createConfirmedTestAccount gives a real, working, Person-linked standard account
 // cheaply, without needing the real sign-up UI or an emailed code (this isn't itself testing
 // sign-up - see acceptance/README.md's "Which account to sign in as").
+// The Settings page has several Save buttons - one per section - so every one of them has to be
+// scoped. Scoped by the section element containing the section's own heading: giving the sections
+// aria-labels instead was tried and actively broke things, because getByLabel matches substrings,
+// so a region named "Your name" also answered to getByLabel('Name').
+function yourNameSection(page: Page) {
+  return page.locator('section').filter({ has: page.getByRole('heading', { name: 'Your name' }) })
+}
+
 function requireEnv(name: string): string {
   const value = process.env[name]
   if (!value) {
@@ -36,7 +44,7 @@ test('I.74: updating your own display name saves, toasts, and updates the sideba
   await expect(page.getByLabel('Name')).toHaveValue(account.name)
 
   await page.getByLabel('Name').fill(newName)
-  await page.getByRole('button', { name: 'Save' }).click()
+  await yourNameSection(page).getByRole('button', { name: 'Save' }).click()
 
   // Success toast.
   await expect(page.getByText('Your name was updated.')).toBeVisible()
@@ -66,7 +74,7 @@ test('I.75: submitting a blank name is rejected and leaves the stored name uncha
   await expect(page.getByLabel('Name')).toHaveValue(account.name)
 
   await page.getByLabel('Name').fill('')
-  await page.getByRole('button', { name: 'Save' }).click()
+  await yourNameSection(page).getByRole('button', { name: 'Save' }).click()
 
   await expect(page.getByText('Name must not be blank.')).toBeVisible()
 
@@ -91,7 +99,7 @@ test('I.76: the Your name section is disabled with an explanatory note for an ac
   await page.goto('/settings')
 
   await expect(page.getByLabel('Name')).toBeDisabled()
-  await expect(page.getByRole('button', { name: 'Save' })).toBeDisabled()
+  await expect(yourNameSection(page).getByRole('button', { name: 'Save' })).toBeDisabled()
   await expect(
     page.getByText("Your account has no linked person yet, so your name can't be changed here."),
   ).toBeVisible()

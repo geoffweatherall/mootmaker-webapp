@@ -13,6 +13,7 @@ import {
   List,
   ListItem,
   ListItemText,
+  MenuItem,
   Paper,
   Stack,
   TextField,
@@ -25,14 +26,25 @@ import { ErrorBanner } from '../components/ErrorBanner'
 import { SubmitButton } from '../components/SubmitButton'
 import { SuccessToast } from '../components/SuccessToast'
 import { errorMessages } from '../graphql/errorMessages'
-import { CREATE_PERSON, CREATE_ROOM, DELETE_MY_ACCOUNT, UPDATE_PERSON, UPDATE_ROOM } from '../graphql/mutations'
+import {
+  CREATE_PERSON,
+  CREATE_ROOM,
+  DELETE_MY_ACCOUNT,
+  UPDATE_MY_PREFERENCES,
+  UPDATE_PERSON,
+  UPDATE_ROOM,
+} from '../graphql/mutations'
 import { LIST_PEOPLE, LIST_ROOMS } from '../graphql/queries'
 import {
   PERSON_ERROR_MESSAGES,
+  PREFERENCES_ERROR_MESSAGES,
   ROOM_ERROR_MESSAGES,
   type CreateRoomResult,
+  type DateFormat,
   type Person,
   type Room,
+  type TimeFormat,
+  type UpdateMyPreferencesResult,
   type UpdatePersonResult,
   type UpdateRoomResult,
 } from '../graphql/types'
@@ -46,6 +58,7 @@ export default function SettingsPage() {
         Settings
       </Typography>
       <NameSection />
+      <DateTimeFormatSection />
       {isAdmin && <RoomsSection />}
       {isAdmin && <PeopleSection />}
       <DeleteAccountSection />
@@ -93,7 +106,7 @@ function NameSection() {
   }
 
   return (
-    <Paper sx={{ p: 3 }}>
+    <Paper component="section" sx={{ p: 3 }}>
       <Stack spacing={2}>
         <Typography variant="h6" component="h2">
           Your name
@@ -128,6 +141,113 @@ function NameSection() {
   )
 }
 
+/**
+ * Everyone gets this too. The formats are display-only: they change how this app renders and
+ * parses date/times, never what the API stores or returns (always ISO-8601). A shared view always
+ * renders in the *viewer's* own format, never the organiser's - see the design doc.
+ */
+function DateTimeFormatSection() {
+  const { dateFormat, timeFormat, personId, refreshPerson } = useAuth()
+  const [pendingDateFormat, setPendingDateFormat] = useState<DateFormat>(dateFormat)
+  const [pendingTimeFormat, setPendingTimeFormat] = useState<TimeFormat>(timeFormat)
+  const [fieldErrors, setFieldErrors] = useState<string[]>([])
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [updateMyPreferences, { loading, error, reset }] =
+    useMutation<{ updateMyPreferences: UpdateMyPreferencesResult }>(UPDATE_MY_PREFERENCES)
+
+  // Same reseeding reason as NameSection: the real preferences only arrive once the myPerson
+  // query resolves, so a field seeded at first render would otherwise stay stuck on the default.
+  useEffect(() => {
+    if (personId) {
+      setPendingDateFormat(dateFormat)
+      setPendingTimeFormat(timeFormat)
+    }
+  }, [personId, dateFormat, timeFormat])
+
+  const bannerMessages = [...fieldErrors, ...errorMessages(error)]
+
+  function dismissBanner() {
+    setFieldErrors([])
+    reset()
+  }
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault()
+    if (!personId) return
+    setFieldErrors([])
+
+    // Both formats go every time - the mutation replaces the pair rather than patching one, and
+    // both are non-null in the schema.
+    const result = await updateMyPreferences({
+      variables: { preferences: { dateFormat: pendingDateFormat, timeFormat: pendingTimeFormat } },
+    })
+    const payload = result.data?.updateMyPreferences
+    if (payload?.errors.length) {
+      setFieldErrors(payload.errors.map((code) => PREFERENCES_ERROR_MESSAGES[code]))
+      return
+    }
+    if (payload?.person) {
+      refreshPerson()
+      setSuccessMessage('Your date and time formats were updated.')
+    }
+  }
+
+  return (
+    <Paper component="section" sx={{ p: 3 }}>
+      <Stack spacing={2}>
+        <Typography variant="h6" component="h2">
+          Date and time format
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          How dates and times are shown to you, and how you type them in. This only changes what
+          you see - it doesn&apos;t change anyone else&apos;s view.
+        </Typography>
+        <ErrorBanner messages={bannerMessages} onDismiss={dismissBanner} />
+        <Stack
+          component="form"
+          direction="row"
+          spacing={2}
+          onSubmit={handleSubmit}
+          sx={{ alignItems: 'flex-start', flexWrap: 'wrap' }}
+        >
+          <TextField
+            select
+            label="Date format"
+            value={pendingDateFormat}
+            onChange={(event) => setPendingDateFormat(event.target.value as DateFormat)}
+            disabled={!personId}
+            sx={{ flexGrow: 1, minWidth: 240 }}
+          >
+            <MenuItem value="Iso">2026-08-24</MenuItem>
+            <MenuItem value="British">24/08/2026</MenuItem>
+            <MenuItem value="Usa">08/24/2026</MenuItem>
+          </TextField>
+          <TextField
+            select
+            label="Time format"
+            value={pendingTimeFormat}
+            onChange={(event) => setPendingTimeFormat(event.target.value as TimeFormat)}
+            disabled={!personId}
+            sx={{ flexGrow: 1, minWidth: 240 }}
+          >
+            <MenuItem value="TwentyFourHour">14:30</MenuItem>
+            <MenuItem value="AmPm">02:30 PM</MenuItem>
+          </TextField>
+          <SubmitButton loading={loading} disabled={!personId} hasError={bannerMessages.length > 0}>
+            Save
+          </SubmitButton>
+        </Stack>
+        {!personId && (
+          <Typography variant="body2" color="text.secondary">
+            Your account has no linked person yet, so these can&apos;t be changed here.
+          </Typography>
+        )}
+      </Stack>
+      <SuccessToast message={successMessage} onClose={() => setSuccessMessage(null)} />
+    </Paper>
+  )
+}
+
 /** Admin only - lists every room, with an edit dialog per row and an "Add room" dialog. */
 function RoomsSection() {
   const { data, loading, error, refetch } = useQuery<{ rooms: Room[] }>(LIST_ROOMS, { fetchPolicy: 'cache-and-network' })
@@ -136,7 +256,7 @@ function RoomsSection() {
   const rooms = [...(data?.rooms ?? [])].sort((a, b) => a.name.localeCompare(b.name))
 
   return (
-    <Paper sx={{ p: 3 }}>
+    <Paper component="section" sx={{ p: 3 }}>
       <Stack spacing={2}>
         <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6" component="h2">
@@ -264,7 +384,7 @@ function PeopleSection() {
   const people = [...(data?.people ?? [])].sort((a, b) => a.name.localeCompare(b.name))
 
   return (
-    <Paper sx={{ p: 3 }}>
+    <Paper component="section" sx={{ p: 3 }}>
       <Stack spacing={2}>
         <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h6" component="h2">
@@ -401,7 +521,7 @@ function DeleteAccountSection() {
   }
 
   return (
-    <Paper sx={{ p: 3 }}>
+    <Paper component="section" sx={{ p: 3 }}>
       <Stack spacing={2}>
         <Typography variant="h6" component="h2">
           Delete account

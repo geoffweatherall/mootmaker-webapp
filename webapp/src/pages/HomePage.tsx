@@ -41,6 +41,8 @@ interface AgendaListProps {
 }
 
 function AgendaList({ title, meetings, loading }: AgendaListProps) {
+  const { timeFormat } = useAuth()
+
   return (
     <Paper sx={{ p: 2, flex: 1 }}>
       <Typography variant="h6" component="h2" sx={{ mb: 1 }}>
@@ -58,7 +60,7 @@ function AgendaList({ title, meetings, loading }: AgendaListProps) {
             <ListItemButton key={meeting.id} component={Link} to={`/meetings/${meeting.id}`} sx={{ borderRadius: 1 }}>
               <ListItemText
                 primary={meeting.subject}
-                secondary={`${formatLocalTime(meeting.startTime)}–${formatLocalTime(meeting.endTime)} · ${meeting.room.name}`}
+                secondary={`${formatLocalTime(meeting.startTime, timeFormat)}–${formatLocalTime(meeting.endTime, timeFormat)} · ${meeting.room.name}`}
               />
             </ListItemButton>
           ))}

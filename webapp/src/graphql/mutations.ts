@@ -47,6 +47,20 @@ export const UPDATE_PERSON = gql`
   }
 `
 
+export const UPDATE_MY_PREFERENCES = gql`
+  mutation UpdateMyPreferences($preferences: PreferencesInput!) {
+    updateMyPreferences(preferences: $preferences) {
+      person {
+        id
+        name
+        dateFormat
+        timeFormat
+      }
+      errors
+    }
+  }
+`
+
 export const DELETE_MY_ACCOUNT = gql`
   mutation DeleteMyAccount {
     deleteMyAccount

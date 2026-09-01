@@ -24,7 +24,8 @@ import { EmptyState } from '../components/EmptyState'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { BUSINESS_END_HOUR, BUSINESS_START_HOUR } from '../constants/businessHours'
 import { errorMessages } from '../graphql/errorMessages'
-import { formatLocalTime } from '../graphql/formatDateTime'
+import { useAuth } from '../auth/authContext'
+import { formatHourOfDay, formatLocalTime } from '../graphql/formatDateTime'
 import { LIST_MEETINGS, LIST_ROOMS } from '../graphql/queries'
 import type { Meeting, MeetingsFilter, Room } from '../graphql/types'
 import { alpha } from '@mui/material/styles'
@@ -38,7 +39,8 @@ const BUSINESS_START_MINUTES = BUSINESS_START_HOUR * 60
 const BUSINESS_END_MINUTES = BUSINESS_END_HOUR * 60
 const BUSINESS_MINUTES = BUSINESS_END_MINUTES - BUSINESS_START_MINUTES
 
-// One label per hour boundary, e.g. 08:00, 09:00, ... 17:00.
+// One mark per hour boundary. The numbers are fixed; how each is written is the viewer's own
+// choice, applied at render time via formatHourOfDay.
 const HOUR_MARKS = Array.from(
   { length: BUSINESS_END_HOUR - BUSINESS_START_HOUR + 1 },
   (_, i) => BUSINESS_START_HOUR + i,
@@ -63,6 +65,7 @@ function percentThroughBusinessDay(minutes: number): number {
 }
 
 export default function RoomAvailabilityPage() {
+  const { timeFormat } = useAuth()
   const { date } = useParams<{ date: string }>()
   const navigate = useNavigate()
   const [dismissedError, setDismissedError] = useState(false)
@@ -221,8 +224,8 @@ export default function RoomAvailabilityPage() {
       </Stack>
 
       <Typography variant="body2" color="text.secondary">
-        Showing business hours ({BUSINESS_START_HOUR.toString().padStart(2, '0')}:00–
-        {BUSINESS_END_HOUR.toString().padStart(2, '0')}:00).
+        Showing business hours ({formatHourOfDay(BUSINESS_START_HOUR, timeFormat)}–
+        {formatHourOfDay(BUSINESS_END_HOUR, timeFormat)}).
       </Typography>
 
       <Box sx={{ height: 4 }}>{loading && !showSpinner && <LinearProgress />}</Box>
@@ -262,7 +265,7 @@ export default function RoomAvailabilityPage() {
                               : 'translateX(-50%)',
                       }}
                     >
-                      {hour.toString().padStart(2, '0')}:00
+                      {formatHourOfDay(hour, timeFormat)}
                     </Typography>
                   ))}
                 </Box>
@@ -346,7 +349,7 @@ export default function RoomAvailabilityPage() {
                         return (
                           <Tooltip
                             key={meeting.id}
-                            title={`${meeting.subject}: ${formatLocalTime(meeting.startTime)}–${formatLocalTime(meeting.endTime)}`}
+                            title={`${meeting.subject}: ${formatLocalTime(meeting.startTime, timeFormat)}–${formatLocalTime(meeting.endTime, timeFormat)}`}
                           >
                             <ButtonBase
                               component={Link}

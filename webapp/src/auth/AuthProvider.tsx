@@ -1,7 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { apolloClient } from '../apolloClient'
+import {
+  DEFAULT_DATE_FORMAT,
+  DEFAULT_TIME_FORMAT,
+  type DateFormat,
+  type TimeFormat,
+} from '../graphql/formatDateTime'
 import { MY_PERSON } from '../graphql/queries'
-import type { Person } from '../graphql/types'
+import type { MyPerson } from '../graphql/types'
 import { AuthContext } from './authContext'
 import * as cognito from './cognito'
 
@@ -9,6 +15,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [email, setEmail] = useState<string | null>(null)
   const [displayName, setDisplayName] = useState<string | null>(null)
   const [personId, setPersonId] = useState<string | null>(null)
+  // Held here rather than re-read per page, so every date/time in the app renders from one copy
+  // of the viewer's own preference. Defaulted rather than nullable: the API guarantees a Person
+  // always has both, and a null would only push a `?? 'Iso'` fallback into every call site.
+  const [dateFormat, setDateFormat] = useState<DateFormat>(DEFAULT_DATE_FORMAT)
+  const [timeFormat, setTimeFormat] = useState<TimeFormat>(DEFAULT_TIME_FORMAT)
   const [personLoading, setPersonLoading] = useState(false)
   const [initialising, setInitialising] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -35,11 +46,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function refreshPerson() {
     setPersonLoading(true)
     apolloClient
-      .query<{ myPerson: Person | null }>({ query: MY_PERSON, fetchPolicy: 'network-only' })
+      .query<{ myPerson: MyPerson | null }>({ query: MY_PERSON, fetchPolicy: 'network-only' })
       .then(({ data }) => {
         if (data?.myPerson) {
           setDisplayName(data.myPerson.name)
           setPersonId(data.myPerson.id)
+          setDateFormat(data.myPerson.dateFormat)
+          setTimeFormat(data.myPerson.timeFormat)
         }
       })
       .catch(() => {
@@ -64,12 +77,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPersonId(null)
     setPersonLoading(false)
     setIsAdmin(false)
+    setDateFormat(DEFAULT_DATE_FORMAT)
+    setTimeFormat(DEFAULT_TIME_FORMAT)
     apolloClient.clearStore() // don't keep the signed-out user's data cached
   }
 
   return (
     <AuthContext.Provider
-      value={{ email, displayName, personId, personLoading, initialising, isAdmin, signIn, signOut, refreshPerson }}
+      value={{
+        email,
+        displayName,
+        personId,
+        personLoading,
+        dateFormat,
+        timeFormat,
+        initialising,
+        isAdmin,
+        signIn,
+        signOut,
+        refreshPerson,
+      }}
     >
       {children}
     </AuthContext.Provider>

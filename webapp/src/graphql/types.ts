@@ -1,7 +1,24 @@
+import type { DateFormat, TimeFormat } from './formatDateTime'
+
 export interface Person {
   id: string
   name: string
 }
+
+/**
+ * The signed-in viewer's own Person, as returned by the myPerson query and updateMyPreferences.
+ *
+ * Separate from Person because only those two operations select the display preferences: no other
+ * client has any reason to render a date in somebody else's format (a shared view always uses the
+ * viewer's own), so `people` and a meeting's organiser/attendees deliberately don't ask for them
+ * and genuinely don't have them at runtime.
+ */
+export interface MyPerson extends Person {
+  dateFormat: DateFormat
+  timeFormat: TimeFormat
+}
+
+export type { DateFormat, TimeFormat }
 
 export interface Room {
   id: string
@@ -28,6 +45,21 @@ export const ROOM_ERROR_MESSAGES: Record<RoomError, string> = {
 }
 
 export type PersonError = 'NameRequired' | 'PersonNotFound'
+
+/**
+ * The only way updateMyPreferences can fail. Both formats are non-null in the schema, so a
+ * partial update is rejected by the server's own validation before the resolver runs.
+ */
+export type PreferencesError = 'NoLinkedPerson'
+
+export interface UpdateMyPreferencesResult {
+  person: MyPerson | null
+  errors: PreferencesError[]
+}
+
+export const PREFERENCES_ERROR_MESSAGES: Record<PreferencesError, string> = {
+  NoLinkedPerson: "Your account isn't linked to a person yet, so preferences can't be saved.",
+}
 
 export interface UpdatePersonResult {
   person: Person | null

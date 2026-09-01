@@ -54,13 +54,15 @@ async function createPerson(page: Page, name: string) {
 }
 
 // Fills one of AddMeetingPage's MUI X time-picker fields (role="group", e.g. "Start time") by
-// clicking its "Hours" section then typing all the digits plus an AM/PM marker in one go - the
-// sectioned field auto-advances between segments as each fills up, e.g. "0900A" types out to
-// 09:00 AM. Confirmed directly against the real deployed form before relying on it here.
-async function fillTime(page: Page, groupLabel: string, digitsAndMeridiem: string) {
+// clicking its "Hours" section then typing all four digits in one go - the sectioned field
+// auto-advances between segments as each fills up, e.g. "0900" types out to 09:00.
+//
+// 24-hour digits, because the default account's time format is TwentyFourHour and the field
+// therefore has no Meridiem section to type into.
+async function fillTime(page: Page, groupLabel: string, digits: string) {
   const group = page.getByRole('group', { name: groupLabel })
   await group.getByRole('spinbutton', { name: 'Hours' }).click()
-  await page.keyboard.type(digitsAndMeridiem)
+  await page.keyboard.type(digits)
 }
 
 interface MeetingFixture {
@@ -213,20 +215,20 @@ test('G.63 - a day with three meetings lists them in ascending start-time order;
   await addMeeting(page, {
     subject: `Sort Meeting C ${id}`,
     roomName,
-    start: '0200P',
-    end: '0230P',
+    start: '1400',
+    end: '1430',
   })
   await addMeeting(page, {
     subject: `Sort Meeting A ${id}`,
     roomName,
-    start: '0900A',
-    end: '0930A',
+    start: '0900',
+    end: '0930',
   })
   await addMeeting(page, {
     subject: `Sort Meeting B ${id}`,
     roomName,
-    start: '1100A',
-    end: '1130A',
+    start: '1100',
+    end: '1130',
   })
 
   await goToOwnCalendar(page)
@@ -259,7 +261,7 @@ test('G.65 - clicking a meeting row on the calendar navigates to its Meeting Det
   const roomName = `Calendar Click Room ${id}`
   const subject = `Calendar click meeting ${id}`
   await createRoom(page, roomName)
-  await addMeeting(page, { subject, roomName, start: '1000A', end: '1030A' })
+  await addMeeting(page, { subject, roomName, start: '1000', end: '1030' })
 
   await goToOwnCalendar(page)
   await page.getByText(subject, { exact: false }).click()
@@ -280,7 +282,7 @@ test("G.66 - the meeting's room colour dot on Person Calendar matches Room Avail
   const roomName = `Colour Match Room ${id}`
   const subject = `Colour match meeting ${id}`
   await createRoom(page, roomName)
-  await addMeeting(page, { subject, roomName, start: '1000A', end: '1030A' })
+  await addMeeting(page, { subject, roomName, start: '1000', end: '1030' })
 
   await goToOwnCalendar(page)
   const meetingRow = page.locator('a').filter({ hasText: subject })

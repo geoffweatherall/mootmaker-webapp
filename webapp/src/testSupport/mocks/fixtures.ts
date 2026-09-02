@@ -1,7 +1,7 @@
 // Seed data for the MSW-mocked GraphQL API (see handlers.ts) - a small, fixed data set that
 // covers every scenario webapp/tests/*.spec.ts needs (room-suggestion ranking/wraparound,
 // organiser/attendee exclusivity, a linked-vs-unlinked Person, capacity overflow), rather than
-// trying to mirror the sample-data-generator's larger, more realistic data set used against a
+// trying to mirror mootmaker-demo-data's larger, more realistic data set used against a
 // real deployed API.
 import { DEMO_USER } from '../../auth/cognito.mock'
 import type { Meeting, MyPerson, Person, Room } from '../../graphql/types'

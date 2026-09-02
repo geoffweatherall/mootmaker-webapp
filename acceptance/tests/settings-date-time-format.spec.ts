@@ -85,7 +85,7 @@ async function roomCount(page: Page): Promise<number> {
   return count
 }
 
-// Books into a weekday well beyond the 6-week window sample-data-topup fills, so the chosen room
+// Books into a weekday well beyond the 6-week window mootmaker-demo-data fills, so the chosen room
 // is actually free. An earlier version left the Date field at its default (today) and booked the
 // same slot in the same room from every test, which collided both with the generated sample data
 // and with the other tests here - the form rejected it with "The room already has a meeting

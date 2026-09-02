@@ -50,7 +50,7 @@ async function signIn(page: import('@playwright/test').Page, email: string, pass
  * carrying the admin resource-server scope `Identity.isAdmin` also accepts (see Identity.java's
  * `hasAdminScope`). No Cognito *user* session is involved at all - this is Terraform's
  * `aws_cognito_user_pool_client.test` client, built specifically "for M2M tooling
- * (sample-data-generator, the acceptance tests)" per cognito.tf's own comment. Used here only to
+ * (the acceptance tests, mootmaker-demo-data)" per cognito.tf's own comment. Used here only to
  * create this test's own room *fixture* (a real createRoom call through the real handler, no
  * different from what a real admin's UI submission would do) - the actual thing under test is
  * still the standard user's token being rejected, below. */

@@ -1,15 +1,15 @@
-import { gql } from '@apollo/client'
+import { graphql } from './generated'
 
-export const LIST_PEOPLE = gql`
+export const LIST_PEOPLE = graphql(`
   query ListPeople {
     people {
       id
       name
     }
   }
-`
+`)
 
-export const MY_PERSON = gql`
+export const MY_PERSON = graphql(`
   query MyPerson {
     myPerson {
       id
@@ -18,9 +18,9 @@ export const MY_PERSON = gql`
       timeFormat
     }
   }
-`
+`)
 
-export const LIST_ROOMS = gql`
+export const LIST_ROOMS = graphql(`
   query ListRooms {
     rooms {
       id
@@ -28,9 +28,9 @@ export const LIST_ROOMS = gql`
       capacity
     }
   }
-`
+`)
 
-export const SUGGEST_ROOM = gql`
+export const SUGGEST_ROOM = graphql(`
   query SuggestRoom($startTime: String!, $endTime: String!, $requiredCapacity: Int!) {
     suggestRoom(startTime: $startTime, endTime: $endTime, requiredCapacity: $requiredCapacity) {
       id
@@ -38,9 +38,9 @@ export const SUGGEST_ROOM = gql`
       capacity
     }
   }
-`
+`)
 
-export const LIST_MEETINGS = gql`
+export const LIST_MEETINGS = graphql(`
   query ListMeetings($filter: MeetingsFilter) {
     meetings(filter: $filter) {
       id
@@ -62,4 +62,4 @@ export const LIST_MEETINGS = gql`
       }
     }
   }
-`
+`)

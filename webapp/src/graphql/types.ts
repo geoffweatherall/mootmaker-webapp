@@ -1,125 +1,54 @@
-import type { DateFormat, TimeFormat } from './formatDateTime'
-
-export interface Person {
-  id: string
-  name: string
-}
-
 /**
- * The signed-in viewer's own Person, as returned by the myPerson query and updateMyPreferences.
+ * The shapes this app actually works with, derived from the generated schema types.
  *
- * Separate from Person because only those two operations select the display preferences: no other
- * client has any reason to render a date in somebody else's format (a shared view always uses the
- * viewer's own), so `people` and a meeting's organiser/attendees deliberately don't ask for them
- * and genuinely don't have them at runtime.
+ * This file used to be a hand-maintained mirror of `mootmaker-api/api/mootmaker.graphql`, kept in
+ * sync by whoever remembered to edit both — with nothing enforcing that they agreed. It is now
+ * derived: every type below resolves through `./generated`, which is generated from the schema
+ * itself (see `codegen.ts`). Adding a field to the schema and forgetting this file is no longer
+ * possible, because there is nothing here to forget.
+ *
+ * These are deliberately *selection* types rather than the schema's own object types: `Person` is
+ * what `ListPeople` selects, not every field a Person has. That is what the components consume,
+ * and it means removing a field from a query is a compile error at the component that used it
+ * rather than a runtime `undefined`.
  */
-export interface MyPerson extends Person {
-  dateFormat: DateFormat
-  timeFormat: TimeFormat
-}
+import type {
+  CreateMeetingMutation,
+  CreateRoomMutation,
+  ListMeetingsQuery,
+  ListPeopleQuery,
+  ListRoomsQuery,
+  MyPersonQuery,
+  UpdateMyPreferencesMutation,
+  UpdatePersonMutation,
+  UpdateRoomMutation,
+} from './generated/graphql'
 
-export type { DateFormat, TimeFormat }
+export type Person = ListPeopleQuery['people'][number]
 
-export interface Room {
-  id: string
-  name: string
-  capacity: number
-}
+/** The signed-in viewer's own Person, as returned by the myPerson query and updateMyPreferences. */
+export type MyPerson = NonNullable<MyPersonQuery['myPerson']>
 
-export type RoomError = 'NameRequired' | 'CapacityTooLow' | 'RoomNotFound'
+export type Room = ListRoomsQuery['rooms'][number]
 
-export interface CreateRoomResult {
-  room: Room | null
-  errors: RoomError[]
-}
+export type Meeting = ListMeetingsQuery['meetings'][number]
 
-export interface UpdateRoomResult {
-  room: Room | null
-  errors: RoomError[]
-}
+// Mutation payloads, derived from the operations that return them. Each is a { thing, errors }
+// pair, so a component can branch on errors without knowing which mutation produced them.
+export type CreateRoomResult = CreateRoomMutation['createRoom']
+export type UpdateRoomResult = UpdateRoomMutation['updateRoom']
+export type UpdatePersonResult = UpdatePersonMutation['updatePerson']
+export type UpdateMyPreferencesResult = UpdateMyPreferencesMutation['updateMyPreferences']
+export type CreateMeetingResult = CreateMeetingMutation['createMeeting']
 
-export const ROOM_ERROR_MESSAGES: Record<RoomError, string> = {
-  NameRequired: 'Name must not be blank.',
-  CapacityTooLow: 'Room capacity must be at least 2.',
-  RoomNotFound: 'This room no longer exists - it may have been deleted.',
-}
-
-export type PersonError = 'NameRequired' | 'PersonNotFound'
-
-/**
- * The only way updateMyPreferences can fail. Both formats are non-null in the schema, so a
- * partial update is rejected by the server's own validation before the resolver runs.
- */
-export type PreferencesError = 'NoLinkedPerson'
-
-export interface UpdateMyPreferencesResult {
-  person: MyPerson | null
-  errors: PreferencesError[]
-}
-
-export const PREFERENCES_ERROR_MESSAGES: Record<PreferencesError, string> = {
-  NoLinkedPerson: "Your account isn't linked to a person yet, so preferences can't be saved.",
-}
-
-export interface UpdatePersonResult {
-  person: Person | null
-  errors: PersonError[]
-}
-
-export const PERSON_ERROR_MESSAGES: Record<PersonError, string> = {
-  NameRequired: 'Name must not be blank.',
-  PersonNotFound: 'This person no longer exists - it may have been deleted.',
-}
-
-export interface Meeting {
-  id: string
-  room: Room
-  organiser: Person
-  attendees: Person[]
-  subject: string
-  startTime: string
-  endTime: string
-}
-
-// fromStartTime/toEndTime must be supplied together (or both omitted); personId is independent.
-export interface MeetingsFilter {
-  fromStartTime?: string
-  toEndTime?: string
-  personId?: string
-}
-
-export type MeetingError =
-  | 'StartMissaligned'
-  | 'EndMissaligned'
-  | 'SpansMultipleDays'
-  | 'EndBeforeStart'
-  | 'InsufficientCapacity'
-  | 'TimeRangeUnavailable'
-  | 'RoomRequired'
-  | 'RoomNotFound'
-  | 'OrganiserRequired'
-  | 'OrganiserNotFound'
-  | 'AttendeeNotFound'
-  | 'SubjectRequired'
-  | 'OrganiserIsAttendee'
-
-export interface CreateMeetingResult {
-  meeting: Meeting | null
-  errors: MeetingError[]
-}
-
-export const MEETING_ERROR_MESSAGES: Record<MeetingError, string> = {
-  StartMissaligned: 'Start time must fall on a 15 minute boundary.',
-  EndMissaligned: 'End time must fall on a 15 minute boundary.',
-  SpansMultipleDays: 'A meeting cannot span midnight - start and end time must be on the same day.',
-  EndBeforeStart: 'End time must be after the start time.',
-  InsufficientCapacity: 'The room does not have enough capacity for all attendees.',
-  TimeRangeUnavailable: 'The room already has a meeting scheduled during that time range.',
-  RoomRequired: 'Please select a room.',
-  RoomNotFound: 'The selected room could not be found.',
-  OrganiserRequired: 'Please select an organiser.',
-  OrganiserNotFound: 'The selected organiser could not be found.',
-  AttendeeNotFound: 'One or more selected attendees could not be found.',
-  SubjectRequired: 'Please enter a subject.',
-  OrganiserIsAttendee: 'The organiser cannot also be listed as an attendee.',
-}
+// Input and error types come straight from the schema - they have no selection set, so there is no
+// app-specific shape to derive.
+export type {
+  DateFormat,
+  MeetingError,
+  MeetingsFilter,
+  PersonError,
+  PreferencesError,
+  RoomError,
+  TimeFormat,
+} from './generated/graphql'

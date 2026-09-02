@@ -3,9 +3,11 @@ import {
   MEETING_ERROR_MESSAGES,
   PERSON_ERROR_MESSAGES,
   ROOM_ERROR_MESSAGES,
-  type MeetingError,
-  type PersonError,
-  type RoomError,
+} from './validationMessages'
+import type {
+  MeetingError,
+  PersonError,
+  RoomError,
 } from './types'
 
 // These maps translate the API's validation-rule error codes into the user-facing text shown in

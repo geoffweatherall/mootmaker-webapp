@@ -23,7 +23,9 @@ import { SubmitButton } from '../components/SubmitButton'
 import { errorMessages } from '../graphql/errorMessages'
 import { CREATE_MEETING } from '../graphql/mutations'
 import { LIST_PEOPLE, LIST_ROOMS, SUGGEST_ROOM } from '../graphql/queries'
-import { MEETING_ERROR_MESSAGES } from '../graphql/types'
+import {
+  MEETING_ERROR_MESSAGES,
+} from '../graphql/validationMessages'
 import type { CreateMeetingResult, Person, Room } from '../graphql/types'
 import addMeetingHero from '../assets/add-meeting-hero.svg'
 import { SparkleIcon } from '../icons'

@@ -61,6 +61,21 @@ VITE_DEMO_USER_PASSWORD=${DEMO_USER_PASSWORD}
 EOF
 
 npm --prefix webapp install
+
+# Regenerate from the schema this build will actually be compiled against, rather than trusting
+# whatever is committed. See mootmaker/designs/graphql-schema-sharing.md.
+npm --prefix webapp run codegen
+
+# Refuse to deploy against an API that does not serve the schema this build expects - two
+# independent pipelines have no ordering guarantee, and compiling proves only that the webapp
+# agrees with a schema, not that the target environment serves it. See Decision 8.
+schema_access_token="$(curl -sS -X POST "${COGNITO_TOKEN_URL}" \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d "grant_type=client_credentials&client_id=${COGNITO_TEST_CLIENT_ID}&client_secret=${COGNITO_TEST_CLIENT_SECRET}&scope=${COGNITO_TEST_SCOPE}" \
+  | jq -r .access_token)"
+./deploy/verify-schema-compatibility.sh "${GRAPHQL_API_URL}" "${schema_access_token}" \
+  "${api_dir}/api/mootmaker.graphql"
+
 npm --prefix webapp run build
 
 aws s3 sync webapp/dist "s3://${site_bucket}" --delete

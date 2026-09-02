@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "codegen": "graphql-codegen --config codegen.ts",
+    "codegen:check": "graphql-codegen --config codegen.ts && git diff --exit-code src/graphql/generated",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
@@ -29,6 +31,9 @@
     "react-router-dom": "^7.18.1"
   },
   "devDependencies": {
+    "@graphql-codegen/cli": "^7.4.0",
+    "@graphql-codegen/client-preset": "^6.1.3",
+    "@mootmaker/schema": "^1.0.1",
     "@playwright/test": "^1.61.1",
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",

@@ -1,6 +1,6 @@
-import { gql } from '@apollo/client'
+import { graphql } from './generated'
 
-export const CREATE_ROOM = gql`
+export const CREATE_ROOM = graphql(`
   mutation CreateRoom($room: RoomInput!) {
     createRoom(room: $room) {
       room {
@@ -11,9 +11,9 @@ export const CREATE_ROOM = gql`
       errors
     }
   }
-`
+`)
 
-export const UPDATE_ROOM = gql`
+export const UPDATE_ROOM = graphql(`
   mutation UpdateRoom($id: ID!, $room: RoomInput!) {
     updateRoom(id: $id, room: $room) {
       room {
@@ -24,18 +24,18 @@ export const UPDATE_ROOM = gql`
       errors
     }
   }
-`
+`)
 
-export const CREATE_PERSON = gql`
+export const CREATE_PERSON = graphql(`
   mutation CreatePerson($person: PersonInput!) {
     createPerson(person: $person) {
       id
       name
     }
   }
-`
+`)
 
-export const UPDATE_PERSON = gql`
+export const UPDATE_PERSON = graphql(`
   mutation UpdatePerson($id: ID!, $person: PersonInput!) {
     updatePerson(id: $id, person: $person) {
       person {
@@ -45,9 +45,9 @@ export const UPDATE_PERSON = gql`
       errors
     }
   }
-`
+`)
 
-export const UPDATE_MY_PREFERENCES = gql`
+export const UPDATE_MY_PREFERENCES = graphql(`
   mutation UpdateMyPreferences($preferences: PreferencesInput!) {
     updateMyPreferences(preferences: $preferences) {
       person {
@@ -59,15 +59,15 @@ export const UPDATE_MY_PREFERENCES = gql`
       errors
     }
   }
-`
+`)
 
-export const DELETE_MY_ACCOUNT = gql`
+export const DELETE_MY_ACCOUNT = graphql(`
   mutation DeleteMyAccount {
     deleteMyAccount
   }
-`
+`)
 
-export const CREATE_MEETING = gql`
+export const CREATE_MEETING = graphql(`
   mutation CreateMeeting($meeting: MeetingInput!) {
     createMeeting(meeting: $meeting) {
       meeting {
@@ -92,4 +92,4 @@ export const CREATE_MEETING = gql`
       errors
     }
   }
-`
+`)

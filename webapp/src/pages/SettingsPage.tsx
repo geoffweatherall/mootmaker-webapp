@@ -36,9 +36,6 @@ import {
 } from '../graphql/mutations'
 import { LIST_PEOPLE, LIST_ROOMS } from '../graphql/queries'
 import {
-  PERSON_ERROR_MESSAGES,
-  PREFERENCES_ERROR_MESSAGES,
-  ROOM_ERROR_MESSAGES,
   type CreateRoomResult,
   type DateFormat,
   type Person,
@@ -48,6 +45,11 @@ import {
   type UpdatePersonResult,
   type UpdateRoomResult,
 } from '../graphql/types'
+import {
+  PERSON_ERROR_MESSAGES,
+  PREFERENCES_ERROR_MESSAGES,
+  ROOM_ERROR_MESSAGES,
+} from '../graphql/validationMessages'
 
 export default function SettingsPage() {
   const { isAdmin } = useAuth()

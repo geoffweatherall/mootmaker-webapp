@@ -1,0 +1,23 @@
+# Opens a pull request when a new @mootmaker/schema is published, which is what makes the declared
+# version in mootmaker-api workable end to end: without it this repository's lockfile pins the old
+# version indefinitely and nothing signals that the contract moved.
+#
+# A green PR here is evidence the schema change is additive and safe to take - CI regenerates the
+# types and type-checks them against this code. A red one is the signal that the schema change
+# needs webapp work. See mootmaker/designs/graphql-schema-sharing.md, Decision 8.
+version: 2
+updates:
+  - package-ecosystem: npm
+    # package.json lives in webapp/, not the repository root.
+    directory: /webapp
+    schedule:
+      interval: daily
+    # Deliberately narrow. The point of this file is the schema contract, and opening PRs for every
+    # transitive npm dependency would bury exactly the signal it exists to surface. Widen it if
+    # general dependency hygiene is wanted - that is a different decision, not this one.
+    allow:
+      - dependency-name: '@mootmaker/schema'
+    commit-message:
+      prefix: deps
+    labels:
+      - dependencies

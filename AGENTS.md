@@ -20,8 +20,11 @@ structure, the build and deploy scripts, and how to run the tests. Keep it up to
   keeps the app accessible as a side effect and survives refactoring. Be careful with substring
   matching: `getByRole('link', { name: 'Calendar' })` will also match a meeting whose subject
   contains "Calendar". Use `exact: true`.
-- **`webapp/src/graphql/types.ts` mirrors the API's schema by hand.** If the schema changed, this
-  needs changing too.
+- **`webapp/src/graphql/generated/` is generated from the API's schema — never edit it.** Change the
+  schema in `mootmaker-api`, then `npm run codegen` here. `npm run codegen:check` regenerates and
+  fails on any diff, so drift is caught rather than discovered. This replaces the old rule that
+  `types.ts` had to be mirrored by hand; it no longer does, and `types.ts` now derives its shapes
+  from the generated operations.
 
 ---
 

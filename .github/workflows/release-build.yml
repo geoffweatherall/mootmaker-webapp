@@ -1,0 +1,176 @@
+# Reusable release build for mootmaker-webapp. See mootmaker/designs/ci-cd-pipeline.md
+# Decision 7 and Rollout step 6.
+#
+# Builds webapp/dist/ ONCE, proves it against a fresh ephemeral AWS environment, and uploads it as
+# an artifact. release.yml in mootmaker-release then promotes those exact files to test and then
+# production - never rebuilt per environment, which is what Decision 8 requires. The bundle is
+# environment-agnostic because deploy.sh writes env-config.js into dist/ AFTER the build, so the
+# same files are correct for every environment.
+#
+# THREE sibling checkouts are needed, all with an explicit `path` so they land beside each other
+# under the workspace root - the layout every mootmaker script expects:
+#   mootmaker-api             acceptance/run.sh sources its authenticate.sh, and deploy.sh needs
+#                             the API deployed to the same environment name first
+#   mootmaker-ephemeral-envs  acceptance/run.sh resolves it even when it is not going to create an
+#                             environment itself
+#   mootmaker-email-testing   acceptance/run.sh reads SQS_QUEUE_URL from its Terraform outputs
+#                             (persistent shared infrastructure, never created per environment)
+#
+# acceptance/run.sh is deliberately given an EXPLICIT environment name. Called with no argument it
+# creates its own via create-ephemeral-env.sh, which builds the webapp from source - that would
+# test a different bundle from the one being released. Passing a name makes it use the environment
+# this workflow deployed the promoted dist/ into, and also makes it skip its own teardown, which
+# this workflow does instead so that it happens even when the suite fails.
+#
+# OIDC NOTE: the deploy role's trust policy only accepts this workflow at refs/tags/v* (see
+# mootmaker-bootstrap-aws-accounts/workload-account/github-actions-deploy-role.yaml). A run on a
+# branch authenticates to GitHub fine and then fails at AWS. To exercise this standalone, dispatch
+# it at a tag: gh workflow run release-build.yml --ref v0.0.1-rc1
+name: Release build
+
+on:
+  # Called by mootmaker-release/release.yml as part of a real release.
+  workflow_call:
+    inputs:
+      version:
+        description: Version being released, without the leading v (e.g. 1.4.0).
+        required: true
+        type: string
+    outputs:
+      artifact-name:
+        description: Name of the uploaded bundle artifact, for the caller to download and promote.
+        value: ${{ jobs.build.outputs.artifact-name }}
+  # Standalone proving run. Dispatch at a v* tag, not a branch - see the OIDC note above.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to stamp this build with, without the leading v.
+        required: true
+        type: string
+
+permissions:
+  # Mint the OIDC token that configure-aws-credentials exchanges for the deploy role.
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    # The acceptance stage stands up real infrastructure, including a CloudFront distribution;
+    # a hung step must not bill indefinitely.
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: mootmaker-webapp
+    outputs:
+      artifact-name: ${{ steps.artifact.outputs.name }}
+      environment: ${{ steps.env.outputs.name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: mootmaker-webapp
+
+      - uses: actions/checkout@v4
+        with:
+          repository: geoffweatherall/mootmaker-api
+          path: mootmaker-api
+
+      - uses: actions/checkout@v4
+        with:
+          repository: geoffweatherall/mootmaker-ephemeral-envs
+          path: mootmaker-ephemeral-envs
+
+      - uses: actions/checkout@v4
+        with:
+          repository: geoffweatherall/mootmaker-email-testing
+          path: mootmaker-email-testing
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: mootmaker-webapp/webapp/package-lock.json
+
+      # Both package.json files matter: the root one owns the acceptance suite's Playwright, the
+      # webapp one owns the app itself. Missing the root install produces a silent
+      # "playwright: not found".
+      - name: Install dependencies
+        run: |
+          npm install
+          npm --prefix webapp install
+
+      # Java is needed only because mootmaker-api is deployed below as a dependency of the
+      # environment under test.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      # The ONLY build of this component in the whole release. Everything downstream promotes
+      # these exact files.
+      - name: Build
+        run: npm --prefix webapp run build
+
+      # Matches create-ephemeral-env.sh's <kind>-<YYMMDD>-<rand4> convention so that
+      # cleanup-stale-envs.sh can still find and sweep this environment if the run dies before
+      # teardown. Its regex is ^[a-z][a-z0-9-]{0,7}-[0-9]{6}-[a-z0-9]{4}$, and "rel-web" fits the
+      # 8-character kind budget.
+      - name: Generate ephemeral environment name
+        id: env
+        run: echo "name=rel-web-$(date -u +%y%m%d)-$(openssl rand -hex 2)" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::431071856068:role/mootmaker-release-github-actions-deploy
+          aws-region: us-east-1
+
+      # Built fresh from main rather than promoted: mootmaker-api is a dependency of the
+      # environment under test here, not the artifact being released by this workflow. It must be
+      # deployed first - deploy.sh below reads this environment's API and Cognito details.
+      - name: Deploy mootmaker-api into the ephemeral environment
+        working-directory: mootmaker-api
+        run: ./deploy.sh "${{ steps.env.outputs.name }}"
+
+      # --skip-build deploys the dist/ built above rather than rebuilding it, so the bundle proven
+      # here is byte-identical to the one promoted later. The schema compatibility check and the
+      # env-config.js write still run, because those are per-environment.
+      - name: Deploy to the ephemeral environment
+        run: ./deploy.sh "${{ steps.env.outputs.name }}" --skip-build
+
+      # Explicit environment name - see the header. This runs against the promoted bundle and
+      # leaves teardown to this workflow.
+      - name: Acceptance tests
+        run: ./acceptance/run.sh "${{ steps.env.outputs.name }}"
+
+      # if: always() is load-bearing, not defensive. Without it a failed acceptance run - or a
+      # cancelled workflow - leaves a live CloudFront distribution, S3 bucket, AppSync API and
+      # DynamoDB tables billing until someone notices. --yes is required because undeploy.sh
+      # otherwise waits on an interactive confirmation there is no stdin to answer. mootmaker-api's
+      # teardown runs even if this component's fails, so a partial failure cannot strand it.
+      - name: Tear down this component
+        if: always()
+        run: ./undeploy.sh "${{ steps.env.outputs.name }}" --yes
+
+      - name: Tear down mootmaker-api
+        if: always()
+        working-directory: mootmaker-api
+        run: ./undeploy.sh "${{ steps.env.outputs.name }}" --yes
+
+      - name: Name the artifact
+        id: artifact
+        run: echo "name=mootmaker-webapp-${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+
+      # env-config.js is deliberately NOT included: deploy.sh writes it per environment after the
+      # build, so shipping the ephemeral environment's copy would point production at a torn-down
+      # API. Excluding it is what makes the bundle promotable.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifact.outputs.name }}
+          path: |
+            mootmaker-webapp/webapp/dist
+            !mootmaker-webapp/webapp/dist/env-config.js
+          if-no-files-found: error
+          retention-days: 30

@@ -4,7 +4,7 @@
 #
 # A green PR here is evidence the schema change is additive and safe to take - CI regenerates the
 # types and type-checks them against this code. A red one is the signal that the schema change
-# needs webapp work. See mootmaker/designs/graphql-schema-sharing.md, Decision 8.
+# needs webapp work. See mootmaker/designs/archive/graphql-schema-sharing.md, Decision 8.
 version: 2
 updates:
   - package-ecosystem: npm

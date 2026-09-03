@@ -314,35 +314,48 @@ test('M.99 - a hard reload picks up a room created in another session; a stale c
   const pageB = await contextB.newPage()
   const runId = `${Date.now()}-${Math.floor(Math.random() * 10_000)}`
   const roomName = `M99 Room ${runId}`
+  // Created before session B loads, purely to prove session B's room list has finished fetching.
+  const sentinelName = `M99 Sentinel ${runId}`
 
   try {
     await signInAsDemo(pageA)
     await signInAsDemo(pageB)
 
-    // Both contexts warm their own independent in-memory Apollo cache for LIST_ROOMS
-    // (cache-first) by visiting Settings once each.
+    async function createRoom(page: Page, name: string) {
+      await page.getByRole('button', { name: 'Add room' }).click()
+      const dialog = page.getByRole('dialog')
+      await dialog.getByLabel('Name').fill(name)
+      await dialog.getByLabel('Capacity').fill('4')
+      await dialog.getByRole('button', { name: 'Save' }).click()
+      await expect(page.getByText(name)).toBeVisible()
+    }
+
+    // Session A creates a sentinel room BEFORE session B ever loads. This is what makes session B's
+    // precondition meaningful: LIST_ROOMS is `cache-and-network` (see SettingsPage), so session B
+    // fetches from the network exactly once, on mount, and never again - there is no polling, and
+    // refetch() only fires after a save in the same session.
+    //
+    // Waiting for the sentinel proves that single fetch has COMPLETED. Without it the test raced:
+    // its precondition was `expect(roomName).toHaveCount(0)`, which passes instantly against a
+    // blank, still-loading page, so a slow session B could take its first fetch AFTER session A
+    // created the room and legitimately receive it. That produced real failures under full-suite
+    // load while passing in isolation.
     await pageA.goto('/settings')
+    await createRoom(pageA, sentinelName)
+
     await pageB.goto('/settings')
-
-    // Before session A creates anything, session B's already-cached room list must NOT show it -
-    // a real, distinct-context precondition, not just an already-shared live cache.
+    await expect(pageB.getByText(sentinelName)).toBeVisible()
     await expect(pageB.getByText(roomName)).toHaveCount(0)
 
-    // Session A creates a new room.
-    await pageA.getByRole('button', { name: 'Add room' }).click()
-    const addRoomDialog = pageA.getByRole('dialog')
-    await addRoomDialog.getByLabel('Name').fill(roomName)
-    await addRoomDialog.getByLabel('Capacity').fill('4')
-    await addRoomDialog.getByRole('button', { name: 'Save' }).click()
-    await expect(pageA.getByText(roomName)).toBeVisible()
+    // Session A creates a second room, after session B's list is definitively loaded.
+    await createRoom(pageA, roomName)
 
-    // Session B, without ever navigating through the SPA (which wouldn't refetch a cache-first
-    // query anyway), still doesn't see it - proving the two sessions' caches are genuinely
-    // independent, not shared.
+    // Session B, which has already fetched and has no reason to fetch again, still doesn't see it -
+    // proving the two sessions' caches are genuinely independent, not shared.
     await expect(pageB.getByText(roomName)).toHaveCount(0)
 
-    // A hard reload resets session B's in-memory Apollo cache, so its next LIST_ROOMS fetch goes
-    // to the network and picks up the new room.
+    // A hard reload discards session B's in-memory Apollo cache, so its next LIST_ROOMS fetch is a
+    // fresh network request and picks up the new room.
     await pageB.reload()
     await expect(pageB.getByText(roomName)).toBeVisible()
   } finally {

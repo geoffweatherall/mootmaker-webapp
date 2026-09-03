@@ -6,8 +6,29 @@
 # the SAME environment name in the sibling checkout.
 # NOTE: `terraform apply -auto-approve` creates real AWS resources in whatever
 # account/credentials are active. Run this deliberately, not from automation.
+#
+# --skip-build deploys the webapp/dist/ that is already present instead of reinstalling,
+# regenerating and rebuilding it. This is what makes Decision 8 of
+# mootmaker/designs/ci-cd-pipeline.md ("build once, promote the same artifact") actually true:
+# the release pipeline builds dist/ once, then deploys those identical files to test and then
+# production. What is deliberately NOT skipped is everything environment-specific - the schema
+# compatibility check against the target API, the env-config.js written after the build, and the
+# S3 sync and CloudFront invalidation. That split is the whole point: one build, per-environment
+# configuration applied at deploy time. Not useful interactively - omit it and this script
+# behaves as it always has.
 set -euo pipefail
 cd "$(dirname "$0")"
+
+skip_build=0
+args=()
+for arg in "$@"; do
+  if [[ "${arg}" == "--skip-build" ]]; then
+    skip_build=1
+  else
+    args+=("${arg}")
+  fi
+done
+set -- "${args[@]+"${args[@]}"}"
 
 environment="${1:-}"
 if [[ -z "${environment}" ]]; then
@@ -52,11 +73,19 @@ site_bucket="$(terraform -chdir=deploy/terraform output -raw site_bucket_name)"
 distribution_id="$(terraform -chdir=deploy/terraform output -raw cloudfront_distribution_id)"
 site_url="$(terraform -chdir=deploy/terraform output -raw site_url)"
 
-npm --prefix webapp install
+if [[ "${skip_build}" == "1" ]]; then
+  if [[ ! -d webapp/dist ]]; then
+    echo "--skip-build given but webapp/dist does not exist - nothing to deploy." >&2
+    exit 1
+  fi
+  echo "Skipping install/codegen/build; deploying the existing webapp/dist."
+else
+  npm --prefix webapp install
 
-# Regenerate from the schema this build will actually be compiled against, rather than trusting
-# whatever is committed. See mootmaker/designs/graphql-schema-sharing.md.
-npm --prefix webapp run codegen
+  # Regenerate from the schema this build will actually be compiled against, rather than trusting
+  # whatever is committed. See mootmaker/designs/graphql-schema-sharing.md.
+  npm --prefix webapp run codegen
+fi
 
 # Refuse to deploy against an API that does not serve the schema this build expects - two
 # independent pipelines have no ordering guarantee, and compiling proves only that the webapp
@@ -68,7 +97,9 @@ schema_access_token="$(curl -sS -X POST "${COGNITO_TOKEN_URL}" \
 ./deploy/verify-schema-compatibility.sh "${GRAPHQL_API_URL}" "${schema_access_token}" \
   "${api_dir}/api/mootmaker.graphql"
 
-npm --prefix webapp run build
+if [[ "${skip_build}" == "0" ]]; then
+  npm --prefix webapp run build
+fi
 
 # Written AFTER the build, into dist/ directly, not as a Vite env file consumed at build time -
 # this is what lets the exact same build be deployed to another environment unmodified (e.g.

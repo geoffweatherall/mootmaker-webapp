@@ -4,7 +4,7 @@ import type { CodegenConfig } from '@graphql-codegen/cli'
  * Generates typed GraphQL operations from the API's schema, replacing the hand-maintained
  * `src/graphql/types.ts` mirror that nothing enforced.
  *
- * Where the schema comes from (see mootmaker/designs/graphql-schema-sharing.md, Decision 7):
+ * Where the schema comes from (see mootmaker/designs/archive/graphql-schema-sharing.md, Decision 7):
  *
  * - **Locally**, the sibling `mootmaker-api` checkout. The sibling layout is already mandated by
  *   this project (deploy.sh resolves `../mootmaker-api` today), so developing against an

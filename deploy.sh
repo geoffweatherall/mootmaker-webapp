@@ -7,8 +7,9 @@
 # NOTE: `terraform apply -auto-approve` creates real AWS resources in whatever
 # account/credentials are active. Run this deliberately, not from automation.
 #
-# --skip-build deploys the webapp/dist/ that is already present instead of reinstalling,
-# regenerating and rebuilding it. This is what makes Decision 8 of
+# --skip-build deploys the webapp/dist/ that is already present instead of regenerating and
+# rebuilding it. Dependencies are still installed - the schema compatibility check needs them.
+# This is what makes Decision 8 of
 # mootmaker/designs/ci-cd-pipeline.md ("build once, promote the same artifact") actually true:
 # the release pipeline builds dist/ once, then deploys those identical files to test and then
 # production. What is deliberately NOT skipped is everything environment-specific - the schema
@@ -73,15 +74,21 @@ site_bucket="$(terraform -chdir=deploy/terraform output -raw site_bucket_name)"
 distribution_id="$(terraform -chdir=deploy/terraform output -raw cloudfront_distribution_id)"
 site_url="$(terraform -chdir=deploy/terraform output -raw site_url)"
 
-if [[ "${skip_build}" == "1" ]]; then
-  if [[ ! -d webapp/dist ]]; then
-    echo "--skip-build given but webapp/dist does not exist - nothing to deploy." >&2
-    exit 1
-  fi
-  echo "Skipping install/codegen/build; deploying the existing webapp/dist."
-else
-  npm --prefix webapp install
+if [[ "${skip_build}" == "1" && ! -d webapp/dist ]]; then
+  echo "--skip-build given but webapp/dist does not exist - nothing to deploy." >&2
+  exit 1
+fi
 
+# Runs in BOTH paths, including --skip-build. verify-schema-compatibility.sh below shells out to
+# `node -e` requiring the graphql module from webapp/node_modules, so skipping this breaks the very
+# check --skip-build deliberately keeps - which is exactly how the v0.0.3 release failed, with
+# "Cannot find module 'graphql'". Installing dependencies does not touch dist/, so the promoted
+# bundle is still the one that was built and tested.
+npm --prefix webapp install
+
+if [[ "${skip_build}" == "1" ]]; then
+  echo "Skipping codegen/build; deploying the existing webapp/dist."
+else
   # Regenerate from the schema this build will actually be compiled against, rather than trusting
   # whatever is committed. See mootmaker/designs/graphql-schema-sharing.md.
   npm --prefix webapp run codegen

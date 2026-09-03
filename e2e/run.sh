@@ -49,7 +49,7 @@ cleanup() {
     # teardown-ephemeral-env.sh's own regex check already refuses anything that doesn't look like a
     # recognized ephemeral name, so by the time either destroy prompt is reached, that's already
     # guaranteed.
-    yes yes | "${ephemeral_envs_dir}/teardown-ephemeral-env.sh" "${environment}" || true
+    "${ephemeral_envs_dir}/teardown-ephemeral-env.sh" "${environment}" --yes || true
   fi
 }
 trap cleanup EXIT

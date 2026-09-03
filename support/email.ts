@@ -4,7 +4,7 @@ import { simpleParser } from 'mailparser'
 
 const MAIL_DOMAIN = 'mail.mootmaker.com'
 
-// Shared, persistent pipeline, owned by mootmaker-test-infra (see
+// Shared, persistent pipeline, owned by mootmaker-email-testing (see
 // mootmaker/docs/reference/testing-strategy.md#reading-cognitos-emails-in-tests - one SQS queue, not one per
 // environment, per test, or per frontend), so concurrent runs/tests distinguish their own mail
 // purely by address, not by infrastructure. Every test that needs a real emailed code should call
@@ -27,7 +27,7 @@ function queueUrl(): string {
 /**
  * Long-polls the shared inbound-mail queue until a message addressed to `email` arrives, then
  * extracts the verification code from its body and deletes the message (so it isn't left for a
- * later, unrelated poll to stumble over - see the queue's 14-day retention in mootmaker-test-infra's
+ * later, unrelated poll to stumble over - see the queue's 14-day retention in mootmaker-email-testing's
  * sqs.tf, which exists for debugging a stuck run, not as a reason to leave consumed messages lying
  * around).
  *

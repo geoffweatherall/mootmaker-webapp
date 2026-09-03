@@ -1,0 +1,77 @@
+# Required PR gate for mootmaker-webapp. See mootmaker/designs/ci-cd-pipeline.md Decision 12.
+#
+# Deliberately fuller than the two Java repos' gates - that asymmetry is intentional and
+# explained in the design (this repo has lint and codegen tooling that the Maven repos do
+# not yet have; see the Spotless Non-goal).
+#
+# All five checks run without AWS. The Playwright suite here is the MSW-mocked integration
+# suite in webapp/, NOT the acceptance/ or e2e/ suites at the repository root - those need a
+# real deployed environment and run in release-build.yml instead.
+#
+# The job name below is the branch-protection contract. Once main requires the "pr-checks"
+# context, renaming this job leaves every PR stuck on "Expected - waiting for status" with
+# no way to merge. Treat it as frozen.
+name: PR checks
+
+on:
+  pull_request:
+    branches: [main]
+  # Lets the gate be re-run without pushing an empty commit.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A new push supersedes the previous run; nothing here touches shared state, so cancelling
+# mid-flight is safe. Deliberately unlike release.yml, which queues rather than cancels.
+concurrency:
+  group: pr-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pr-checks:
+    name: pr-checks
+    runs-on: ubuntu-latest
+    # Every check lives in webapp/, which has its own package.json and lockfile. The root
+    # package.json holds the acceptance/ and e2e/ suites, which are deliberately not run here.
+    defaults:
+      run:
+        working-directory: webapp
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: webapp/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # The typecheck half of `npm run build`. Running tsc alone rather than the full build
+      # keeps the gate fast; the production bundle is built in release-build.yml, once.
+      - name: Typecheck
+        run: npx tsc -b
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      # Regenerates from the published schema and fails if the committed output differs.
+      # Already required as of the graphql-schema-sharing work; folded in here rather than
+      # duplicated in a second workflow.
+      - name: GraphQL codegen is up to date
+        run: npm run codegen:check
+
+      # Both Playwright projects pin `channel: 'chrome'` (see webapp/playwright.config.ts),
+      # so this installs real Google Chrome, not the bundled chromium build.
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chrome
+
+      # playwright.config.ts starts `vite --mode mock` itself, which serves the MSW-mocked
+      # GraphQL API and the fixture-backed auth double. No AWS, no deployed API.
+      - name: Integration tests (MSW-mocked)
+        run: npm run test:integration

@@ -16,6 +16,7 @@ import dayjs from 'dayjs'
 import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/authContext'
+import { runtimeConfig } from '../config'
 import emptyMeetings from '../assets/empty-meetings.svg'
 import homeHero from '../assets/home-hero.svg'
 import homeSignedIn from '../assets/home-signed-in.svg'
@@ -112,8 +113,8 @@ export default function HomePage() {
   if (!email) {
     // Not secrets - this is a demo system, so the whole point is that these are shown here for
     // anyone to use without signing up. See mootmaker-api's aws_cognito_user.demo.
-    const demoEmail = import.meta.env.VITE_DEMO_USER_EMAIL
-    const demoPassword = import.meta.env.VITE_DEMO_USER_PASSWORD
+    const demoEmail = runtimeConfig.DEMO_USER_EMAIL
+    const demoPassword = runtimeConfig.DEMO_USER_PASSWORD
     const hasDemoUser = Boolean(demoEmail && demoPassword)
 
     return (

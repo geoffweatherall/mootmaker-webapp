@@ -52,14 +52,6 @@ site_bucket="$(terraform -chdir=deploy/terraform output -raw site_bucket_name)"
 distribution_id="$(terraform -chdir=deploy/terraform output -raw cloudfront_distribution_id)"
 site_url="$(terraform -chdir=deploy/terraform output -raw site_url)"
 
-cat > webapp/.env.production <<EOF
-VITE_GRAPHQL_API_URL=${GRAPHQL_API_URL}
-VITE_COGNITO_USER_POOL_ID=${COGNITO_USER_POOL_ID}
-VITE_COGNITO_CLIENT_ID=${COGNITO_WEBAPP_CLIENT_ID}
-VITE_DEMO_USER_EMAIL=${DEMO_USER_EMAIL}
-VITE_DEMO_USER_PASSWORD=${DEMO_USER_PASSWORD}
-EOF
-
 npm --prefix webapp install
 
 # Regenerate from the schema this build will actually be compiled against, rather than trusting
@@ -77,6 +69,20 @@ schema_access_token="$(curl -sS -X POST "${COGNITO_TOKEN_URL}" \
   "${api_dir}/api/mootmaker.graphql"
 
 npm --prefix webapp run build
+
+# Written AFTER the build, into dist/ directly, not as a Vite env file consumed at build time -
+# this is what lets the exact same build be deployed to another environment unmodified (e.g.
+# promoted from test to production without rebuilding). See webapp/src/vite-env.d.ts and
+# mootmaker/designs/ci-cd-pipeline.md Decision 8. index.html loads this before main.tsx runs.
+cat > webapp/dist/env-config.js <<EOF
+window.__MOOTMAKER_CONFIG__ = {
+  "GRAPHQL_API_URL": "${GRAPHQL_API_URL}",
+  "COGNITO_USER_POOL_ID": "${COGNITO_USER_POOL_ID}",
+  "COGNITO_CLIENT_ID": "${COGNITO_WEBAPP_CLIENT_ID}",
+  "DEMO_USER_EMAIL": "${DEMO_USER_EMAIL}",
+  "DEMO_USER_PASSWORD": "${DEMO_USER_PASSWORD}"
+}
+EOF
 
 aws s3 sync webapp/dist "s3://${site_bucket}" --delete
 aws cloudfront create-invalidation --distribution-id "${distribution_id}" --paths "/*" >/dev/null

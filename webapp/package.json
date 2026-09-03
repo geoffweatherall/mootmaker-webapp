@@ -4,12 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/generate-env-config.mjs development",
     "dev": "vite",
     "codegen": "graphql-codegen --config codegen.ts",
     "codegen:check": "graphql-codegen --config codegen.ts && git diff --exit-code src/graphql/generated",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
+    "predev:mock": "node scripts/generate-env-config.mjs mock",
     "dev:mock": "vite --mode mock",
     "test:unit": "vitest run",
     "test:integration": "playwright test"

@@ -9,6 +9,15 @@
   </head>
   <body>
     <div id="root"></div>
+    <!--
+      Sets window.__MOOTMAKER_CONFIG__ before main.tsx (a module script, always deferred) runs -
+      see src/vite-env.d.ts and src/config.ts. This file is NOT part of the build: `npm run dev`/
+      `dev:mock` generate it locally (see scripts/generate-env-config.mjs, wired via the predev/
+      predev:mock npm hooks), and a real deploy writes it into dist/ after the build, from that
+      target environment's Terraform outputs - see deploy.sh. That split is what lets one built
+      bundle be deployed to test then production unmodified.
+    -->
+    <script src="/env-config.js"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

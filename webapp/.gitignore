@@ -27,6 +27,11 @@ playwright/.auth
 # secrets, no real infrastructure, see testing-strategy.md.
 !.env.mock
 
+# Generated locally from .env/.env.mock by scripts/generate-env-config.mjs (predev/predev:mock
+# npm hooks) - see src/vite-env.d.ts. A real deploy writes this into dist/ separately; see
+# deploy.sh. Never committed - it's either a per-developer local file or a per-deploy artifact.
+public/env-config.js
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

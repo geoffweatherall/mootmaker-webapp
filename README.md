@@ -65,7 +65,7 @@ Beyond the four-colour palette in [theme/tokens.ts](webapp/src/theme/tokens.ts) 
 
 ## Calling the API
 
-The browser calls the AppSync GraphQL endpoint directly via Apollo Client. Every request carries the signed-in user's Cognito **JWT id token** in the `Authorization` header (attached by the `SetContextLink` in [apolloClient.ts](webapp/src/apolloClient.ts)); AppSync rejects requests without a valid token with HTTP 401. The endpoint URL, Cognito ids, and demo user credentials are baked into the bundle at build time from the Vite environment variables `VITE_GRAPHQL_API_URL`, `VITE_COGNITO_USER_POOL_ID`, `VITE_COGNITO_CLIENT_ID`, `VITE_DEMO_USER_EMAIL` and `VITE_DEMO_USER_PASSWORD` (see [.env.example](webapp/.env.example)); `deploy.sh` generates `webapp/.env.production` from the deployed API's Terraform outputs. None of these are secrets — the Cognito ids are public identifiers (the security lives in Cognito's password authentication and JWT signatures), and the demo credentials are *meant* to be public: this is a demo system, so the home page shows them to every signed-out visitor (see [Home page](#home-page) below).
+The browser calls the AppSync GraphQL endpoint directly via Apollo Client. Every request carries the signed-in user's Cognito **JWT id token** in the `Authorization` header (attached by the `SetContextLink` in [apolloClient.ts](webapp/src/apolloClient.ts)); AppSync rejects requests without a valid token with HTTP 401. The endpoint URL, Cognito ids, and demo user credentials are read at **page load**, not baked into the bundle at build time: `index.html` loads `/env-config.js` (a small `window.__MOOTMAKER_CONFIG__ = {...}` script, see [src/vite-env.d.ts](webapp/src/vite-env.d.ts) and [src/config.ts](webapp/src/config.ts)) before `main.tsx` runs. Locally, `npm run dev`/`dev:mock` generate it from `.env`/`.env.mock` (see [.env.example](webapp/.env.example) and [scripts/generate-env-config.mjs](webapp/scripts/generate-env-config.mjs)); a real deploy has `deploy.sh` write it into `webapp/dist/env-config.js` from the deployed API's Terraform outputs, *after* the build — this is what lets one built bundle be deployed to more than one environment unmodified. None of these are secrets — the Cognito ids are public identifiers (the security lives in Cognito's password authentication and JWT signatures), and the demo credentials are *meant* to be public: this is a demo system, so the home page shows them to every signed-out visitor (see [Home page](#home-page) below).
 
 ### Authentication
 
@@ -84,7 +84,7 @@ Authentication is an **Amazon Cognito user pool** owned by the API project (see 
 
 [HomePage](webapp/src/pages/HomePage.tsx) shows entirely different content depending on sign-in state:
 
-- **Signed out**: since every other page requires sign-in, there's nothing of the user's own to show yet. Instead the page leads with an embedded [SignInForm](webapp/src/components/SignInForm.tsx) pre-filled with the demo user's email and password (both shown as plain text alongside it, from `VITE_DEMO_USER_EMAIL`/`VITE_DEMO_USER_PASSWORD` — see [Calling the API](#calling-the-api) above) so a first-time visitor can sign in with one click, and a second section spelling out the three steps to sign up for a real account before the sign-up button. If those two env vars aren't set (e.g. a `.env` predating this feature), the credential display and pre-fill are skipped and the form is just left blank.
+- **Signed out**: since every other page requires sign-in, there's nothing of the user's own to show yet. Instead the page leads with an embedded [SignInForm](webapp/src/components/SignInForm.tsx) pre-filled with the demo user's email and password (both shown as plain text alongside it, from `runtimeConfig.DEMO_USER_EMAIL`/`DEMO_USER_PASSWORD` — see [Calling the API](#calling-the-api) above) so a first-time visitor can sign in with one click, and a second section spelling out the three steps to sign up for a real account before the sign-up button. If those two config values aren't set (e.g. an environment not seeded with the demo user), the credential display and pre-fill are skipped and the form is just left blank.
 - **Signed in, with a linked Person**: "Calendar" (the signed-in user's own [PersonCalendarPage](webapp/src/pages/PersonCalendarPage.tsx)), "Room availability today", and "Add Meeting" buttons, plus two agenda lists — "Today" and "Tomorrow" — of the meetings the user is organising or attending, sorted by start time and linking to [MeetingDetailsPage](webapp/src/pages/MeetingDetailsPage.tsx).
 - **Signed in, with no linked Person** (e.g. the e2e test user, created directly rather than through sign-up): an error `Alert` — "Your account hasn't been set up properly" — in place of "Calendar" and the agenda lists, rather than guessing by falling back to some other person's data. [AuthProvider](webapp/src/auth/AuthProvider.tsx) exposes a `personLoading` flag alongside `personId` so this only renders once the `myPerson` lookup has actually finished, not during the brief window right after sign-in before it resolves. "Room availability today" and "Add Meeting" are unaffected, since neither is tied to a Person - though "Add Meeting" won't have an organiser pre-filled for these accounts (see below).
 
@@ -209,20 +209,22 @@ cp .env.example .env        # then fill in real values: source the API project's
                             # DEMO_USER_EMAIL and DEMO_USER_PASSWORD into the
                             # five VITE_ variables.
 npm install
-npm run dev                 # Vite dev server on http://localhost:5173
+npm run dev                 # generates public/env-config.js from .env (predev hook), then the
+                            # Vite dev server on http://localhost:5173 - see Calling the API
 npm run lint                # oxlint
-npm run build               # type-check (tsc -b) + production build into dist/
+npm run build               # type-check (tsc -b) + production build into dist/ (no env-config.js -
+                            # a release build is environment-agnostic; deploy.sh writes one per target)
 ```
 
 ### Deploy / undeploy
 
 `./deploy.sh <environment>` performs, in order:
 
-1. Sources the API project's `authenticate.sh <environment>` to obtain `GRAPHQL_API_URL`, the `COGNITO_*` variables, and the `DEMO_*` demo-user credentials from that environment's Terraform outputs (fails fast if the API checkout or that environment's deployment is missing).
+1. Sources the API project's `authenticate.sh <environment>` to obtain `GRAPHQL_API_URL`, the `COGNITO_*` variables, and the `DEMO_*` demo-user credentials from that environment's Terraform outputs (fails fast if the API checkout or that environment's deployment is missing) — so this needs that environment's `mootmaker-api` already deployed.
 2. `terraform init` (state key `<environment>/mootmaker-webapp/terraform.tfstate`) + `terraform apply -auto-approve -var="environment=<environment>"` in [deploy/terraform](deploy/terraform) to create/update the S3 bucket and CloudFront distribution.
-3. Writes `webapp/.env.production` with the API URL, Cognito user pool id, webapp client id, and demo user email/password.
-4. `npm install` and `npm run build` to produce `webapp/dist/`.
-5. `aws s3 sync webapp/dist s3://<bucket> --delete` to upload the build and remove stale files.
+3. `npm install` and `npm run build` to produce `webapp/dist/` — an environment-agnostic build, no config baked in.
+4. Writes `webapp/dist/env-config.js` with the API URL, Cognito user pool id, webapp client id, and demo user email/password from step 1 — see [Calling the API](#calling-the-api).
+5. `aws s3 sync webapp/dist s3://<bucket> --delete` to upload the build (including `env-config.js`) and remove stale files.
 6. Creates a CloudFront invalidation for `/*` so the new version is served immediately, then prints the site URL.
 
 `./undeploy.sh <environment>` runs `terraform destroy` (with interactive confirmation) — it deletes that environment's distribution and bucket including all uploaded assets.

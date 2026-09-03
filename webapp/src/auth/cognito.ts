@@ -5,10 +5,11 @@ import {
   CognitoUserPool,
   type CognitoUserSession,
 } from 'amazon-cognito-identity-js'
+import { runtimeConfig } from '../config'
 
 const userPool = new CognitoUserPool({
-  UserPoolId: import.meta.env.VITE_COGNITO_USER_POOL_ID,
-  ClientId: import.meta.env.VITE_COGNITO_CLIENT_ID,
+  UserPoolId: runtimeConfig.COGNITO_USER_POOL_ID,
+  ClientId: runtimeConfig.COGNITO_CLIENT_ID,
 })
 
 /**

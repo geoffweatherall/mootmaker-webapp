@@ -18,8 +18,8 @@ Four layers, in `webapp/` and at the repo root:
 
 **2026-08-19**: restructured from two layers to four, once a second frontend
 (`mootmaker-android`) meant this repo needed its own real-deployed-environment suites rather than
-sharing one across frontends via a separate `mootmaker-e2e` repo — see [mootmaker-test-infra's
-README](https://github.com/geoffweatherall/mootmaker-test-infra#history) for that history. The two
+sharing one across frontends via a separate `mootmaker-e2e` repo — see [mootmaker-ephemeral-envs'
+README](https://github.com/geoffweatherall/mootmaker-ephemeral-envs#history) for that history. The two
 local layers didn't change in substance, only the "Integration tests" name (previously described
 in prose as "Integration tests against a mocked API"; the `npm run test:e2e` script that ran them
 is now `npm run test:integration` — the old name collided with what "e2e" now means at the repo
@@ -76,7 +76,7 @@ a re-run of anything the mocked-API integration layer already covers.
 
 - **`sign-up.spec.ts`**: a real sign-up through the real deployed webapp, against the real
   deployed Cognito pool, receiving a real emailed verification code via
-  [mootmaker-test-infra](https://github.com/geoffweatherall/mootmaker-test-infra)'s SES→SNS→SQS
+  [mootmaker-email-testing](https://github.com/geoffweatherall/mootmaker-email-testing)'s SES→SNS→SQS
   pipeline and completing with it. Proves Cognito + SES + the webapp actually work together end to
   end.
 - **`forgot-password.spec.ts`**: same proof, for the password-reset code path. Its precondition
@@ -85,7 +85,7 @@ a re-run of anything the mocked-API integration layer already covers.
 - **`smoke.spec.ts`**: the deployed home page actually loads (DNS, TLS certificate, CloudFront/S3
   serving).
 
-Moved here 2026-08-19 from `mootmaker-e2e` (now `mootmaker-test-infra`), unchanged in behaviour —
+Moved here 2026-08-19 from `mootmaker-e2e` (now `mootmaker-ephemeral-envs`), unchanged in behaviour —
 see that repo's own testing-strategy.md for this suite's original build/verification history
 (built and verified against real AWS 2026-08-15).
 

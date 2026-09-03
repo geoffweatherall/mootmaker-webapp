@@ -43,7 +43,7 @@ fi
 cleanup() {
   if [[ -n "${owns_environment}" ]]; then
     echo "Tearing down '${environment}' (created for this run)..." >&2
-    yes yes | "${ephemeral_envs_dir}/teardown-ephemeral-env.sh" "${environment}" || true
+    "${ephemeral_envs_dir}/teardown-ephemeral-env.sh" "${environment}" --yes || true
   fi
 }
 trap cleanup EXIT

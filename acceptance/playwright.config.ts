@@ -31,34 +31,20 @@ export default defineConfig({
   // has enough specs that serial execution is the actual bottleneck.
   fullyParallel: false,
   workers: 1,
-  // Zero retries in BOTH contexts. This used to be `isCI ? 1 : 0`, on the reasonable-sounding
-  // theory that one retry smooths over transient real-AWS flakiness in an unattended run. That
-  // theory is wrong for this suite specifically, and mootmaker-webapp#30 is what proved it.
+  // One retry in CI, none locally: in an unattended release nobody is watching to re-run the way
+  // a human would, and most of this suite IS independent - forgot-password.spec.ts, for instance,
+  // makes a fresh Cognito account per attempt and waits on a real SES->SNS->SQS email, which is
+  // exactly the kind of genuine transient a retry should absorb.
   //
-  // This suite deliberately runs against a shared environment that is never torn down mid-suite,
-  // and several tests here reason explicitly about what earlier tests have accumulated in it (see
-  // F.53/F.54's own comments in add-meeting.spec.ts). Playwright's retry model assumes the
-  // opposite - that re-running a test from a clean slate is meaningful. Here a retry re-runs the
-  // test against an environment that now also contains everything the FAILED attempt created.
+  // The exception is add-meeting.spec.ts, which opts out at file scope. See the long comment
+  // there: that file's tests reason about what earlier tests have accumulated in this shared,
+  // never-torn-down-mid-suite environment, and a retry re-runs them against an environment that
+  // now also contains the failed attempt's own fixtures. Retrying those cannot help and provably
+  // makes things worse (mootmaker-webapp#30).
   //
-  // For F.53 that is not merely unhelpful, it is deterministic failure. The test creates rooms
-  // named `Suggest Room 5 <uniqueId()>` and asserts "suggest a room" picks its own. On a retry
-  // there are two capacity-5 rooms - attempt 1's and attempt 2's - and SuggestRoomHandler ranks
-  // smallest-surplus-first with ties broken by NAME. uniqueId() is `Date.now()`-based and 13
-  // digits, so lexicographic order is chronological order, so attempt 1's room wins every time.
-  // The retry cannot pass. Observed exactly that way in the v0.0.6 release: expected the room
-  // ending -471, got the one ending -1791, created 121 seconds earlier - which was attempt 1's
-  // own 120-second timeout.
-  //
-  // So the retry did not smooth over the transient. It converted a recoverable slow-environment
-  // timeout into a certain failure, and reported it as a confusing wrong-room assertion that hid
-  // the real first cause. Failing honestly on the first attempt is both more truthful and, since
-  // the second attempt was never going to pass, no more likely to fail a release.
-  //
-  // A genuine transient is still recoverable: re-dispatch release.yml. That is a human choosing to
-  // retry with full knowledge, rather than the suite silently retrying into a state it has already
-  // poisoned.
-  retries: 0,
+  // Briefly set to 0 globally on 2026-09-04 as the fix for #30. That was too blunt: the very next
+  // release failed on the forgot-password email test, which a retry would rightly have absorbed.
+  retries: isCI ? 1 : 0,
   reporter: [
     ['list'],
     // Human-readable, local only: a self-contained, browsable report (`npx playwright show-report

@@ -1,7 +1,7 @@
 # Acceptance test case catalog
 
 A detailed, per-use-case design for every test in the `acceptance/` suite — one entry per case in
-[mootmaker/use-cases.md](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md),
+[mootmaker/docs/reference/use-cases.md](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md),
 written to be reviewed by a human before any test code exists, and precise enough for Claude to
 generate that code from later. This catalog is the *design*; [`../tests/`](../tests/) is the
 *implementation* — every one of the 99 use cases now has a spec (see each entry's **Status**),
@@ -136,7 +136,7 @@ particular run order, the same discipline the two existing specs already follow.
   (`CreateMeetingHandler.parseOnFifteenMinuteBoundary`), the time pickers' `timeSteps`
   (`AddMeetingPage.tsx`'s `MEETING_TIME_STEPS`), the mocked-layer validation
   (`testSupport/mocks/handlers.ts`), and every doc/error-message string across `mootmaker-api`,
-  this repo, and `mootmaker/use-cases.md`. See [f-add-meeting.md](f-add-meeting.md)'s F.40/F.41
+  this repo, and `mootmaker/docs/reference/use-cases.md`. See [f-add-meeting.md](f-add-meeting.md)'s F.40/F.41
   entries, now rewritten to describe the fixed behaviour rather than the drift.
 
 ## Known doc/code drift found while writing this catalog

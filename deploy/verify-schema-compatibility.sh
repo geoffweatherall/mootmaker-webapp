@@ -2,7 +2,7 @@
 # Refuses to deploy the webapp against an API that does not serve the schema this build was
 # compiled against.
 #
-# Why this exists (mootmaker/designs/graphql-schema-sharing.md, Decision 8): the webapp and the API
+# Why this exists (mootmaker/designs/archive/graphql-schema-sharing.md, Decision 8): the webapp and the API
 # deploy independently, so building successfully proves only that the webapp COMPILES against a
 # schema - not that the target environment SERVES it. This is not hypothetical. During
 # date-time-format-settings, mootmaker-webapp#10 was merged before mootmaker-api#8, so the webapp's

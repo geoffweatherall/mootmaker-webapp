@@ -17,7 +17,7 @@ export function useLocationToast() {
     // later one.
     const state = location.state as (ToastState & Record<string, unknown>) | null
     const stateMessage = state?.toast ?? null
-    if (stateMessage) {
+    if (state && stateMessage) {
       setMessage(stateMessage)
       // Clear the TOAST from the navigation state so it doesn't reappear on refresh/back, and so
       // this effect doesn't re-fire for the same message on the next unrelated render.

@@ -186,11 +186,15 @@ export default function RoomAvailabilityPage() {
     // Include the just-created meeting only if the server has not caught up yet AND it belongs on
     // the day being shown - navigating to another date must not drag it along. Once a later fetch
     // returns it, the fetched copy is authoritative and this adds nothing.
+    // Bounds come from selectedDate rather than meetingsFilter: the generated MeetingsFilter type
+    // has optional fields, and selectedDate is always a Dayjs, so this needs no narrowing.
+    const dayStart = selectedDate.startOf('day').format(DATE_TIME_FORMAT)
+    const dayEnd = selectedDate.startOf('day').add(1, 'day').format(DATE_TIME_FORMAT)
     const carried =
       createdMeeting &&
       !fetched.some((meeting) => meeting.id === createdMeeting.id) &&
-      createdMeeting.startTime >= meetingsFilter.fromStartTime &&
-      createdMeeting.startTime < meetingsFilter.toEndTime
+      createdMeeting.startTime >= dayStart &&
+      createdMeeting.startTime < dayEnd
         ? [createdMeeting]
         : []
 
@@ -204,7 +208,7 @@ export default function RoomAvailabilityPage() {
       list.sort((a, b) => a.startTime.localeCompare(b.startTime))
     }
     return map
-  }, [meetingsData, createdMeeting, meetingsFilter])
+  }, [meetingsData, createdMeeting, selectedDate])
 
   const loading = roomsLoading || meetingsLoading
   // True only on a genuine first load - no cached rooms, or no cached meetings for the currently

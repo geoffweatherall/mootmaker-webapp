@@ -23,6 +23,27 @@ function requireEnv(name: string): string {
   return value
 }
 
+// NO RETRIES IN THIS FILE, deliberately - mootmaker-webapp#30.
+//
+// The suite's config retries once in CI, which is right for tests that are independent. These are
+// not. This whole file reasons about what earlier tests have accumulated in a shared environment
+// that is never torn down mid-suite (see F.52/F.53/F.54's own comments below), and Playwright's
+// retry model assumes the opposite: that re-running a test starts from the same place. Here a
+// retry re-runs against an environment that now ALSO contains everything the failed attempt
+// created.
+//
+// For F.53 that is deterministic failure, not bad luck. It creates rooms named
+// `Suggest Room 5 <uniqueId()>` and asserts suggest-a-room picks its own. On a retry there are two
+// capacity-5 rooms, and SuggestRoomHandler ranks smallest-surplus-first with ties broken by NAME.
+// uniqueId() is Date.now()-based and 13 digits, so lexicographic order is chronological order, so
+// the FAILED attempt's room wins the tiebreak every time. The retry cannot pass. Observed exactly
+// that way in the v0.0.6 release: expected the room ending -471, got the one ending -1791, created
+// 121 seconds earlier - which was attempt 1's own 120-second timeout.
+//
+// So a retry here does not absorb a transient. It converts a recoverable timeout into a certain
+// failure, and reports it as a confusing wrong-room assertion that hides the real first cause.
+test.describe.configure({ retries: 0 })
+
 // Real Date.now()/Math.random(), deliberately not derived from any pinned clock - see each test's
 // own reasoning for why it needs a fresh value every run even against an already-deployed,
 // repeatedly-iterated-against environment.

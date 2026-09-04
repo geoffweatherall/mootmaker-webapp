@@ -90,7 +90,7 @@ if [[ "${skip_build}" == "1" ]]; then
   echo "Skipping codegen/build; deploying the existing webapp/dist."
 else
   # Regenerate from the schema this build will actually be compiled against, rather than trusting
-  # whatever is committed. See mootmaker/designs/graphql-schema-sharing.md.
+  # whatever is committed. See mootmaker/designs/archive/graphql-schema-sharing.md.
   npm --prefix webapp run codegen
 fi
 

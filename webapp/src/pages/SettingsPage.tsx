@@ -497,7 +497,7 @@ function PersonDialog({ person, onClose, onSaved }: PersonDialogProps) {
 
 /**
  * Everyone gets this section - self-service account deletion, not gated on isAdmin. A simple
- * confirmation dialog (no re-authentication step - see mootmaker/delete-my-account.md's "Confirm
+ * confirmation dialog (no re-authentication step - see mootmaker/designs/archive/delete-my-account.md's "Confirm
  * friction" decision) that explicitly warns about organised-meeting cancellation before the user
  * commits, since that's a real side effect on other people's data, not just their own.
  */

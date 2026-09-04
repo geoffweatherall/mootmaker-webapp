@@ -2,7 +2,7 @@
 
 The overall cross-repo strategy (environments, the approach to reading Cognito's emails in tests,
 and how "vibe coding" shapes all of this) is recorded in
-[mootmaker/testing-strategy.md](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/testing-strategy.md).
+[mootmaker/docs/reference/testing-strategy.md](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/testing-strategy.md).
 This document covers what's specific to this repo.
 
 ## Layers
@@ -98,7 +98,7 @@ see that repo's own testing-strategy.md for this suite's original build/verifica
 
 New 2026-08-19. Where `e2e/` proves the infrastructure is wired correctly, `acceptance/` proves
 the *use cases* in
-[mootmaker/use-cases.md](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md) are
+[mootmaker/docs/reference/use-cases.md](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md) are
 actually satisfied — real deployed webapp + API + Cognito, real email where a scenario specifically
 needs it, a pre-verified account (the always-present demo user, or one created via
 `support/cognitoAdmin.ts`) everywhere else. See [acceptance/README.md](acceptance/README.md) for

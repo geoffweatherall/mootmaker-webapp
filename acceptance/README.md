@@ -1,7 +1,7 @@
 # acceptance
 
 Real-deployed-environment tests proving mootmaker-webapp actually satisfies the use cases in
-[mootmaker/use-cases.md](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md) — as
+[mootmaker/docs/reference/use-cases.md](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md) — as
 opposed to [../e2e/](../e2e/), which only proves the underlying infrastructure (Cognito, SES,
 DNS/TLS/CloudFront) is wired correctly, with a deliberately small, curated set of specs. See
 [../testing-strategy.md](../testing-strategy.md#acceptance-tests) for how this fits the overall
@@ -102,7 +102,7 @@ outcome (data changed, something new is visible somewhere else), not just "no er
   wiring it up as-is would never have shown a toast in practice. Now re-reads `location.state` in a
   `useEffect` keyed on `location`, so it reacts to every navigation, not just the first render.
   `add-meeting.spec.ts` now asserts the actual toast text.
-- **Use cases aren't tagged per-frontend yet** — see `mootmaker/use-cases.md`'s own "Notes" section.
+- **Use cases aren't tagged per-frontend yet** — see `mootmaker/docs/reference/use-cases.md`'s own "Notes" section.
   Not a problem yet with only one frontend automated, but will matter once `mootmaker-android` gets
   its own `acceptance/` suite.
 - ~~`add-meeting.spec.ts` flaked outside business hours.~~ **Fixed 2026-08-19.** Caught for real: a

@@ -3,7 +3,7 @@ import { createSvgIcon } from '@mui/material/utils'
 /**
  * Mootmaker's own nav/account icon set, replacing the generic @mui/icons-material glyphs so the
  * sidebar carries some of the brand's own flat, rounded shape language (see
- * ../../../mootmaker/branding/README.md) instead of stock Material icons. Built with
+ * ../../../mootmaker/docs/showcase/branding/README.md) instead of stock Material icons. Built with
  * createSvgIcon exactly like MUI's own icons, so they drop into ListItemIcon/Avatar the same way
  * and keep inheriting colour (selected/hover/disabled) via `currentColor` - the one exception is
  * FeedbackIcon's chat dots, which use the fixed brand "Paper" tone for contrast against the

@@ -6,7 +6,7 @@ export type ThemeMode = 'light' | 'dark'
 
 // Inter carries body/UI text - a workhorse face built for small sizes in dense forms and tables.
 // Outfit carries display text - geometric with rounded terminals, echoing the logo mark's own
-// flat rounded shape language (see mootmaker/branding/README.md) - so headings read as distinctly
+// flat rounded shape language (see mootmaker/docs/showcase/branding/README.md) - so headings read as distinctly
 // "Mootmaker" rather than generic MUI/system-font chrome. Both loaded self-hosted via @fontsource
 // in main.tsx.
 const bodyFont = '"Inter", "Segoe UI", system-ui, sans-serif'

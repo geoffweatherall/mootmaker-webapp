@@ -18,7 +18,7 @@ import {
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import emptyRooms from '../assets/empty-rooms.svg'
 import { EmptyState } from '../components/EmptyState'
 import { ErrorBanner } from '../components/ErrorBanner'
@@ -125,6 +125,25 @@ export default function RoomAvailabilityPage() {
 
   // Only the selected day's meetings, across every room - the API filters server-side so this
   // page never fetches more than one day's worth of meetings.
+  // A meeting created on AddMeetingPage arrives with the navigation that brought us here. Latch it
+  // into component state on first sight rather than reading location.state where it is used:
+  // useLocationToast (in Layout) rewrites the navigation state to drop the toast as soon as it has
+  // shown it, so location.state is not something to depend on across renders.
+  //
+  // Why it is carried at all: this page reads meetings through the `bucket + startTime` GSI, and
+  // DynamoDB rejects ConsistentRead on an index - so a query issued immediately after the write can
+  // legitimately come back without the meeting just created, and `cache-and-network` will not fetch
+  // again on its own. The result is a schedule that permanently omits the meeting the user was just
+  // told was scheduled. See mootmaker-webapp#12.
+  const location = useLocation()
+  const [createdMeeting, setCreatedMeeting] = useState<Meeting | null>(null)
+  useEffect(() => {
+    const incoming = (location.state as { createdMeeting?: Meeting } | null)?.createdMeeting
+    if (incoming) {
+      setCreatedMeeting(incoming)
+    }
+  }, [location.state])
+
   const meetingsFilter = useMemo<MeetingsFilter>(() => {
     const dayStart = selectedDate.startOf('day')
     return {
@@ -163,8 +182,24 @@ export default function RoomAvailabilityPage() {
   }, [gridScrollEl, gridContentEl])
 
   const meetingsByRoom = useMemo(() => {
+    const fetched = meetingsData?.meetings ?? []
+    // Include the just-created meeting only if the server has not caught up yet AND it belongs on
+    // the day being shown - navigating to another date must not drag it along. Once a later fetch
+    // returns it, the fetched copy is authoritative and this adds nothing.
+    // Bounds come from selectedDate rather than meetingsFilter: the generated MeetingsFilter type
+    // has optional fields, and selectedDate is always a Dayjs, so this needs no narrowing.
+    const dayStart = selectedDate.startOf('day').format(DATE_TIME_FORMAT)
+    const dayEnd = selectedDate.startOf('day').add(1, 'day').format(DATE_TIME_FORMAT)
+    const carried =
+      createdMeeting &&
+      !fetched.some((meeting) => meeting.id === createdMeeting.id) &&
+      createdMeeting.startTime >= dayStart &&
+      createdMeeting.startTime < dayEnd
+        ? [createdMeeting]
+        : []
+
     const map = new Map<string, Meeting[]>()
-    for (const meeting of meetingsData?.meetings ?? []) {
+    for (const meeting of [...fetched, ...carried]) {
       const list = map.get(meeting.room.id) ?? []
       list.push(meeting)
       map.set(meeting.room.id, list)
@@ -173,7 +208,7 @@ export default function RoomAvailabilityPage() {
       list.sort((a, b) => a.startTime.localeCompare(b.startTime))
     }
     return map
-  }, [meetingsData])
+  }, [meetingsData, createdMeeting, selectedDate])
 
   const loading = roomsLoading || meetingsLoading
   // True only on a genuine first load - no cached rooms, or no cached meetings for the currently

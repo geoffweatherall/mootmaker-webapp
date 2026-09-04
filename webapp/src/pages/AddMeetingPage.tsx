@@ -249,8 +249,16 @@ export default function AddMeetingPage() {
       return
     }
     if (payload?.meeting) {
+      // The meeting travels with the navigation, not just the toast. The schedule we are about to
+      // land on reads meetings through the `bucket + startTime` GSI, and DynamoDB rejects
+      // ConsistentRead on an index - so a query issued this soon after the write can legitimately
+      // come back without the meeting that was just created, and nothing would fetch again.
+      //
+      // Carrying it avoids the read entirely for the one meeting we already have authoritatively:
+      // createMeeting returns exactly the fields ListMeetings selects, so RoomAvailabilityPage can
+      // merge it in as an equal. See mootmaker-webapp#12.
       navigate(`/rooms/${payload.meeting.startTime.slice(0, 10)}/availability`, {
-        state: { toast: 'Meeting was successfully scheduled.' },
+        state: { toast: 'Meeting was successfully scheduled.', createdMeeting: payload.meeting },
       })
     }
   }

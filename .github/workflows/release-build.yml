@@ -181,6 +181,23 @@ jobs:
       - name: Acceptance tests
         run: ./acceptance/run.sh "${{ steps.env.outputs.name }}"
 
+      # Diagnostics BEFORE teardown, and only on failure. Playwright writes an error-context.md
+      # page snapshot plus a trace for every failed test (trace: 'retain-on-failure' in CI), and
+      # without them a flake in this suite can only be guessed at from a log line saying an element
+      # was not found. That is not hypothetical: the business-hours/timezone bug in F.38 was
+      # diagnosed only once this capture existed, after two wrong guesses without it.
+      #
+      # Placed before the teardown steps so it still runs if teardown itself fails, and named per
+      # attempt so re-runs do not collide.
+      - name: Upload acceptance diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: webapp-acceptance-diagnostics-${{ inputs.version }}-${{ github.run_attempt }}
+          path: mootmaker-webapp/acceptance/test-output
+          if-no-files-found: warn
+          retention-days: 30
+
       # if: always() is load-bearing, not defensive. Without it a failed acceptance run - or a
       # cancelled workflow - leaves a live CloudFront distribution, S3 bucket, AppSync API and
       # DynamoDB tables billing until someone notices. --yes is required because undeploy.sh

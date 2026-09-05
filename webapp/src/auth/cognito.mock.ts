@@ -98,6 +98,23 @@ export async function currentUserClass(): Promise<string | null> {
   return session ? (findUser(session.email)?.userClass ?? null) : null
 }
 
+/** Mirrors cognito.ts's currentUserClaims - the mock reads from one session too, so the module's
+ * shape stays identical. There is no race to avoid here; this exists so AuthProvider has the same
+ * surface under mocks as it does for real. */
+export async function currentUserClaims(): Promise<{
+  email: string | null
+  name: string | null
+  userClass: string | null
+}> {
+  const session = readSession()
+  const user = session ? findUser(session.email) : null
+  return {
+    email: session?.email ?? null,
+    name: user?.name ?? null,
+    userClass: user?.userClass ?? null,
+  }
+}
+
 export function signIn(email: string, password: string): Promise<void> {
   const user = findUser(email)
   if (!user || user.password !== password) {

@@ -61,6 +61,37 @@ export async function currentUserClass(): Promise<string | null> {
   return (session?.getIdToken().payload['custom:class'] as string | undefined) ?? null
 }
 
+/**
+ * Every ID-token claim the app reads, from ONE session fetch.
+ *
+ * The three accessors above each call currentSession() themselves, which calls getSession() on the
+ * same CognitoUser. Reading all three the obvious way - Promise.all over the three accessors -
+ * therefore issues three CONCURRENT getSession() calls, and amazon-cognito-identity-js does not
+ * serialise them. When the session needs refreshing they race, and one can come back with an error
+ * while its siblings succeed. currentSession() maps that to null, so a claim silently reads as
+ * absent even though the user is signed in.
+ *
+ * That is not hypothetical. It made an admin's Settings sections vanish mid-interaction: a page
+ * snapshot from a failed release showed the display name and email both resolved (those two reads
+ * won) while the admin-only Rooms and People sections were gone (the class read lost), destroying
+ * an open dialog and hanging the test for its full 120s timeout. See mootmaker-webapp#41.
+ *
+ * One fetch, three reads off the same session object. No race to lose.
+ */
+export async function currentUserClaims(): Promise<{
+  email: string | null
+  name: string | null
+  userClass: string | null
+}> {
+  const session = await currentSession()
+  const payload = session?.getIdToken().payload
+  return {
+    email: (payload?.email as string | undefined) ?? null,
+    name: (payload?.name as string | undefined) ?? null,
+    userClass: (payload?.['custom:class'] as string | undefined) ?? null,
+  }
+}
+
 export function signIn(email: string, password: string): Promise<void> {
   const user = new CognitoUser({ Username: email, Pool: userPool })
   return new Promise((resolve, reject) => {

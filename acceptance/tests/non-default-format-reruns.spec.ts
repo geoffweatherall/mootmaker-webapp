@@ -89,6 +89,17 @@ async function typeBritishDate(page: Page, date: { year: number; month: number; 
   const group = page.getByRole('group', { name: 'Date' })
   await group.getByRole('spinbutton', { name: 'Day' }).click()
   await page.keyboard.type(digits)
+  // Verify the field actually took what was typed, BEFORE anything depends on it. These sections
+  // auto-advance as digits arrive, so the whole date is typed as one stream into whichever section
+  // comes first - and if focus moves mid-stream, trailing digits land in the wrong section and
+  // produce a DIFFERENT BUT VALID date. The form then saves happily and the test fails much later
+  // asserting on rendered output, which points at the date-formatting feature rather than at input.
+  //
+  // Seen for real: expected 21/09/2026, got 26/09/2026 - and 26 is the last two digits of 2026.
+  // See issue #38.
+  await expect(group).toHaveText(
+    new RegExp(expectedBritishDate(date.year, date.month, date.day).replace(/\//g, '\\/')),
+  )
 }
 
 // The account is on AM/PM, so the time field has a Meridiem section and takes the 12-hour hour

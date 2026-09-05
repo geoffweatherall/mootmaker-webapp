@@ -25,11 +25,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false)
 
   async function loadSession() {
-    const [userEmail, name, userClass] = await Promise.all([
-      cognito.currentUserEmail(),
-      cognito.currentUserName(),
-      cognito.currentUserClass(),
-    ])
+    // One session fetch, not three concurrent ones - see currentUserClaims for why that
+    // distinction mattered enough to be worth a dedicated function.
+    const { email: userEmail, name, userClass } = await cognito.currentUserClaims()
     setEmail(userEmail)
     setDisplayName(name ?? userEmail)
     setIsAdmin(userClass === 'admin')

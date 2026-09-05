@@ -318,7 +318,28 @@ function RoomDialog({ room, onClose, onSaved }: RoomDialogProps) {
   const [name, setName] = useState(room?.name ?? '')
   const [capacity, setCapacity] = useState(room ? String(room.capacity) : '')
   const [fieldErrors, setFieldErrors] = useState<string[]>([])
-  const [createRoom, createState] = useMutation<{ createRoom: CreateRoomResult }>(CREATE_ROOM)
+  // Write the created room straight into the cached list rather than relying on the refetch to
+  // bring it back. The refetch is still useful, but it is not sufficient on its own: a room has
+  // been observed missing from the list immediately after a successful create, with the dialog
+  // closed (so the mutation returned cleanly) and peoples created moments earlier in the same test
+  // present. Making the API's reads strongly consistent (mootmaker-api#31) did not eliminate it,
+  // which points at a race between concurrent fetches of this query rather than at DynamoDB - a
+  // response issued before the write can land after the refetch's and overwrite it, and nothing
+  // fetches again afterwards.
+  //
+  // The mutation's own result is authoritative and needs no read at all, so this closes the window
+  // regardless of which fetch wins. See mootmaker-webapp#1 and #12.
+  const [createRoom, createState] = useMutation<{ createRoom: CreateRoomResult }>(CREATE_ROOM, {
+    update(cache, { data }) {
+      const created = data?.createRoom?.room
+      if (!created) return
+      cache.updateQuery<{ rooms: Room[] }>({ query: LIST_ROOMS }, (existing) =>
+        !existing || existing.rooms.some((r) => r.id === created.id)
+          ? existing
+          : { rooms: [...existing.rooms, created] },
+      )
+    },
+  })
   const [updateRoom, updateState] = useMutation<{ updateRoom: UpdateRoomResult }>(UPDATE_ROOM)
   const loading = createState.loading || updateState.loading
   const bannerMessages = [...fieldErrors, ...errorMessages(createState.error), ...errorMessages(updateState.error)]
@@ -445,7 +466,28 @@ interface PersonDialogProps {
 function PersonDialog({ person, onClose, onSaved }: PersonDialogProps) {
   const [name, setName] = useState(person?.name ?? '')
   const [fieldErrors, setFieldErrors] = useState<string[]>([])
-  const [createPerson, createState] = useMutation<{ createPerson: Person }>(CREATE_PERSON)
+  // Write the created person straight into the cached list rather than relying on the refetch to
+  // bring it back. The refetch is still useful, but it is not sufficient on its own: a person has
+  // been observed missing from the list immediately after a successful create, with the dialog
+  // closed (so the mutation returned cleanly) and rooms created moments earlier in the same test
+  // present. Making the API's reads strongly consistent (mootmaker-api#31) did not eliminate it,
+  // which points at a race between concurrent fetches of this query rather than at DynamoDB - a
+  // response issued before the write can land after the refetch's and overwrite it, and nothing
+  // fetches again afterwards.
+  //
+  // The mutation's own result is authoritative and needs no read at all, so this closes the window
+  // regardless of which fetch wins. See mootmaker-webapp#1 and #12.
+  const [createPerson, createState] = useMutation<{ createPerson: Person }>(CREATE_PERSON, {
+    update(cache, { data }) {
+      const created = data?.createPerson
+      if (!created) return
+      cache.updateQuery<{ people: Person[] }>({ query: LIST_PEOPLE }, (existing) =>
+        !existing || existing.people.some((p) => p.id === created.id)
+          ? existing
+          : { people: [...existing.people, created] },
+      )
+    },
+  })
   const [updatePerson, updateState] = useMutation<{ updatePerson: UpdatePersonResult }>(UPDATE_PERSON)
   const loading = createState.loading || updateState.loading
   const bannerMessages = [...fieldErrors, ...errorMessages(createState.error), ...errorMessages(updateState.error)]

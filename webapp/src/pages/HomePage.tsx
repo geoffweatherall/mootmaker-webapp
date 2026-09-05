@@ -21,6 +21,7 @@ import emptyMeetings from '../assets/empty-meetings.svg'
 import homeHero from '../assets/home-hero.svg'
 import homeSignedIn from '../assets/home-signed-in.svg'
 import { EmptyState } from '../components/EmptyState'
+import { CalendarIcon } from '../icons'
 import { SignInForm } from '../components/SignInForm'
 import { formatLocalTime } from '../graphql/formatDateTime'
 import { LIST_MEETINGS } from '../graphql/queries'
@@ -234,10 +235,18 @@ export default function HomePage() {
               </Typography>
             </Stack>
             <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap' }}>
+              {/* Swaps a same-sized icon for the spinner rather than dropping the startIcon
+                  entirely, which is what MenuContent's own Calendar item does. An icon that comes
+                  and goes changes this button's width, which moves the two buttons to its right -
+                  and a control that moves under the cursor silently eats a click already in
+                  progress: mousedown lands on the button, the layout shifts, mouseup lands
+                  elsewhere, and the browser fires click on the common ancestor rather than the
+                  button. See mootmaker-webapp#43 for the same fault costing a 120-second
+                  acceptance timeout on Settings. */}
               <Button
                 variant="contained"
                 disabled={!personId}
-                startIcon={personLoading ? <CircularProgress size={16} color="inherit" /> : undefined}
+                startIcon={personLoading ? <CircularProgress size={20} color="inherit" /> : <CalendarIcon />}
                 onClick={() => personId && navigate(`/persons/${personId}/calendar`)}
               >
                 Calendar

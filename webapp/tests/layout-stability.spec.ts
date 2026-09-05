@@ -56,3 +56,40 @@ test.describe('Settings layout while personId is still resolving', () => {
     expect(await deleteButton.boundingBox()).toEqual(before)
   })
 })
+
+/**
+ * The home page's Calendar button showed a spinner as its startIcon while personId resolved and
+ * no startIcon at all once it had. That changes the button's width, which moves the two buttons to
+ * its right - and those are the ones the acceptance suite clicks straight after loading the page.
+ * Same fault as the Settings one above, just horizontal.
+ */
+test.describe('Home page layout while personId is still resolving', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
+  test('does not move the buttons beside Calendar when myPerson resolves', async ({ page }) => {
+    const releaseMyPerson = await gateMyPersonQuery(page)
+
+    await page.goto('/')
+    await page.getByLabel('Email').fill(DEMO_USER.email)
+    await page.getByLabel('Password').fill(DEMO_USER.password)
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
+
+    // Scoped to main, since the sidebar has its own Calendar item - and it is the sidebar's
+    // spinner, not this one, that calendar-menu.spec.ts asserts on.
+    const calendarButton = page.getByRole('main').getByRole('button', { name: 'Calendar', exact: true })
+    await expect(calendarButton).toBeDisabled()
+
+    const availability = page.getByRole('button', { name: 'Room availability today' })
+    const addMeeting = page.getByRole('main').getByRole('link', { name: 'Add Meeting' })
+    const availabilityBefore = await availability.boundingBox()
+    const addMeetingBefore = await addMeeting.boundingBox()
+    expect(availabilityBefore).not.toBeNull()
+
+    await releaseMyPerson()
+
+    await expect(calendarButton).toBeEnabled()
+    expect(await availability.boundingBox()).toEqual(availabilityBefore)
+    expect(await addMeeting.boundingBox()).toEqual(addMeetingBefore)
+  })
+})

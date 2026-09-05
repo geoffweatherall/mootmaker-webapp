@@ -16,3 +16,4 @@ test-results/
 # see acceptance/playwright.config.ts
 test-output/
 
+*.tsbuildinfo

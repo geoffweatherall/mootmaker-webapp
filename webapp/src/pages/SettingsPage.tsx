@@ -70,7 +70,7 @@ export default function SettingsPage() {
 
 /** Everyone gets this section - it's the only one a standard user sees. */
 function NameSection() {
-  const { displayName, email, personId, refreshPerson } = useAuth()
+  const { displayName, email, personId, personLoading, refreshPerson } = useAuth()
   const [name, setName] = useState(displayName ?? '')
   const [fieldErrors, setFieldErrors] = useState<string[]>([])
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
@@ -126,7 +126,15 @@ function NameSection() {
             Save
           </SubmitButton>
         </Stack>
-        {!personId && (
+        {/* Gated on personLoading too, not just personId, for two reasons. It's a claim about the
+            account that isn't true yet while myPerson is still in flight - the same reasoning
+            HomePage's own !personId && !personLoading branch spells out. And rendering it during
+            that window and removing it a moment later shifts every section below this one upwards,
+            which silently swallows a click that was already in progress: mousedown lands on a
+            button, the paragraph goes away, mouseup lands elsewhere, and the browser fires click on
+            the common ancestor rather than the button, so onClick never runs. That cost a
+            120-second acceptance timeout on "Add room" in release 0.0.17 - see mootmaker-webapp#43. */}
+        {!personId && !personLoading && (
           <Typography variant="body2" color="text.secondary">
             Your account has no linked person yet, so your name can&apos;t be changed here.
           </Typography>
@@ -149,7 +157,7 @@ function NameSection() {
  * renders in the *viewer's* own format, never the organiser's - see the design doc.
  */
 function DateTimeFormatSection() {
-  const { dateFormat, timeFormat, personId, refreshPerson } = useAuth()
+  const { dateFormat, timeFormat, personId, personLoading, refreshPerson } = useAuth()
   const [pendingDateFormat, setPendingDateFormat] = useState<DateFormat>(dateFormat)
   const [pendingTimeFormat, setPendingTimeFormat] = useState<TimeFormat>(timeFormat)
   const [fieldErrors, setFieldErrors] = useState<string[]>([])
@@ -239,7 +247,15 @@ function DateTimeFormatSection() {
             Save
           </SubmitButton>
         </Stack>
-        {!personId && (
+        {/* Gated on personLoading too, not just personId, for two reasons. It's a claim about the
+            account that isn't true yet while myPerson is still in flight - the same reasoning
+            HomePage's own !personId && !personLoading branch spells out. And rendering it during
+            that window and removing it a moment later shifts every section below this one upwards,
+            which silently swallows a click that was already in progress: mousedown lands on a
+            button, the paragraph goes away, mouseup lands elsewhere, and the browser fires click on
+            the common ancestor rather than the button, so onClick never runs. That cost a
+            120-second acceptance timeout on "Add room" in release 0.0.17 - see mootmaker-webapp#43. */}
+        {!personId && !personLoading && (
           <Typography variant="body2" color="text.secondary">
             Your account has no linked person yet, so these can&apos;t be changed here.
           </Typography>

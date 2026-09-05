@@ -66,5 +66,28 @@ export WEBAPP_URL="$(TF_DATA_DIR="${webapp_tf_data_dir}" terraform -chdir="${rep
 terraform -chdir="${email_testing_dir}/deploy/terraform" init -backend-config=backend.hcl -input=false >/dev/null
 export SQS_QUEUE_URL="$(terraform -chdir="${email_testing_dir}/deploy/terraform" output -raw sqs_queue_url)"
 
+# Reset the database first, matching mootmaker-api's verify.sh ("Most tests reset the database
+# immediately before they act"). Without this the suite can only be run ONCE against a given
+# environment: several tests assert exact counts (D.22's "Today" rows, G.63's meetings-per-day) and
+# the suggest-a-room tests rank against whatever rooms exist, so a second run fails on the FIRST
+# run's data.
+#
+# That matters because this suite documents that it supports repeated runs - see add-meeting.spec.ts
+# on uniqueId(), "run.sh supports iterating against an already-deployed environment across repeated
+# runs". Unique names are necessary for that but not sufficient. See issue #37.
+#
+# CI is unaffected either way, since every release builds a fresh ephemeral environment - the cost
+# of not doing this fell entirely on local iteration, where the failures look like flakes, point at
+# tests unrelated to whatever you changed, and differ between runs.
+#
+# --cli-read-timeout matches the Lambda's own 900s ceiling: its work scales with stored data, and a
+# client-side timeout shorter than the function's would report a still-running reset as a failure.
+echo "Resetting '${environment}' before the suite (see issue #37)..." >&2
+aws lambda invoke \
+  --function-name "${environment}-mootmaker-database-reset" \
+  --cli-read-timeout 900 \
+  --payload '{}' \
+  "$(mktemp)" >/dev/null
+
 cd "${repo_root}"
 npm run test:acceptance

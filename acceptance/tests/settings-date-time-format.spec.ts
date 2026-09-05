@@ -117,6 +117,18 @@ async function typeDate(
   const group = page.getByRole('group', { name: 'Date' })
   await group.getByRole('spinbutton', { name: order.first }).click()
   await page.keyboard.type(order.digits)
+  // Verify the field actually took what was typed, BEFORE anything depends on it. These sections
+  // auto-advance as digits arrive, so the whole date is typed as one stream into whichever section
+  // comes first - and if focus moves mid-stream, trailing digits land in the wrong section and
+  // produce a DIFFERENT BUT VALID date. The form then saves happily and the test fails much later
+  // asserting on rendered output, which points at the date-formatting feature rather than at input.
+  //
+  // Seen for real: expected 21/09/2026, got 26/09/2026 - and 26 is the last two digits of 2026.
+  // See issue #38.
+  const rendered = { Iso: `${yyyy}-${mm}-${dd}`, British: `${dd}/${mm}/${yyyy}`, Usa: `${mm}/${dd}/${yyyy}` }[
+    dateFormat
+  ]
+  await expect(group).toHaveText(new RegExp(rendered.replace(/[/-]/g, (c) => `\\${c}`)))
 }
 
 // Books a meeting through the real Add Meeting form, typing into the pickers the way the viewer's

@@ -6,8 +6,17 @@ written to be reviewed by a human before any test code exists, and precise enoug
 generate that code from later. This catalog is the *design*; [`../tests/`](../tests/) is the
 *implementation* — every one of the 99 use cases now has a spec (see each entry's **Status**),
 except G.64, confirmed infeasible against this project's standard environments (see its own
-Notes). A handful of specs (F.53, F.54, F.57) are currently failing live and under investigation —
-flagged individually in [f-add-meeting.md](f-add-meeting.md).
+Notes).
+
+F.53, F.54 and F.57 were flagged here as intermittently failing and under investigation. They are
+**fixed** (2026-09-05). They were not three problems, and not test noise: they were three of seven
+separate product defects that happened to share one symptom — a thing created through the UI not
+appearing afterwards. DynamoDB `Scan` defaulting to eventually consistent reads, the same through a
+GSI where a consistent read is not permitted at all, an Apollo cache race that survived both of
+those, and a layout shift that swallowed the click that would have opened the create dialog. Each
+now has a deterministic regression test. See
+[the design's "What the gate exposed"](https://github.com/geoffweatherall/mootmaker/blob/main/designs/ci-cd-pipeline.md)
+for the full list and how each was diagnosed.
 
 **Scope**: full coverage — every one of the 99 use cases gets a complete real-browser test case
 here, including ones that are also (or better) provable at the mocked `webapp/tests/` integration

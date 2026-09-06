@@ -1,6 +1,8 @@
+import dayjs from 'dayjs'
 import { describe, expect, it } from 'vitest'
 import {
   advanceSuggestion,
+  defaultMeetingTimes,
   filterAttendeeOptions,
   filterOrganiserOptions,
   initialSuggestionCache,
@@ -119,5 +121,55 @@ describe('advanceSuggestion', () => {
 
     expect(step.room).toBe(roomC)
     expect(step.cache).toEqual({ candidates: [roomC], index: 0, key: keyB })
+  })
+})
+
+describe('defaultMeetingTimes', () => {
+  const at = (hour: number, minute: number, second = 0) => dayjs('2026-09-05').hour(hour).minute(minute).second(second)
+
+  it('starts at the next 15-minute boundary and runs for an hour', () => {
+    const { start, end } = defaultMeetingTimes(at(10, 7))
+    expect(start.format('HH:mm')).toBe('10:15')
+    expect(end.format('HH:mm')).toBe('11:15')
+  })
+
+  it('leaves an already-aligned time alone rather than pushing it on 15 minutes', () => {
+    expect(defaultMeetingTimes(at(10, 30)).start.format('HH:mm')).toBe('10:30')
+  })
+
+  it('ignores seconds when deciding whether a time is already aligned', () => {
+    // Seconds are truncated before the check, so 10:30:42 counts as already on the boundary and
+    // stays at 10:30 rather than being pushed on to 10:45.
+    expect(defaultMeetingTimes(at(10, 30, 42)).start.format('HH:mm:ss')).toBe('10:30:00')
+  })
+
+  // mootmaker-webapp#48: the midnight guard used to fall back to 23:55, which is not on the
+  // 15-minute grid the API requires, so the form pre-filled an end time that was always rejected.
+  it.each([
+    ['22:46', 22, 46, '23:00', '23:45'],
+    ['23:00', 23, 0, '23:00', '23:45'],
+    ['23:20', 23, 20, '23:30', '23:45'],
+    ['23:44', 23, 44, '23:30', '23:45'],
+  ])('clamps to the last slot before midnight at %s', (_label, h, m, expectedStart, expectedEnd) => {
+    const { start, end } = defaultMeetingTimes(at(h, m))
+    expect(start.format('HH:mm')).toBe(expectedStart)
+    expect(end.format('HH:mm')).toBe(expectedEnd)
+  })
+
+  // The exhaustive form of the above. Every minute of the day, checked against every rule the API
+  // enforces - which is the check that would have caught #48 the day it was written.
+  it('produces a valid meeting at every single minute of the day', () => {
+    for (let hour = 0; hour < 24; hour++) {
+      for (let minute = 0; minute < 60; minute++) {
+        const { start, end } = defaultMeetingTimes(at(hour, minute))
+        const where = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+        expect(start.minute() % 15, `start off the grid at ${where}`).toBe(0)
+        expect(end.minute() % 15, `end off the grid at ${where}`).toBe(0)
+        expect(end.isAfter(start), `end not after start at ${where}`).toBe(true)
+        expect(end.isSame(start, 'day'), `spans midnight at ${where}`).toBe(true)
+        expect(start.second() + start.millisecond(), `start not zeroed at ${where}`).toBe(0)
+        expect(end.second() + end.millisecond(), `end not zeroed at ${where}`).toBe(0)
+      }
+    }
   })
 })

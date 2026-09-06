@@ -2,6 +2,7 @@
 // rendering the component or mocking Apollo - see testing-strategy.md's "Unit tests" layer. Kept
 // deliberately free of React/Apollo imports; AddMeetingPage.tsx wires these into its own
 // useState/useEffect and the useLazyQuery-driven `suggestRoom` call.
+import type { Dayjs } from 'dayjs'
 import type { Person, Room } from '../graphql/types'
 
 // --- Organiser/attendee mutual exclusivity -------------------------------------------------
@@ -71,4 +72,49 @@ export function advanceSuggestion(cache: SuggestionCache, key: string, fetchedRo
     cache: { candidates, index, key },
     room: candidates.length === 0 ? null : candidates[index],
   }
+}
+
+// --- Default meeting times ------------------------------------------------------------------
+//
+// The API requires both start and end to fall on a 15-minute boundary, and a meeting may not span
+// midnight (see MeetingError.SpansMultipleDays). Those two rules interact awkwardly late in the
+// evening, which is where this used to be wrong: the old midnight guard fell back to 23:55, which
+// is not on the grid, so between 22:45 and 23:45 local time the form pre-filled an end time the
+// API was guaranteed to reject - a field the user never touched. See mootmaker-webapp#48; it broke
+// release v1.0.0 because GitHub runners are UTC and that run happened to start at 23:44:47.
+//
+// Both values are returned together rather than as two functions. Computing them from separate
+// dayjs() calls meant the clock could tick across a boundary between the two, making the end time
+// inconsistent with the start it was supposedly derived from.
+
+/** Rounds up to the next 15-minute boundary, leaving an already-aligned time alone. */
+export function nextFifteenMinuteBoundary(from: Dayjs): Dayjs {
+  const rounded = from.second(0).millisecond(0)
+  const remainder = rounded.minute() % 15
+  return remainder === 0 ? rounded : rounded.add(15 - remainder, 'minute')
+}
+
+export interface DefaultMeetingTimes {
+  start: Dayjs
+  end: Dayjs
+}
+
+/**
+ * The times the Add Meeting form starts with: the next 15-minute boundary, running for an hour.
+ *
+ * When that hour would cross midnight the pair is clamped back to the last slot that fits on the
+ * grid before it - 23:30 to 23:45 at the extreme. Rolling forward to the next day was considered
+ * and rejected: the date field is separate and defaults to today (or whichever date the user was
+ * looking at), so quietly moving it would be more surprising than a short default meeting.
+ */
+export function defaultMeetingTimes(now: Dayjs): DefaultMeetingTimes {
+  const start = nextFifteenMinuteBoundary(now)
+  const candidateEnd = start.add(1, 'hour')
+  if (candidateEnd.isSame(start, 'day')) {
+    return { start, end: candidateEnd }
+  }
+  const end = start.hour(23).minute(45).second(0).millisecond(0)
+  // A 23:45 start leaves no room for an end after it, so give up the hour rather than the grid.
+  const clampedStart = start.isBefore(end) ? start : end.subtract(15, 'minute')
+  return { start: clampedStart, end }
 }

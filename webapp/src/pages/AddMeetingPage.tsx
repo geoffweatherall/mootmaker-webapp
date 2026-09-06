@@ -31,9 +31,11 @@ import addMeetingHero from '../assets/add-meeting-hero.svg'
 import { SparkleIcon } from '../icons'
 import {
   advanceSuggestion,
+  defaultMeetingTimes,
   filterAttendeeOptions,
   filterOrganiserOptions,
   initialSuggestionCache,
+  type DefaultMeetingTimes,
   type SuggestionCache,
 } from './addMeetingLogic'
 
@@ -42,12 +44,6 @@ import {
 const MEETING_TIME_STEPS = { minutes: 15 }
 
 const NO_ROOM_AVAILABLE_MESSAGE = 'No suitable room is available for that time - try adjusting the attendees or time.'
-
-function nextFifteenMinuteBoundary(from: Dayjs): Dayjs {
-  const rounded = from.second(0).millisecond(0)
-  const remainder = rounded.minute() % 15
-  return remainder === 0 ? rounded : rounded.add(15 - remainder, 'minute')
-}
 
 // Matches RoomAvailabilityPage's own DATE_PARAM_PATTERN - the shape of the date it passes via
 // router state when linking here (see below), so a malformed/unexpected state value falls back
@@ -62,17 +58,6 @@ function defaultDate(viewedDate?: string): Dayjs {
     }
   }
   return dayjs().startOf('day')
-}
-
-function defaultStartTime(): Dayjs {
-  return nextFifteenMinuteBoundary(dayjs())
-}
-
-// A meeting cannot span midnight (see MeetingError.SpansMultipleDays), so the default end time
-// never rolls past 23:55 even if the default start time falls late in the day.
-function defaultEndTime(start: Dayjs): Dayjs {
-  const candidate = start.add(1, 'hour')
-  return candidate.isSame(start, 'day') ? candidate : start.hour(23).minute(55).second(0).millisecond(0)
 }
 
 // Combines a calendar date with a time-of-day into the ISO-8601 local date-time string the API
@@ -112,8 +97,11 @@ export default function AddMeetingPage() {
   const [organiserTouched, setOrganiserTouched] = useState(false)
   const [attendeeIds, setAttendeeIds] = useState<string[]>([])
   const [date, setDate] = useState<Dayjs | null>(() => defaultDate(viewedDate))
-  const [startTime, setStartTime] = useState<Dayjs | null>(defaultStartTime)
-  const [endTime, setEndTime] = useState<Dayjs | null>(() => defaultEndTime(defaultStartTime()))
+  // One computation for both, held in state so a re-render never re-reads the clock - see
+  // defaultMeetingTimes for why the start and end must come from the same instant.
+  const [initialTimes] = useState<DefaultMeetingTimes>(() => defaultMeetingTimes(dayjs()))
+  const [startTime, setStartTime] = useState<Dayjs | null>(initialTimes.start)
+  const [endTime, setEndTime] = useState<Dayjs | null>(initialTimes.end)
   const [meetingErrors, setMeetingErrors] = useState<string[]>([])
   const [suggestionErrors, setSuggestionErrors] = useState<string[]>([])
 

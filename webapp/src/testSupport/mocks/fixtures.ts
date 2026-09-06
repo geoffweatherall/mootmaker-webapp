@@ -3,7 +3,7 @@
 // organiser/attendee exclusivity, a linked-vs-unlinked Person, capacity overflow), rather than
 // trying to mirror mootmaker-demo-data's larger, more realistic data set used against a
 // real deployed API.
-import { DEMO_USER } from '../../auth/cognito.mock'
+import { ADMIN_USER, DEMO_USER } from '../../auth/cognito.mock'
 import type { Meeting, MyPerson, Person, Room } from '../../graphql/types'
 
 export const rooms: Room[] = [
@@ -29,6 +29,7 @@ export const people: Person[] = [
 // account - a test wanting a non-default format sets it through the Settings page like a user.
 export const linkedPersonByEmail: Record<string, MyPerson> = {
   [DEMO_USER.email]: { ...people[4], dateFormat: 'Iso', timeFormat: 'TwentyFourHour' },
+  [ADMIN_USER.email]: { ...people[3], dateFormat: 'Iso', timeFormat: 'TwentyFourHour' },
 }
 
 // Created meetings, persisted to sessionStorage (not just an in-memory variable) so they survive

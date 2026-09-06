@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
-import { DEMO_USER } from '../src/auth/cognito.mock'
-import { gateMyPersonQuery } from './support/mockControls'
+import { ADMIN_USER, DEMO_USER } from '../src/auth/cognito.mock'
+import { gateListRoomsQuery, gateMyPersonQuery } from './support/mockControls'
 
 /**
  * Settings' "Your name" and "Date and time format" sections each explain themselves when the
@@ -91,5 +91,51 @@ test.describe('Home page layout while personId is still resolving', () => {
     await expect(calendarButton).toBeEnabled()
     expect(await availability.boundingBox()).toEqual(availabilityBefore)
     expect(await addMeeting.boundingBox()).toEqual(addMeetingBefore)
+  })
+})
+
+/**
+ * Settings renders Rooms above People, both admin-only. Each used to run its own query and appear
+ * whenever that query resolved, so People could be on the page - with a clickable "Add person" -
+ * while Rooms was still a spinner. When the rooms list then arrived it grew from a spinner to a
+ * full list, hundreds of pixels in a real environment, and pushed "Add person" down.
+ *
+ * A list of unknown length cannot reserve its own space, so the fix takes the other half of the
+ * rule: the control simply is not there yet. Neither Add button exists until both lists are ready.
+ * See mootmaker-webapp#45, and #43 for the same mechanism costing a 120-second acceptance timeout.
+ */
+test.describe('Settings admin sections while the rooms list is still loading', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
+  test('shows no Add button until both admin lists have arrived', async ({ page }) => {
+    // The only admin among the mock users - the Rooms/People sections render for nobody else.
+    const releaseListRooms = await gateListRoomsQuery(page)
+
+    await page.goto('/')
+    await page.getByLabel('Email').fill(ADMIN_USER.email)
+    await page.getByLabel('Password').fill(ADMIN_USER.password)
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
+
+    await page.getByRole('link', { name: 'Settings' }).click()
+    await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible()
+
+    // ListPeople has resolved by now; ListRooms is still held. Before the fix, PeopleSection
+    // rendered off its own query and "Add person" was already clickable here - and would then be
+    // shoved down the page when the rooms list replaced its spinner.
+    await expect(page.getByRole('progressbar')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Add person' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Add room' })).toHaveCount(0)
+
+    await releaseListRooms()
+
+    // Both arrive together, so nothing that is already clickable ever moves.
+    await expect(page.getByRole('button', { name: 'Add room' })).toBeVisible()
+    const addPerson = page.getByRole('button', { name: 'Add person' })
+    await expect(addPerson).toBeVisible()
+
+    const box = await addPerson.boundingBox()
+    await expect(page.getByRole('heading', { name: 'Rooms', level: 2 })).toBeVisible()
+    expect(await addPerson.boundingBox()).toEqual(box)
   })
 })

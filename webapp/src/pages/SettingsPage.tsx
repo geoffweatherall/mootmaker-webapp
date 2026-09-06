@@ -25,6 +25,7 @@ import { useAuth } from '../auth/authContext'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { SubmitButton } from '../components/SubmitButton'
 import { SuccessToast } from '../components/SuccessToast'
+import type { ErrorLike } from '@apollo/client'
 import { errorMessages } from '../graphql/errorMessages'
 import {
   CREATE_PERSON,
@@ -61,8 +62,7 @@ export default function SettingsPage() {
       </Typography>
       <NameSection />
       <DateTimeFormatSection />
-      {isAdmin && <RoomsSection />}
-      {isAdmin && <PeopleSection />}
+      {isAdmin && <AdminSections />}
       <DeleteAccountSection />
     </Stack>
   )
@@ -266,12 +266,61 @@ function DateTimeFormatSection() {
   )
 }
 
+/**
+ * Admin only. Owns both admin queries so the two sections appear together, rather than each
+ * arriving whenever its own query happens to resolve.
+ *
+ * That matters for more than tidiness. Rooms renders above People, so a rooms list arriving late
+ * grows from a spinner to a full list - hundreds of pixels in a real environment - and pushes
+ * People's "Add person" button down. A control that moves under the cursor silently eats a click
+ * already in progress: mousedown lands on the button, the layout shifts, mouseup lands elsewhere,
+ * and the browser fires click on the common ancestor rather than the button, so onClick never
+ * runs. mootmaker-webapp#43 cost a 120-second acceptance timeout to exactly that mechanism.
+ *
+ * The rule this follows: an async result must never change the size of anything above an
+ * interactive control that is already clickable. Either the space is reserved, or the control is
+ * not there yet. A list of unknown length cannot reserve its space, so this takes the other
+ * option - neither Add button exists until both lists are ready.
+ *
+ * The queries live here rather than in the sections so this costs no extra requests. Leaving them
+ * in the children and merely gating the parent would fire each `cache-and-network` query a second
+ * time.
+ */
+function AdminSections() {
+  const rooms = useQuery<{ rooms: Room[] }>(LIST_ROOMS, { fetchPolicy: 'cache-and-network' })
+  const people = useQuery<{ people: Person[] }>(LIST_PEOPLE, { fetchPolicy: 'cache-and-network' })
+
+  // An errored query has settled, even though it has no data - so this waits for the network, not
+  // for success, and a failure still renders the section with its ErrorBanner.
+  if ((rooms.loading && !rooms.data) || (people.loading && !people.data)) {
+    return (
+      <Paper component="section" sx={{ p: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+          <CircularProgress size={24} />
+        </Box>
+      </Paper>
+    )
+  }
+
+  return (
+    <>
+      <RoomsSection rooms={rooms.data?.rooms ?? []} error={rooms.error} refetch={rooms.refetch} />
+      <PeopleSection people={people.data?.people ?? []} error={people.error} refetch={people.refetch} />
+    </>
+  )
+}
+
+interface AdminSectionProps<T> {
+  items: T[]
+  error: ErrorLike | undefined
+  refetch: () => void
+}
+
 /** Admin only - lists every room, with an edit dialog per row and an "Add room" dialog. */
-function RoomsSection() {
-  const { data, loading, error, refetch } = useQuery<{ rooms: Room[] }>(LIST_ROOMS, { fetchPolicy: 'cache-and-network' })
+function RoomsSection({ rooms: roomList, error, refetch }: { rooms: Room[] } & Omit<AdminSectionProps<Room>, 'items'>) {
   const [dialogRoom, setDialogRoom] = useState<Room | 'new' | null>(null)
 
-  const rooms = [...(data?.rooms ?? [])].sort((a, b) => a.name.localeCompare(b.name))
+  const rooms = [...roomList].sort((a, b) => a.name.localeCompare(b.name))
 
   return (
     <Paper component="section" sx={{ p: 3 }}>
@@ -285,11 +334,7 @@ function RoomsSection() {
           </Button>
         </Stack>
         <ErrorBanner messages={errorMessages(error)} onDismiss={() => {}} />
-        {loading && !data ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-            <CircularProgress size={24} />
-          </Box>
-        ) : rooms.length === 0 ? (
+        {rooms.length === 0 ? (
           !error && <Typography color="text.secondary">No rooms exist yet.</Typography>
         ) : (
           <List dense disablePadding>
@@ -416,11 +461,14 @@ function RoomDialog({ room, onClose, onSaved }: RoomDialogProps) {
 }
 
 /** Admin only - lists every person, with an edit dialog per row and an "Add person" dialog. */
-function PeopleSection() {
-  const { data, loading, error, refetch } = useQuery<{ people: Person[] }>(LIST_PEOPLE, { fetchPolicy: 'cache-and-network' })
+function PeopleSection({
+  people: peopleList,
+  error,
+  refetch,
+}: { people: Person[] } & Omit<AdminSectionProps<Person>, 'items'>) {
   const [dialogPerson, setDialogPerson] = useState<Person | 'new' | null>(null)
 
-  const people = [...(data?.people ?? [])].sort((a, b) => a.name.localeCompare(b.name))
+  const people = [...peopleList].sort((a, b) => a.name.localeCompare(b.name))
 
   return (
     <Paper component="section" sx={{ p: 3 }}>
@@ -434,11 +482,7 @@ function PeopleSection() {
           </Button>
         </Stack>
         <ErrorBanner messages={errorMessages(error)} onDismiss={() => {}} />
-        {loading && !data ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-            <CircularProgress size={24} />
-          </Box>
-        ) : people.length === 0 ? (
+        {people.length === 0 ? (
           !error && <Typography color="text.secondary">No people exist yet.</Typography>
         ) : (
           <List dense disablePadding>

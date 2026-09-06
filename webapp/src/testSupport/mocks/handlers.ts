@@ -37,6 +37,9 @@ declare global {
   interface Window {
     __mockControls?: {
       myPersonGate?: Promise<void>
+      // Held open by layout-stability.spec.ts to observe the window where Rooms has not yet
+      // arrived but People has - see AdminSections in SettingsPage.tsx.
+      listRoomsGate?: Promise<void>
     }
   }
 }
@@ -117,6 +120,9 @@ export const handlers: HttpHandler[] = [
 
     switch (body.operationName) {
       case 'ListRooms':
+        if (window.__mockControls?.listRoomsGate) {
+          await window.__mockControls.listRoomsGate
+        }
         return HttpResponse.json({ data: { rooms } })
 
       case 'ListPeople':

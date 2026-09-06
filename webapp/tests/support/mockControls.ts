@@ -23,3 +23,20 @@ export async function gateMyPersonQuery(page: Page): Promise<() => Promise<void>
   return () =>
     page.evaluate(() => (window as unknown as { __releaseMyPersonGate: () => void }).__releaseMyPersonGate())
 }
+
+/**
+ * As above, but for the mocked "ListRooms" operation, so the window where Settings has People but
+ * not yet Rooms is observable. See AdminSections in SettingsPage.tsx for why that window matters.
+ */
+export async function gateListRoomsQuery(page: Page): Promise<() => Promise<void>> {
+  await page.addInitScript(() => {
+    window.__mockControls = {
+      ...window.__mockControls,
+      listRoomsGate: new Promise<void>((resolve) => {
+        ;(window as unknown as { __releaseListRoomsGate: () => void }).__releaseListRoomsGate = resolve
+      }),
+    }
+  })
+  return () =>
+    page.evaluate(() => (window as unknown as { __releaseListRoomsGate: () => void }).__releaseListRoomsGate())
+}

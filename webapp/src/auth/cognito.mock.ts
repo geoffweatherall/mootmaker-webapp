@@ -37,10 +37,15 @@ export interface MockUser {
 export const MOCK_USERS: MockUser[] = [
   { email: 'e2e-user@example.com', password: 'Mock-password-1', name: 'E2E Test User', userClass: 'standard' },
   { email: 'demo@example.com', password: 'Demo-password-1', name: 'Demo User', userClass: 'standard' },
+  // The only admin here, so Settings' Rooms/People sections render at all - neither of the two
+  // above is one, which is why nothing had covered those sections at this layer before. Kept as a
+  // third user rather than promoting DEMO_USER, so no existing test changes behaviour.
+  { email: 'admin@example.com', password: 'Admin-password-1', name: 'Admin User', userClass: 'admin' },
 ]
 
 export const E2E_USER = MOCK_USERS[0]
 export const DEMO_USER = MOCK_USERS[1]
+export const ADMIN_USER = MOCK_USERS[2]
 
 // The verification code every mock sign-up/reset flow accepts - there's no real inbox to read a
 // code from, so this stands in for "the code Cognito emailed". The real API's own

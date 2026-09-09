@@ -55,6 +55,11 @@ describe('MEETING_ERROR_MESSAGES', () => {
     'AttendeeNotFound',
     'SubjectRequired',
     'OrganiserIsAttendee',
+    'DayIsFull',
+    'TooManyAttendees',
+    'SubjectTooLong',
+    'OutsideBookableRange',
+    'TooManyMeetingsInOneCall',
   ]
 
   it('has a non-empty message for every MeetingError code, and no extra ones', () => {
@@ -62,6 +67,16 @@ describe('MEETING_ERROR_MESSAGES', () => {
     for (const code of codes) {
       expect(MEETING_ERROR_MESSAGES[code].length).toBeGreaterThan(0)
     }
+  })
+
+  it('tells the user the DAY is full, never the room - physical capacity exceeds the day limit, so this can refuse a booking while a room stands free', () => {
+    expect(MEETING_ERROR_MESSAGES.DayIsFull.toLowerCase()).toContain('day')
+    expect(MEETING_ERROR_MESSAGES.DayIsFull.toLowerCase()).not.toMatch(/\bthe room is\b|\broom is (?:full|booked)\b/)
+  })
+
+  it('does not promise the subject a character COUNT, because the limit is measured in bytes and a count would be a lie the counter contradicts', () => {
+    expect(MEETING_ERROR_MESSAGES.SubjectTooLong).not.toMatch(/\d+\s*(characters|letters)/i)
+    expect(MEETING_ERROR_MESSAGES.SubjectTooLong.toLowerCase()).toContain('emoji')
   })
 
   it('gives OrganiserIsAttendee a message distinct from the plain "required" ones, since a UI bug that showed the wrong message here would be confusing', () => {

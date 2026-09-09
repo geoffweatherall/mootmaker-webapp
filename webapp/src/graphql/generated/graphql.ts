@@ -15,6 +15,8 @@ export type DateFormat =
 
 export type MeetingError =
   | 'AttendeeNotFound'
+  /** The day already holds the maximum number of meetings. The DAY is full, not the room - physical capacity exceeds the day limit, so a booking can be refused while a room stands free. */
+  | 'DayIsFull'
   /** endTime is not strictly after startTime (earlier than, or equal to, startTime), on the same calendar date. */
   | 'EndBeforeStart'
   | 'EndMissaligned'
@@ -23,13 +25,21 @@ export type MeetingError =
   | 'OrganiserIsAttendee'
   | 'OrganiserNotFound'
   | 'OrganiserRequired'
+  /** Outside the window meetings may be booked in: further ahead than the booking horizon, or earlier than the retention boundary. */
+  | 'OutsideBookableRange'
   | 'RoomNotFound'
   | 'RoomRequired'
   /** startTime and endTime fall on different calendar dates - a meeting cannot span midnight. */
   | 'SpansMultipleDays'
   | 'StartMissaligned'
   | 'SubjectRequired'
-  | 'TimeRangeUnavailable';
+  /** Subject is longer than the limit, which is measured in UTF-8 bytes of NFC-normalised text - so emoji count for more than one character each. */
+  | 'SubjectTooLong'
+  | 'TimeRangeUnavailable'
+  /** More attendees than one meeting may carry. */
+  | 'TooManyAttendees'
+  /** More meetings in one call than may be created together. */
+  | 'TooManyMeetingsInOneCall';
 
 export type MeetingInput = {
   attendeeIds: Array<string>;

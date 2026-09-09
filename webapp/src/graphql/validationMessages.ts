@@ -46,4 +46,15 @@ export const MEETING_ERROR_MESSAGES: Record<MeetingError, string> = {
   AttendeeNotFound: 'One or more selected attendees could not be found.',
   SubjectRequired: 'Please enter a subject.',
   OrganiserIsAttendee: 'The organiser cannot also be listed as an attendee.',
+  // Says the DAY, deliberately, never the room. The building holds more meetings than the day limit
+  // allows, so this can refuse a booking while a room stands free - and naming the room would be
+  // unexplainable to someone looking at an empty one.
+  DayIsFull: 'This day is fully booked - no more meetings can be added to it, even if a room looks free.',
+  TooManyAttendees: 'That is too many attendees for one meeting.',
+  // Deliberately does not say "characters": the limit is measured in bytes, so emoji and accented
+  // characters genuinely do use more of it, and a message promising characters would be a lie the
+  // counter then contradicts.
+  SubjectTooLong: 'The subject is too long. Emoji and accented characters take up more of the limit than plain letters.',
+  OutsideBookableRange: 'That date is outside the range meetings can be booked in.',
+  TooManyMeetingsInOneCall: 'Too many meetings were sent in a single request.',
 }

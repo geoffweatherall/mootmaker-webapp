@@ -2,6 +2,29 @@ import { expect, test, type Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { freshTestAccount, type TestAccount } from '../../support/testAccount'
 
+/**
+ * Credentials for the account that deliberately has NO linked Person.
+ *
+ * A separate account from the e2e user, which used to have no Person only by accident: it is
+ * created directly rather than through sign-up, so PostConfirmationCreatePersonHandler never ran.
+ * Giving it one was right - the whole suite had been running as a degraded identity - but it left
+ * the degraded path itself with no fixture, and these tests with no premise. See
+ * mootmaker-api's cognito.tf and mootmaker-webapp#54.
+ *
+ * Skips rather than fails where the account does not exist. It is not created in production, where
+ * a personless account would not be a fixture but a real person's broken login.
+ */
+function noPersonCredentials(): { email: string; password: string } {
+  const email = process.env.NO_PERSON_USER_EMAIL
+  const password = process.env.NO_PERSON_USER_PASSWORD
+  test.skip(
+    !email || !password,
+    'This environment has no personless account (deliberately absent in production).',
+  )
+  return { email: email as string, password: password as string }
+}
+
+
 // mootmaker/docs/reference/use-cases.md, section N (Settings - Date and time format), cases
 // 100-105. See test-cases/n-date-time-format-settings.md for the full designs.
 //
@@ -20,13 +43,6 @@ const DATE_OPTION = {
 } as const
 const TIME_OPTION = { twentyFourHour: '14:30', amPm: '02:30 PM' } as const
 
-function requireEnv(name: string): string {
-  const value = process.env[name]
-  if (!value) {
-    throw new Error(`${name} is not set - see acceptance/run.sh.`)
-  }
-  return value
-}
 
 async function signIn(page: Page, email: string, password: string): Promise<void> {
   await page.goto('/signin')
@@ -318,9 +334,9 @@ test("N.103/N.104: a meeting booked in one viewer's format is the same instant f
 })
 
 test('N.105: an account with no linked Person sees the section disabled with an explanation', async ({ page }) => {
-  // The e2e user deliberately has no linked Person - the same account I.76 uses for the
-  // equivalent "Your name" case.
-  await signIn(page, requireEnv('E2E_USER_EMAIL'), requireEnv('E2E_USER_PASSWORD'))
+  // The personless account - the same one I.76 uses for the equivalent "Your name" case.
+  const noPerson = noPersonCredentials()
+  await signIn(page, noPerson.email, noPerson.password)
   await page.goto('/settings')
 
   await expect(page.getByLabel('Date format')).toBeDisabled()

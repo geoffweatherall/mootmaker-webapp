@@ -2,6 +2,39 @@ import { expect, test, type Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { freshTestAccount } from '../../support/testAccount'
 
+/**
+ * Credentials for the account that deliberately has NO linked Person.
+ *
+ * A separate account from the e2e user, which used to have no Person only by accident: it is
+ * created directly rather than through sign-up, so PostConfirmationCreatePersonHandler never ran.
+ * Giving it one was right - the whole suite had been running as a degraded identity - but it left
+ * the degraded path itself with no fixture, and these tests with no premise. See
+ * mootmaker-api's cognito.tf and mootmaker-webapp#54.
+ *
+ * Skips rather than fails where the account does not exist. It is not created in production, where
+ * a personless account would not be a fixture but a real person's broken login.
+ */
+function noPersonCredentials(): { email: string; password: string } {
+  const email = process.env.NO_PERSON_USER_EMAIL
+  const password = process.env.NO_PERSON_USER_PASSWORD
+  test.skip(
+    !email || !password,
+    'This environment has no personless account (deliberately absent in production).',
+  )
+  return { email: email as string, password: password as string }
+}
+
+/** Signs in as the personless account. See noPersonCredentials for why it is a separate account. */
+async function signInAsNoPersonUser(page: Page): Promise<void> {
+  const { email, password } = noPersonCredentials()
+  await page.goto('/signin')
+  await page.getByLabel('Email').fill(email)
+  await page.getByLabel('Password').fill(password)
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  await expect(page.getByText('Sign out')).toBeVisible()
+}
+
+
 // mootmaker/docs/reference/use-cases.md, section D (Home page), cases 21-25 - see
 // acceptance/test-cases/d-home-page.md for the full Given/When/Then design each test below
 // translates directly from. Signs in as whichever account each case's own Preconditions call for:
@@ -34,9 +67,6 @@ async function signInAsDemo(page: Page): Promise<void> {
   await signIn(page, requireEnv('DEMO_USER_EMAIL'), requireEnv('DEMO_USER_PASSWORD'))
 }
 
-async function signInAsE2eUser(page: Page): Promise<void> {
-  await signIn(page, requireEnv('E2E_USER_EMAIL'), requireEnv('E2E_USER_PASSWORD'))
-}
 
 // Precondition helper - no data-seeding bypass for rooms (see README.md's "Known gaps"), so every
 // test creates its own via the real Settings UI, uniquely named per run.
@@ -266,7 +296,7 @@ test('D.23 - no meetings today or tomorrow shows the empty state, not a bare emp
 test('D.24 - no linked Person shows a degraded Home page: the account-not-set-up error replaces Calendar/agenda, but Room availability today and Add Meeting still work with a blank Organiser', async ({
   page,
 }) => {
-  await signInAsE2eUser(page)
+  await signInAsNoPersonUser(page)
   await page.goto('/')
 
   await expect(

@@ -2,6 +2,29 @@ import { expect, test, type Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { freshTestAccount } from '../../support/testAccount'
 
+/**
+ * Credentials for the account that deliberately has NO linked Person.
+ *
+ * A separate account from the e2e user, which used to have no Person only by accident: it is
+ * created directly rather than through sign-up, so PostConfirmationCreatePersonHandler never ran.
+ * Giving it one was right - the whole suite had been running as a degraded identity - but it left
+ * the degraded path itself with no fixture, and these tests with no premise. See
+ * mootmaker-api's cognito.tf and mootmaker-webapp#54.
+ *
+ * Skips rather than fails where the account does not exist. It is not created in production, where
+ * a personless account would not be a fixture but a real person's broken login.
+ */
+function noPersonCredentials(): { email: string; password: string } {
+  const email = process.env.NO_PERSON_USER_EMAIL
+  const password = process.env.NO_PERSON_USER_PASSWORD
+  test.skip(
+    !email || !password,
+    'This environment has no personless account (deliberately absent in production).',
+  )
+  return { email: email as string, password: password as string }
+}
+
+
 // mootmaker/docs/reference/use-cases.md, section G (Person Calendar), cases 59-63 and 65-67. Case 64 ("no people
 // exist yet") is left unautomated - see g-person-calendar.md's own Notes on that case: every
 // environment this project can deploy already has exactly one seeded Person (the demo user's own,
@@ -301,7 +324,8 @@ test("G.66 - the meeting's room colour dot on Person Calendar matches Room Avail
 test('G.67 - the sidebar\'s Calendar item is disabled, not hidden, for a signed-in user with no linked Person', async ({
   page,
 }) => {
-  await signIn(page, requireEnv('E2E_USER_EMAIL'), requireEnv('E2E_USER_PASSWORD'))
+  const noPerson = noPersonCredentials()
+  await signIn(page, noPerson.email, noPerson.password)
 
   // Scoped to the sidebar nav - HomePage separately has its own "Calendar" call-to-action button
   // (also disabled for a no-linked-Person user), which would otherwise make this selector

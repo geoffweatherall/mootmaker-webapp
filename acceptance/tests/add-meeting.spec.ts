@@ -1,5 +1,38 @@
 import { expect, test, type Page } from '@playwright/test'
 
+/**
+ * Credentials for the account that deliberately has NO linked Person.
+ *
+ * A separate account from the e2e user, which used to have no Person only by accident: it is
+ * created directly rather than through sign-up, so PostConfirmationCreatePersonHandler never ran.
+ * Giving it one was right - the whole suite had been running as a degraded identity - but it left
+ * the degraded path itself with no fixture, and these tests with no premise. See
+ * mootmaker-api's cognito.tf and mootmaker-webapp#54.
+ *
+ * Skips rather than fails where the account does not exist. It is not created in production, where
+ * a personless account would not be a fixture but a real person's broken login.
+ */
+function noPersonCredentials(): { email: string; password: string } {
+  const email = process.env.NO_PERSON_USER_EMAIL
+  const password = process.env.NO_PERSON_USER_PASSWORD
+  test.skip(
+    !email || !password,
+    'This environment has no personless account (deliberately absent in production).',
+  )
+  return { email: email as string, password: password as string }
+}
+
+/** Signs in as the personless account. See noPersonCredentials for why it is a separate account. */
+async function signInAsNoPersonUser(page: Page): Promise<void> {
+  const { email, password } = noPersonCredentials()
+  await page.goto('/signin')
+  await page.getByLabel('Email').fill(email)
+  await page.getByLabel('Password').fill(password)
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  await expect(page.getByText('Sign out')).toBeVisible()
+}
+
+
 // mootmaker/docs/reference/use-cases.md, section F (Add Meeting), cases 38-58. Signs in as the demo user rather
 // than creating a fresh account for most cases: it's a real, pre-verified Cognito account that
 // already exists in every environment (see mootmaker-api/deploy/terraform/cognito.tf, "the demo
@@ -70,15 +103,6 @@ async function signInAsDemo(page: Page): Promise<void> {
   await expect(page.getByText('Sign out')).toBeVisible()
 }
 
-async function signInAsE2eUser(page: Page): Promise<void> {
-  const email = requireEnv('E2E_USER_EMAIL')
-  const password = requireEnv('E2E_USER_PASSWORD')
-  await page.goto('/signin')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password').fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page.getByText('Sign out')).toBeVisible()
-}
 
 async function signOut(page: Page): Promise<void> {
   await page.getByText('Sign out').click()
@@ -519,7 +543,7 @@ test('blank organiser (no linked Person, not manually chosen) is rejected with O
   await createRoom(page, roomName, 4)
   await signOut(page)
 
-  await signInAsE2eUser(page)
+  await signInAsNoPersonUser(page)
   await goToAddMeeting(page)
   await page.getByLabel('Subject').fill(`F48 subject ${runId}`)
   await selectRoom(page, roomName)
@@ -585,8 +609,9 @@ test('an overlapping time slot in the same room is rejected with TimeRangeUnavai
 })
 
 test('multiple simultaneous validation failures are listed together in one banner', async ({ page }) => {
-  // The e2e user so Organiser starts blank without extra setup (see F.51's catalog Notes).
-  await signInAsE2eUser(page)
+  // The personless account so Organiser starts blank without extra setup (see F.51's catalog
+  // Notes). The e2e user used to serve here, back when it had no Person by accident.
+  await signInAsNoPersonUser(page)
   await goToAddMeeting(page)
 
   // Subject, Room, and Organiser all left blank.

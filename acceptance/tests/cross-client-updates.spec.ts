@@ -221,6 +221,19 @@ test('the tab that made the booking does not lose it to its own broadcast', asyn
   const context = await browser.newContext()
   try {
     const page = await context.newPage()
+
+    // Pinned to 10:00 so the form's default start/end land inside business hours.
+    // RoomAvailabilityPage only ever renders 08:00-17:00, so a meeting created outside that window
+    // is created SUCCESSFULLY and then falls outside the visible grid - the assertion below fails
+    // and blames real-time updates for what is actually the clock. add-meeting.spec.ts hit exactly
+    // this at 17:30 local; this run hit it at 19:50, defaulting to 20:00-21:00.
+    //
+    // Today's date rather than a hardcoded one: the day must stay inside the bookable window, and a
+    // fixed date eventually drifts out of it.
+    const tenAmToday = new Date()
+    tenAmToday.setHours(10, 0, 0, 0)
+    await page.clock.setFixedTime(tenAmToday)
+
     await signInAsDemo(page)
     await createRoom(page, room, 4)
     await createPerson(page, organiser)
@@ -232,10 +245,11 @@ test('the tab that made the booking does not lose it to its own broadcast', asyn
     await page.getByRole('option', { name: room, exact: false }).click()
     await page.getByRole('combobox', { name: 'Organiser' }).click()
     await page.getByRole('option', { name: organiser, exact: true }).click()
-    await page.getByRole('button', { name: 'Add meeting' }).click()
+    await page.getByRole('button', { name: 'Save' }).click()
 
     // Lands on the availability page for the booked date, already holding the Day the mutation
     // returned - no fetch needed.
+    await expect(page).toHaveURL(/\/rooms\/.+\/availability/)
     await expect(page.getByText(subject)).toBeVisible()
 
     // The broadcast round trip completes well inside this window. Asserted CONTINUOUSLY rather

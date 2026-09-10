@@ -151,6 +151,31 @@ test('D.21 - signed-out home page shows the sign-in form pre-filled with demo cr
   await expect(homeMain.getByRole('link', { name: 'Sign up' })).toBeVisible()
 })
 
+const TUESDAY = 2
+
+/**
+ * A pinned instant on the given weekday, at least `minDaysAhead` days from now, at `hhmm` local.
+ *
+ * Derived rather than written as a calendar date, because the API now has two moving bounds: a
+ * retention boundary that advances every week, and a 180-day booking horizon. A hardcoded date
+ * drifts out of that window and the failure names something else entirely - a failed navigation, a
+ * missing meeting - rather than the date.
+ *
+ * Pinning itself must stay: RoomAvailabilityPage renders only business hours (08:00-17:00), so an
+ * unpinned run books after-hours meetings that are created successfully and fall off the grid.
+ */
+function pinnedWeekday(weekday: number, minDaysAhead: number, hhmm: string): Date {
+  const [hours, minutes] = hhmm.split(':').map(Number)
+  const pinned = new Date()
+  pinned.setDate(pinned.getDate() + minDaysAhead)
+  // Forward to the next matching weekday, never backwards, so the minimum distance holds.
+  while (pinned.getDay() !== weekday) {
+    pinned.setDate(pinned.getDate() + 1)
+  }
+  pinned.setHours(hours, minutes, 0, 0)
+  return pinned
+}
+
 test('D.22 - signed in with a linked Person shows Calendar/Room availability/Add Meeting entry points plus a Today/Tomorrow agenda sorted by start time, each linking to its own meeting details', async ({
   page,
 }) => {
@@ -160,12 +185,16 @@ test('D.22 - signed in with a linked Person shows Calendar/Room availability/Add
   const subjectToday14 = `D22 today 2pm ${runId}`
   const subjectTomorrow = `D22 tomorrow ${runId}`
 
-  // A known Tuesday, safely inside business hours, deliberately far from every other pinned date
-  // already used elsewhere in this suite (e.g. add-meeting.spec.ts's 2026-08-19/2026-08-24, which
-  // each accumulate real persisted demo-user meetings of their own). This test's "Today" panel
-  // asserts an exact row count below, which an unrelated fixture meeting landing on the same date
-  // for the same signed-in user would throw off.
-  await page.clock.setFixedTime(new Date('2027-04-06T09:00:00'))
+  // A Tuesday, safely inside business hours, deliberately far from every other pinned date already
+  // used elsewhere in this suite (e.g. add-meeting.spec.ts's own August dates, which each
+  // accumulate real persisted demo-user meetings). This test's "Today" panel asserts an exact row
+  // count below, which an unrelated fixture meeting landing on the same date would throw off.
+  //
+  // DERIVED, not hardcoded. It used to be 2027-04-06, which stopped working the moment the API
+  // gained a 180-day booking horizon: every booking came back OutsideBookableRange and the test
+  // reported a failed navigation, blaming the Home page. A fixed future date expires silently.
+  const pinnedToday = pinnedWeekday(TUESDAY, 120, '09:00')
+  await page.clock.setFixedTime(pinnedToday)
   await signInAsDemo(page)
   await createRoom(page, roomName, 4)
 
@@ -174,13 +203,21 @@ test('D.22 - signed in with a linked Person shows Calendar/Room availability/Add
   // preserving creation/insertion order (same reasoning as person-calendar.spec.ts's G.63).
   await addMeeting(page, { subject: subjectToday14, roomName, start: '1400', end: '1430' })
   await addMeeting(page, { subject: subjectToday10, roomName, start: '1000', end: '1030' })
-  // Tomorrow relative to the pinned instant above (2027-04-06 -> 2027-04-07).
+  // Tomorrow relative to the pinned instant above, DERIVED from it. Hardcoding this was the other
+  // half of the same expiry bug: pinning the clock forward is no use if the date typed into the
+  // form is still a fixed calendar date the horizon has moved past.
+  const pinnedTomorrow = new Date(pinnedToday)
+  pinnedTomorrow.setDate(pinnedTomorrow.getDate() + 1)
   await addMeeting(page, {
     subject: subjectTomorrow,
     roomName,
     start: '1000',
     end: '1030',
-    date: { month: 4, day: 7, year: 2027 },
+    date: {
+      year: pinnedTomorrow.getFullYear(),
+      month: pinnedTomorrow.getMonth() + 1,
+      day: pinnedTomorrow.getDate(),
+    },
   })
 
   await page.goto('/')

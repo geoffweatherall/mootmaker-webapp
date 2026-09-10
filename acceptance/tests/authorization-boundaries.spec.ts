@@ -162,11 +162,17 @@ test('L.90 - a standard user directly calling createRoom/updateRoom/createPerson
   // wasn't just a response-shape artefact.
   const afterResponse = await request.post(graphqlUrl, {
     headers: { Authorization: token },
-    data: { query: 'query { rooms { name } people { name } }' },
+    data: { query: 'query { workspace { rooms { name } people { name } } }' },
   })
   const afterBody = await afterResponse.json()
-  const roomNames: string[] = (afterBody.data?.rooms ?? []).map((r: { name: string }) => r.name)
-  const personNames: string[] = (afterBody.data?.people ?? []).map((p: { name: string }) => p.name)
+  // Fail loudly if the query itself did not resolve. Reading through `?? []` alone made this
+  // spot-check pass vacuously once Query.rooms was deleted: data came back null, both lists were
+  // empty, and "does not contain the room" was trivially true - the assertion checked nothing.
+  if (!afterBody.data?.workspace) {
+    throw new Error(`Spot-check query failed: ${JSON.stringify(afterBody.errors ?? afterBody)}`)
+  }
+  const roomNames: string[] = afterBody.data.workspace.rooms.map((r: { name: string }) => r.name)
+  const personNames: string[] = afterBody.data.workspace.people.map((p: { name: string }) => p.name)
   expect(roomNames).not.toContain(`L90 Room ${runId}`)
   expect(roomNames).not.toContain(`L90 Renamed ${runId}`)
   expect(personNames).not.toContain(`L90 Person ${runId}`)
@@ -201,10 +207,10 @@ test('L.91 - a standard user cannot rename another user\'s Person, even by forci
   // *section* is hidden from accountA's UI.
   const peopleResponse = await request.post(graphqlUrl, {
     headers: { Authorization: token },
-    data: { query: 'query { people { id name } }' },
+    data: { query: 'query { workspace { people { id name } } }' },
   })
   const peopleBody = await peopleResponse.json()
-  const personB = (peopleBody.data?.people ?? []).find(
+  const personB = (peopleBody.data?.workspace?.people ?? []).find(
     (p: { name: string }) => p.name === accountB.name,
   )
   if (!personB) {
@@ -234,10 +240,10 @@ test('L.91 - a standard user cannot rename another user\'s Person, even by forci
   // accountB's Person name is unchanged afterward.
   const afterResponse = await request.post(graphqlUrl, {
     headers: { Authorization: token },
-    data: { query: 'query { people { id name } }' },
+    data: { query: 'query { workspace { people { id name } } }' },
   })
   const afterBody = await afterResponse.json()
-  const personBAfter = (afterBody.data?.people ?? []).find(
+  const personBAfter = (afterBody.data?.workspace?.people ?? []).find(
     (p: { id: string }) => p.id === personB.id,
   )
   expect(personBAfter?.name).toBe(accountB.name)

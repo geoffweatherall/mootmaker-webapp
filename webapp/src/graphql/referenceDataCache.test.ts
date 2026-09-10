@@ -10,6 +10,8 @@ function cacheWith(rooms: { id: string; name: string; capacity: number }[]): InM
       Query: { fields: { workspace: { keyArgs: false } } },
     },
   })
+  // Cast because the generated ReferenceData types omit __typename (useTypeImports//client preset),
+  // while the cache needs it to normalise the entities - which is exactly what this file is about.
   cache.writeQuery({
     query: REFERENCE_DATA,
     data: {
@@ -18,7 +20,7 @@ function cacheWith(rooms: { id: string; name: string; capacity: number }[]): InM
         rooms: rooms.map((r) => ({ __typename: 'Room', ...r })),
         people: [{ __typename: 'Person', id: 'p1', name: 'Ada Lovelace' }],
       },
-    },
+    } as never,
   })
   return cache
 }

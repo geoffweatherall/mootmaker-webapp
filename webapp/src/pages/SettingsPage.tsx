@@ -27,6 +27,7 @@ import { SubmitButton } from '../components/SubmitButton'
 import { SuccessToast } from '../components/SuccessToast'
 import type { ErrorLike } from '@apollo/client'
 import { errorMessages } from '../graphql/errorMessages'
+import { cachePeople, cacheRooms } from '../graphql/referenceDataCache'
 import {
   CREATE_PERSON,
   CREATE_ROOM,
@@ -389,8 +390,14 @@ function RoomDialog({ room, onClose, onSaved }: RoomDialogProps) {
   // from the list immediately after a successful create - a race between concurrent fetches of the
   // list query, where a response issued before the write landed after the refetch's and overwrote
   // it. There is no read to lose that race now. See mootmaker-webapp#1 and #12.
-  const [createRoom, createState] = useMutation<{ createRoom: CreateRoomResult }>(CREATE_ROOM)
-  const [updateRoom, updateState] = useMutation<{ updateRoom: UpdateRoomResult }>(UPDATE_ROOM)
+  const [createRoom, createState] = useMutation<{ createRoom: CreateRoomResult }>(CREATE_ROOM, {
+    // The returned collection has to be written into workspace.rooms explicitly - see
+    // referenceDataCache. Without it the new room never reaches Add Meeting's dropdown.
+    update: (cache, { data }) => cacheRooms(cache, data?.createRoom.rooms),
+  })
+  const [updateRoom, updateState] = useMutation<{ updateRoom: UpdateRoomResult }>(UPDATE_ROOM, {
+    update: (cache, { data }) => cacheRooms(cache, data?.updateRoom.rooms),
+  })
   const loading = createState.loading || updateState.loading
   const bannerMessages = [...fieldErrors, ...errorMessages(createState.error), ...errorMessages(updateState.error)]
 
@@ -517,8 +524,12 @@ function PersonDialog({ person, onClose, onSaved }: PersonDialogProps) {
   const [fieldErrors, setFieldErrors] = useState<string[]>([])
   // No update function here either - createPerson returns the whole `people` collection with the
   // write, so there is no cached list to merge into and no read that could lose a race with it.
-  const [createPerson, createState] = useMutation<{ createPerson: CreatePersonResult }>(CREATE_PERSON)
-  const [updatePerson, updateState] = useMutation<{ updatePerson: UpdatePersonResult }>(UPDATE_PERSON)
+  const [createPerson, createState] = useMutation<{ createPerson: CreatePersonResult }>(CREATE_PERSON, {
+    update: (cache, { data }) => cachePeople(cache, data?.createPerson.people),
+  })
+  const [updatePerson, updateState] = useMutation<{ updatePerson: UpdatePersonResult }>(UPDATE_PERSON, {
+    update: (cache, { data }) => cachePeople(cache, data?.updatePerson.people),
+  })
   const loading = createState.loading || updateState.loading
   const bannerMessages = [...fieldErrors, ...errorMessages(createState.error), ...errorMessages(updateState.error)]
 

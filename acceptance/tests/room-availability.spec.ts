@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
+import { formatDateParam, pinnedWeekday } from './support/pinnedDates'
 
 // mootmaker/docs/reference/use-cases.md, section E (Room Availability), cases 26-37 except 30. E.30 ("no rooms
 // exist yet") is covered separately by 00-room-availability-empty.spec.ts, which must run before
@@ -89,15 +90,6 @@ async function setDate(page: Page, month: number, day: number, year: number): Pr
 
 const MONTH_ABBREV = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-// Local (not UTC) YYYY-MM-DD, matching RoomAvailabilityPage's own DATE_PARAM_FORMAT and how
-// dayjs().format('YYYY-MM-DD') reads a pinned clock in the browser - using toISOString() here
-// instead would silently shift by a day whenever the host's local timezone isn't UTC.
-function formatDateParam(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
 
 function addDays(date: Date, days: number): Date {
   const copy = new Date(date)
@@ -188,7 +180,7 @@ function gridPaper(page: Page): Locator {
 test('E.26 - view room availability for today', async ({ page }) => {
   const runId = uniqueId()
   const roomName = `Today Room E26 ${runId}`
-  const pinnedNow = new Date('2026-08-19T10:00:00')
+  const pinnedNow = pinnedWeekday('Wednesday')
   await page.clock.setFixedTime(pinnedNow)
   await signInAsDemo(page)
   await createRoom(page, roomName, 4)
@@ -207,7 +199,7 @@ test("E.27 - navigating to a future date shows that date's meeting", async ({ pa
   const runId = uniqueId()
   const roomName = `Future Room E27 ${runId}`
   const subject = `E27 future meeting ${runId}`
-  const pinnedNow = new Date('2026-08-20T10:00:00')
+  const pinnedNow = pinnedWeekday('Tuesday')
   await page.clock.setFixedTime(pinnedNow)
   await signInAsDemo(page)
   await createRoom(page, roomName, 4)
@@ -237,7 +229,7 @@ test("E.27 - navigating to a future date shows that date's meeting", async ({ pa
 })
 
 test('E.28 - navigating to a past date updates the URL and date picker', async ({ page }) => {
-  const pinnedNow = new Date('2026-08-21T10:00:00')
+  const pinnedNow = pinnedWeekday('Friday')
   await page.clock.setFixedTime(pinnedNow)
   await signInAsDemo(page)
 
@@ -253,8 +245,11 @@ test('E.28 - navigating to a past date updates the URL and date picker', async (
 })
 
 test('E.29 - the date picker jumps directly to an arbitrary date several weeks away', async ({ page }) => {
-  // A date early in its month, so the fixed +42-day jump below can't land on a day-of-month that
-  // doesn't exist in the target month.
+  // Deliberately still a literal, unlike every other pinned date in this file (see
+  // support/pinnedDates.ts). This case books nothing - it only navigates - so the retention
+  // boundary never applies to it, and it has been running from behind that boundary for weeks
+  // without trouble. The literal also keeps the property the jump below wants: a date early in its
+  // month, so the fixed +42-day hop can't land on a day-of-month the target month doesn't have.
   const pinnedNow = new Date('2026-08-03T10:00:00')
   await page.clock.setFixedTime(pinnedNow)
   await signInAsDemo(page)
@@ -311,6 +306,9 @@ test('E.31 - rooms exist but none has meetings that day shows the grid, not the 
   // e-room-availability.md's tc-e31 Notes. Isolation is also guaranteed structurally: this test
   // only ever checks its own freshly-created room, which by construction has no meetings on it yet
   // regardless of what date is used.
+  // Deliberately still a literal (see support/pinnedDates.ts): being far in the FUTURE, it can
+  // never fall behind the retention boundary, which is the expiry every other pinned date in this
+  // file was changed to avoid.
   const pinnedNow = new Date('2028-01-05T10:00:00')
   await page.clock.setFixedTime(pinnedNow)
   await signInAsDemo(page)
@@ -335,7 +333,7 @@ test("E.32 - a meeting block's tooltip shows subject and time range, and clickin
   const runId = uniqueId()
   const roomName = `Tooltip Room E32 ${runId}`
   const subject = `E32 tooltip meeting ${runId}`
-  const pinnedNow = new Date('2026-09-01T09:00:00')
+  const pinnedNow = pinnedWeekday('Tuesday', { hour: 9 })
   await page.clock.setFixedTime(pinnedNow)
   await signInAsDemo(page)
   await createRoom(page, roomName, 4)
@@ -370,7 +368,7 @@ test('E.33 - overlapping meetings in different rooms render in their own lanes',
   const roomBName = `Room B E33 ${runId}`
   const subjectA = `E33 meeting A ${runId}`
   const subjectB = `E33 meeting B ${runId}`
-  const pinnedNow = new Date('2026-09-02T09:00:00')
+  const pinnedNow = pinnedWeekday('Wednesday', { hour: 9 })
   await page.clock.setFixedTime(pinnedNow)
   await signInAsDemo(page)
   await createRoom(page, roomAName, 4)
@@ -423,7 +421,7 @@ test('E.34 - back-to-back meetings in the same room both succeed and render as d
   const roomName = `Back To Back Room E34 ${runId}`
   const subject1 = `E34 first meeting ${runId}`
   const subject2 = `E34 second meeting ${runId}`
-  const pinnedNow = new Date('2026-09-03T08:00:00')
+  const pinnedNow = pinnedWeekday('Thursday', { hour: 8 })
   await page.clock.setFixedTime(pinnedNow)
   await signInAsDemo(page)
   await createRoom(page, roomName, 4)
@@ -467,7 +465,7 @@ test('E.35 - room colour is consistent between Room Availability and Person Cale
   const runId = uniqueId()
   const roomName = `Colour Match Room E35 ${runId}`
   const subject = `E35 colour match meeting ${runId}`
-  const pinnedNow = new Date('2026-09-08T10:00:00')
+  const pinnedNow = pinnedWeekday('Tuesday', { weeks: 1 })
   await page.clock.setFixedTime(pinnedNow)
   await signInAsDemo(page)
   await createRoom(page, roomName, 4)
@@ -502,7 +500,7 @@ test('E.36 - mobile viewport: grid scrolls horizontally, the room column stays p
 }) => {
   const runId = uniqueId()
   const roomName = `Scroll Room E36 ${runId}`
-  const pinnedNow = new Date('2026-09-04T10:00:00')
+  const pinnedNow = pinnedWeekday('Friday')
   await page.clock.setFixedTime(pinnedNow)
   // Signs in at the default (desktop) viewport first, then switches to mobile - signInAsDemo's own
   // "Sign out" check targets the sidebar's Drawer, which Layout.tsx hides via CSS (not unmounts) at
@@ -560,7 +558,7 @@ test('E.36 - mobile viewport: grid scrolls horizontally, the room column stays p
 })
 
 test('E.37 - "Add Meeting" from this page pre-fills the currently viewed date, not today', async ({ page }) => {
-  const pinnedNow = new Date('2026-08-24T10:00:00')
+  const pinnedNow = pinnedWeekday('Monday')
   await page.clock.setFixedTime(pinnedNow)
   await signInAsDemo(page)
 

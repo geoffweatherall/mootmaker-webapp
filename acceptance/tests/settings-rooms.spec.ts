@@ -1,6 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { freshTestAccount } from '../../support/testAccount'
+import { formatDateParam, pinnedWeekday } from './support/pinnedDates'
+
+// A weekday inside business hours, derived from now() rather than hardcoded - a literal date here
+// expires the moment the server's retention boundary advances past it. See support/pinnedDates.ts.
+const PINNED_NOW = pinnedWeekday('Wednesday')
 
 // mootmaker/docs/reference/use-cases.md, section J (Settings - Rooms, admin only), cases 77-83. See
 // acceptance/test-cases/j-settings-rooms.md for the full per-case Given/When/Then/Steps/Assertions
@@ -119,7 +124,7 @@ test.describe('J. Settings - Rooms (admin only)', () => {
     const roomName = `J78 Room ${runId}`
     // See add-meeting.spec.ts's identical comment: RoomAvailabilityPage only renders business
     // hours, so this needs pinning to land the check inside that window deterministically.
-    await page.clock.setFixedTime(new Date('2026-08-19T10:00:00'))
+    await page.clock.setFixedTime(PINNED_NOW)
 
     await signInAsDemo(page)
     await createRoom(page, roomName, '2')
@@ -132,7 +137,7 @@ test.describe('J. Settings - Rooms (admin only)', () => {
     await page.keyboard.press('Escape')
 
     // Has its own lane on Room Availability's grid for the pinned (today's) date.
-    await page.goto('/rooms/2026-08-19/availability')
+    await page.goto(`/rooms/${formatDateParam(PINNED_NOW)}/availability`)
     await expect(page.getByText(roomName)).toBeVisible()
   })
 
@@ -176,7 +181,7 @@ test.describe('J. Settings - Rooms (admin only)', () => {
     const originalName = `J81 Room ${runId}`
     const newName = `J81 Room Renamed ${runId}`
     const subject = `J81 Meeting ${runId}`
-    await page.clock.setFixedTime(new Date('2026-08-19T10:00:00'))
+    await page.clock.setFixedTime(PINNED_NOW)
 
     await signInAsDemo(page)
     await createRoom(page, originalName, '4')
@@ -194,7 +199,7 @@ test.describe('J. Settings - Rooms (admin only)', () => {
     await page.goto(`/meetings/${meetingId}`)
     await expect(page.getByText(newName, { exact: false })).toBeVisible()
 
-    await page.goto('/rooms/2026-08-19/availability')
+    await page.goto(`/rooms/${formatDateParam(PINNED_NOW)}/availability`)
     await expect(page.getByText(newName)).toBeVisible()
   })
 
@@ -204,7 +209,7 @@ test.describe('J. Settings - Rooms (admin only)', () => {
     const subject = `J82 Meeting ${runId}`
     const attendee1 = `J82 Attendee A ${runId}`
     const attendee2 = `J82 Attendee B ${runId}`
-    await page.clock.setFixedTime(new Date('2026-08-19T10:00:00'))
+    await page.clock.setFixedTime(PINNED_NOW)
 
     await signInAsDemo(page)
     await createRoom(page, roomName, '4')

@@ -2,6 +2,11 @@ import { expect, test } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { waitForVerificationCode } from '../../support/email'
 import { freshTestAccount } from '../../support/testAccount'
+import { pinnedWeekday } from './support/pinnedDates'
+
+// A weekday inside business hours, derived from now() rather than hardcoded - a literal date here
+// expires the moment the server's retention boundary advances past it. See support/pinnedDates.ts.
+const PINNED_NOW = pinnedWeekday('Wednesday')
 
 function requireEnv(name: string): string {
   const value = process.env[name]
@@ -171,7 +176,7 @@ test('can immediately schedule a meeting as themselves right after signing up', 
   // AddMeetingPage's start-time default (next 15-minute boundary from now) needs to land inside
   // RoomAvailabilityPage's business-hours grid (08:00-17:00) for the meeting to be visibly
   // asserted afterward - same reasoning as add-meeting.spec.ts.
-  await page.clock.setFixedTime(new Date('2026-08-19T10:00:00'))
+  await page.clock.setFixedTime(PINNED_NOW)
 
   await page.goto('/meetings/add')
   await expect(page.getByRole('heading', { name: 'Add Meeting' })).toBeVisible()

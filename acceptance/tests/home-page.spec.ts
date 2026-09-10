@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { freshTestAccount } from '../../support/testAccount'
+import { formatDateParam, pinnedFutureWeekday, pinnedWeekday } from './support/pinnedDates'
 
 /**
  * Credentials for the account that deliberately has NO linked Person.
@@ -181,7 +182,6 @@ test('D.21 - signed-out home page shows the sign-in form pre-filled with demo cr
   await expect(homeMain.getByRole('link', { name: 'Sign up' })).toBeVisible()
 })
 
-const TUESDAY = 2
 
 /**
  * A pinned instant on the given weekday, at least `minDaysAhead` days from now, at `hhmm` local.
@@ -194,18 +194,6 @@ const TUESDAY = 2
  * Pinning itself must stay: RoomAvailabilityPage renders only business hours (08:00-17:00), so an
  * unpinned run books after-hours meetings that are created successfully and fall off the grid.
  */
-function pinnedWeekday(weekday: number, minDaysAhead: number, hhmm: string): Date {
-  const [hours, minutes] = hhmm.split(':').map(Number)
-  const pinned = new Date()
-  pinned.setDate(pinned.getDate() + minDaysAhead)
-  // Forward to the next matching weekday, never backwards, so the minimum distance holds.
-  while (pinned.getDay() !== weekday) {
-    pinned.setDate(pinned.getDate() + 1)
-  }
-  pinned.setHours(hours, minutes, 0, 0)
-  return pinned
-}
-
 test('D.22 - signed in with a linked Person shows Calendar/Room availability/Add Meeting entry points plus a Today/Tomorrow agenda sorted by start time, each linking to its own meeting details', async ({
   page,
 }) => {
@@ -223,7 +211,7 @@ test('D.22 - signed in with a linked Person shows Calendar/Room availability/Add
   // DERIVED, not hardcoded. It used to be 2027-04-06, which stopped working the moment the API
   // gained a 180-day booking horizon: every booking came back OutsideBookableRange and the test
   // reported a failed navigation, blaming the Home page. A fixed future date expires silently.
-  const pinnedToday = pinnedWeekday(TUESDAY, 120, '09:00')
+  const pinnedToday = pinnedFutureWeekday('Tuesday', { hour: 9 })
   await page.clock.setFixedTime(pinnedToday)
   await signInAsDemo(page)
   await createRoom(page, roomName, 4)
@@ -328,13 +316,17 @@ test('D.24 - no linked Person shows a degraded Home page: the account-not-set-up
 
 test('D.25 - "Room availability today" and "Add Meeting" deep-link to the pinned "today" date', async ({ page }) => {
   await signInAsDemo(page)
-  // A known Monday, safely inside business hours - the exact pinned instant from D.25's own
-  // catalog Steps, so this test's expected URLs/values below can be hardcoded rather than derived.
-  await page.clock.setFixedTime(new Date('2026-08-24T10:00:00'))
+  // A Monday inside business hours, derived from now() rather than hardcoded: a literal date here
+  // expires as soon as the server's retention boundary advances past it (see
+  // support/pinnedDates.ts). The expected URL and field value below are therefore derived from the
+  // same instant rather than written out, which is what the catalog Steps describe anyway.
+  const pinnedToday = pinnedWeekday('Monday')
+  await page.clock.setFixedTime(pinnedToday)
+  const todayParam = formatDateParam(pinnedToday)
 
   await page.goto('/')
   await page.getByRole('button', { name: 'Room availability today' }).click()
-  await expect(page).toHaveURL(/\/rooms\/2026-08-24\/availability$/)
+  await expect(page).toHaveURL(new RegExp(`/rooms/${todayParam}/availability$`))
 
   await page.goto('/')
   await page.getByRole('link', { name: 'Add Meeting' }).click()
@@ -342,5 +334,5 @@ test('D.25 - "Room availability today" and "Add Meeting" deep-link to the pinned
   // Home's "Add Meeting" link carries no router state (unlike RoomAvailabilityPage's - see E.37's
   // known gap), so this is exercising AddMeetingPage's own defaultDate() fallback to today, not a
   // passed-through value.
-  await expect(page.getByRole('group', { name: 'Date' }).locator('input')).toHaveValue('2026-08-24')
+  await expect(page.getByRole('group', { name: 'Date' }).locator('input')).toHaveValue(todayParam)
 })

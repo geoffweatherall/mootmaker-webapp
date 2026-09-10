@@ -35,6 +35,7 @@ import {
   defaultMeetingTimes,
   filterAttendeeOptions,
   filterOrganiserOptions,
+  referenceDataReady,
   initialSuggestionCache,
   type DefaultMeetingTimes,
   type SuggestionCache,
@@ -74,7 +75,7 @@ function combineDateAndTime(date: Dayjs | null, time: Dayjs | null): string {
 export default function AddMeetingPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { personId, dateFormat, timeFormat } = useAuth()
+  const { personId, personLoading, dateFormat, timeFormat } = useAuth()
   // RoomAvailabilityPage's "Add Meeting" links pass the date currently being viewed via router
   // state, so the form defaults to that date rather than always today - see defaultDate() above.
   // Only read once, on mount: this is a one-time initial value, not something that should keep
@@ -252,7 +253,21 @@ export default function AddMeetingPage() {
     }
   }
 
-  const loadingReferenceData = referenceLoading
+  // Also gated on personLoading, not just the reference-data query, because the organiser default
+  // comes from the signed-in user's own Person - which arrives from the SESSION query, NOT from the
+  // reference data this page renders from. Rendering an interactive form before it lands means the
+  // Organiser field is momentarily blank and the form is submittable, so a fast Save sends
+  // organiserId: "" and the SERVER rejects it with OrganiserRequired: "Please select an organiser."
+  // - while the field visibly fills in with the user's own name a moment later.
+  //
+  // Latent until reference data started being served from cache. Previously every visit paid a
+  // round trip for rooms/people, which was reliably slower than the SESSION query and hid this. Now
+  // a second visit renders the form instantly and the two races are the other way round. Caught by
+  // F.50, which creates a room (loading reference data into the cache) and then opens this page.
+  //
+  // Not the same thing as having no linked Person: personLoading goes false either way, so an
+  // account with no Person still gets the form with a blank Organiser, exactly as before.
+  const loadingReferenceData = !referenceDataReady(referenceLoading, personLoading)
 
   return (
     <Stack spacing={3}>

@@ -6,6 +6,7 @@ import {
   filterAttendeeOptions,
   filterOrganiserOptions,
   initialSuggestionCache,
+  referenceDataReady,
   type SuggestionCache,
 } from './addMeetingLogic'
 import type { Person, Room } from '../graphql/types'
@@ -171,5 +172,28 @@ describe('defaultMeetingTimes', () => {
         expect(end.second() + end.millisecond(), `end not zeroed at ${where}`).toBe(0)
       }
     }
+  })
+})
+
+describe('referenceDataReady', () => {
+  it('waits for the reference data the fields render from', () => {
+    expect(referenceDataReady(true, false)).toBe(false)
+  })
+
+  it("waits for the signed-in user's own Person, which the Organiser field defaults to", () => {
+    // The regression this exists to prevent: rendering here makes the form submittable with a blank
+    // Organiser, and the server answers OrganiserRequired - "Please select an organiser." - while
+    // the field fills in with the user's own name. Caught by acceptance test F.50, which loads
+    // reference data into the cache (by creating a room) and then opens this page, so reference
+    // data is instant and the SESSION query is the one still in flight.
+    expect(referenceDataReady(false, true)).toBe(false)
+  })
+
+  it('renders once both have settled, whether or not a Person was actually found', () => {
+    // personLoading goes false either way, so an account with no linked Person gets the form with a
+    // blank Organiser - the degraded-but-usable case - rather than a permanent spinner. There is no
+    // separate case to assert here: "no linked Person" IS (false, false), and writing it as its own
+    // test would assert the same inputs twice while reading like extra coverage.
+    expect(referenceDataReady(false, false)).toBe(true)
   })
 })

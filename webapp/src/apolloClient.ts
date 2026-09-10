@@ -1,4 +1,5 @@
 import { ApolloClient, InMemoryCache, HttpLink } from '@apollo/client'
+import { DayInvalidations } from './realtime/daysInvalidated'
 import { SetContextLink } from '@apollo/client/link/context'
 import { currentIdToken } from './auth/cognito'
 import { runtimeConfig } from './config'
@@ -88,3 +89,10 @@ export const apolloClient = new ApolloClient({
   ),
   cache,
 })
+
+/**
+ * Turns day-invalidation broadcasts into cache evictions. Lives here so there is exactly one
+ * instance bound to exactly one cache - its self-invalidation guard and in-flight-race marker are
+ * per-client state, and a second instance would silently hold half the picture.
+ */
+export const dayInvalidations = new DayInvalidations(cache)

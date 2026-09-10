@@ -536,17 +536,25 @@ test('E.36 - mobile viewport: grid scrolls horizontally, the room column stays p
     el.scrollLeft = el.scrollWidth
   })
 
-  await expect(fadeHint).toHaveCount(1)
-  const leftFadeBox = await fadeHint.boundingBox()
-  const xAfterScroll = (await roomNameLocator.boundingBox())!.x
-
-  if (!rightFadeBox || !leftFadeBox) {
+  if (!rightFadeBox) {
     throw new Error('Could not read the scroll-fade hint bounding box.')
   }
   // The right-edge hint (sx: right: 0) sits further right than the left-edge hint (sx: left: 200)
   // ever does - a relative comparison rather than an absolute pixel expectation, so it doesn't
   // depend on the outer Container's exact computed offset.
-  expect(leftFadeBox.x).toBeLessThan(rightFadeBox.x)
+  //
+  // expect.poll, not a plain expect on a box read once. Setting scrollLeft above fires onScroll,
+  // which sets React state, which re-renders the hint onto the other edge - all asynchronous, and
+  // measured at ~10ms in the trace of a real failure. The obvious guard, `expect(fadeHint)
+  // .toHaveCount(1)`, does NOT wait for any of it: exactly one hint is mounted whichever edge is
+  // faded, so the assertion is already satisfied by the STALE right-edge hint and returns
+  // immediately. An auto-retrying assertion that is already true waits for nothing. Polling the
+  // position itself is the only form of this that actually waits for the thing under test.
+  await expect
+    .poll(async () => (await fadeHint.boundingBox())?.x ?? Number.POSITIVE_INFINITY)
+    .toBeLessThan(rightFadeBox.x)
+
+  const xAfterScroll = (await roomNameLocator.boundingBox())!.x
   // The sticky (position: sticky; left: 0) room-name column doesn't move as the grid scrolls.
   expect(Math.abs(xAfterScroll - xBeforeScroll)).toBeLessThan(1)
 })

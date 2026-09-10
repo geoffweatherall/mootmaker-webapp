@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { pinnedFutureWeekday, pinnedWeekday } from './support/pinnedDates'
 
 /**
  * Credentials for the account that deliberately has NO linked Person.
@@ -278,7 +279,7 @@ test('add a meeting with all required fields succeeds and it appears on the room
   // Date.now()/new Date() (not the timers - setFixedTime keeps those running normally) to a known
   // time safely inside business hours makes that deterministic instead, matching the same fix
   // already used in webapp/tests/meeting-details.spec.ts for the same class of problem.
-  await page.clock.setFixedTime(new Date('2026-08-19T10:00:00'))
+  await page.clock.setFixedTime(pinnedWeekday('Wednesday'))
 
   await page.goto('/signin')
   await page.getByLabel('Email').fill(demoEmail)
@@ -331,7 +332,7 @@ test('organiser defaults to the signed-in user\'s own Person without any interac
 test('start and end time default to the next 15-minute boundary and one hour later, same day', async ({ page }) => {
   await signInAsDemo(page)
   // A known, non-boundary time - see F.40's catalog Given.
-  await page.clock.setFixedTime(new Date('2026-08-24T10:07:00'))
+  await page.clock.setFixedTime(pinnedWeekday('Monday', { hour: 10, minute: 7 }))
   await goToAddMeeting(page)
 
   await expect(page.getByRole('group', { name: 'Start time' }).locator('input')).toHaveValue('10:15')
@@ -365,7 +366,7 @@ test('an end time before the start time is rejected with EndBeforeStart', async 
   const runId = uniqueId()
   const roomName = `Acceptance Test Room F42a ${runId}`
   await signInAsDemo(page)
-  await page.clock.setFixedTime(new Date('2026-08-24T08:00:00'))
+  await page.clock.setFixedTime(pinnedWeekday('Monday', { hour: 8 }))
   await createRoom(page, roomName, 4)
 
   await goToAddMeeting(page)
@@ -383,7 +384,7 @@ test('an end time equal to the start time is rejected with EndBeforeStart', asyn
   const runId = uniqueId()
   const roomName = `Acceptance Test Room F42b ${runId}`
   await signInAsDemo(page)
-  await page.clock.setFixedTime(new Date('2026-08-24T08:00:00'))
+  await page.clock.setFixedTime(pinnedWeekday('Monday', { hour: 8 }))
   await createRoom(page, roomName, 4)
 
   await goToAddMeeting(page)
@@ -581,7 +582,7 @@ test('an overlapping time slot in the same room is rejected with TimeRangeUnavai
   const subject1 = `F50 first meeting ${runId}`
   const subject2 = `F50 second meeting ${runId}`
   await signInAsDemo(page)
-  await page.clock.setFixedTime(new Date('2026-08-24T08:00:00'))
+  await page.clock.setFixedTime(pinnedWeekday('Monday', { hour: 8 }))
   await createRoom(page, roomName, 4)
 
   // First meeting: 10:00-11:00.
@@ -641,7 +642,7 @@ test('suggest a room with none qualifying shows the inline "no room available" m
   // A deliberately unusual date/time, distinct from the round examples used elsewhere in this
   // catalog (e.g. 10:00 on 2026-08-19/24), to further reduce the odds of colliding with some
   // other section's own fixture meeting.
-  await page.clock.setFixedTime(new Date('2027-01-05T05:00:00'))
+  await page.clock.setFixedTime(pinnedFutureWeekday('Tuesday', { hour: 5 }))
   for (const name of attendeeNames) {
     await createPerson(page, name)
   }
@@ -687,7 +688,7 @@ test('suggest a room fills the best-fit room on first press, then cycles through
   const room9 = `Suggest Room 9 ${runId}`
   const attendeeNames = Array.from({ length: 4 }, (_, i) => `F53 Attendee ${i} ${runId}`)
   await signInAsDemo(page)
-  await page.clock.setFixedTime(new Date('2027-01-06T06:00:00'))
+  await page.clock.setFixedTime(pinnedFutureWeekday('Wednesday', { hour: 6 }))
   await createRoom(page, room5, 5)
   await createRoom(page, room7, 7)
   await createRoom(page, room9, 9)
@@ -746,7 +747,7 @@ test('changing the attendee count invalidates the cached suggestion, re-ranking 
   const attendeeNames = Array.from({ length: 11 }, (_, i) => `F54 Attendee ${i} ${runId}`)
   const firstPressAttendees = attendeeNames.slice(0, 9)
   await signInAsDemo(page)
-  await page.clock.setFixedTime(new Date('2027-01-07T07:00:00'))
+  await page.clock.setFixedTime(pinnedFutureWeekday('Thursday', { hour: 7 }))
   await createRoom(page, roomSmall, capacitySmall)
   await createRoom(page, roomLarge, capacityLarge)
   for (const name of attendeeNames) {
@@ -776,7 +777,7 @@ test('changing the attendee count invalidates the cached suggestion, re-ranking 
 
 test('Cancel discards the form and returns to the previously-viewed Room Availability page', async ({ page }) => {
   await signInAsDemo(page)
-  await page.clock.setFixedTime(new Date('2026-08-24T10:00:00'))
+  await page.clock.setFixedTime(pinnedWeekday('Monday'))
 
   // Arrive via a real navigation (not page.goto('/meetings/add') directly) so browser history has
   // somewhere sensible to go back to - see F.55's catalog Notes: Cancel's handler is
@@ -801,7 +802,7 @@ test('double-clicking Save does not double-submit - exactly one meeting is creat
   const roomName = `Acceptance Test Room F56 ${runId}`
   const subject = `F56 double click subject ${runId}`
   await signInAsDemo(page)
-  await page.clock.setFixedTime(new Date('2026-08-24T09:00:00'))
+  await page.clock.setFixedTime(pinnedWeekday('Monday', { hour: 9 }))
   await createRoom(page, roomName, 4)
 
   await goToAddMeeting(page)

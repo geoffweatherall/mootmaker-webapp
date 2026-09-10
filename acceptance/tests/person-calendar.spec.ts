@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { freshTestAccount } from '../../support/testAccount'
+import { formatDayCell, pinnedWeekday } from './support/pinnedDates'
 
 /**
  * Credentials for the account that deliberately has NO linked Person.
@@ -188,6 +189,11 @@ test('G.61 - the six-week grid shows exactly Monday-Friday, 30 day cells total',
 })
 
 test('G.62 - Previous/Next week and This week navigate the visible six-week window', async ({ page }) => {
+  // Deliberately still a literal, unlike the meeting-creating cases below (see
+  // support/pinnedDates.ts). This case books nothing - it only navigates the six-week window - so
+  // the retention boundary never applies, and the three expected ranges below are precomputed from
+  // this exact instant. Deriving the date would mean re-deriving PersonCalendarPage's own
+  // startOfWorkWeek() math in the test, which is the thing those literals exist to avoid.
   await page.clock.setFixedTime(new Date('2026-08-26T10:00:00'))
   await signInAsDemo(page)
   await goToOwnCalendar(page)
@@ -224,9 +230,22 @@ test('G.62 - Previous/Next week and This week navigate the visible six-week wind
 test('G.63 - a day with three meetings lists them in ascending start-time order; other days show none', async ({
   page,
 }) => {
-  // Wed 2 Sep 2026 - a work day inside the 6-week window that opens from this pinned "now", with
-  // Fri 4 Sep 2026 (same week) used as the "no fixtures placed here" comparison day.
-  await page.clock.setFixedTime(new Date('2026-09-02T09:00:00'))
+  // A Wednesday inside the 6-week window that opens from this pinned "now", with the Friday of the
+  // same week used as the "no fixtures placed here" comparison day. Derived rather than hardcoded:
+  // this case creates meetings, so a literal date stops being bookable the moment the server's
+  // retention boundary advances past it. See support/pinnedDates.ts.
+  //
+  // EIGHT WEEKS OUT, and that isolation is load-bearing rather than arbitrary. This is the only
+  // case in the suite that counts EVERY row in a day cell rather than looking for its own subjects,
+  // so any other test that books a meeting for the demo user on the same day breaks it - and this
+  // environment accumulates every fixture the whole suite creates. Confirmed the hard way: with
+  // this pinned to the current week it read 5 rows instead of 3, having picked up two other cases'
+  // meetings. Week 8 is clear of the current-week fixtures (behind the window) and of the
+  // room-suggestion cases at 16 weeks (beyond it, since the window is only 6 weeks long).
+  const pinnedNow = pinnedWeekday('Wednesday', { hour: 9, weeks: 8 })
+  const fixtureDayCell = formatDayCell(pinnedNow)
+  const emptyDayCell = formatDayCell(pinnedWeekday('Friday', { weeks: 8 }))
+  await page.clock.setFixedTime(pinnedNow)
   await signInAsDemo(page)
   const id = uniqueId()
   const roomName = `Sort Test Room ${id}`
@@ -258,7 +277,7 @@ test('G.63 - a day with three meetings lists them in ascending start-time order;
 
   const fixtureCell = page
     .locator('.MuiPaper-outlined')
-    .filter({ has: page.getByText('2 Sep', { exact: true }) })
+    .filter({ has: page.getByText(fixtureDayCell, { exact: true }) })
   const rows = fixtureCell.locator('a')
   await expect(rows).toHaveCount(3)
   const rowTexts = await rows.allTextContents()
@@ -271,14 +290,14 @@ test('G.63 - a day with three meetings lists them in ascending start-time order;
 
   const unrelatedCell = page
     .locator('.MuiPaper-outlined')
-    .filter({ has: page.getByText('4 Sep', { exact: true }) })
+    .filter({ has: page.getByText(emptyDayCell, { exact: true }) })
   await expect(unrelatedCell.locator('a')).toHaveCount(0)
 })
 
 test('G.65 - clicking a meeting row on the calendar navigates to its Meeting Details page', async ({
   page,
 }) => {
-  await page.clock.setFixedTime(new Date('2026-09-09T10:00:00'))
+  await page.clock.setFixedTime(pinnedWeekday('Wednesday'))
   await signInAsDemo(page)
   const id = uniqueId()
   const roomName = `Calendar Click Room ${id}`
@@ -299,7 +318,7 @@ test("G.66 - the meeting's room colour dot on Person Calendar matches Room Avail
   // Same underlying check as E.35 in e-room-availability.md, initiated from this page instead -
   // see g-person-calendar.md's G.66 Notes. Kept as its own independent fixture rather than a
   // shared helper across the two catalog files/agents, per this section's own scope.
-  await page.clock.setFixedTime(new Date('2026-09-16T10:00:00'))
+  await page.clock.setFixedTime(pinnedWeekday('Wednesday', { weeks: 1 }))
   await signInAsDemo(page)
   const id = uniqueId()
   const roomName = `Colour Match Room ${id}`

@@ -1,6 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { freshTestAccount } from '../../support/testAccount'
+import { pinnedWeekday } from './support/pinnedDates'
+
+// A weekday inside business hours, derived from now() rather than hardcoded - a literal date here
+// expires the moment the server's retention boundary advances past it. See support/pinnedDates.ts.
+const PINNED_NOW = pinnedWeekday('Wednesday')
 
 // mootmaker/docs/reference/use-cases.md, section K (Settings - People, admin only), cases 84-88. See
 // acceptance/test-cases/k-settings-people.md for the full per-case Given/When/Then/Steps/Assertions
@@ -168,7 +173,7 @@ test.describe('K. Settings - People (admin only)', () => {
     const roomName = `K87 Room ${runId}`
     const subject = `K87 Meeting ${runId}`
     const newName = `K87 Renamed ${runId}`
-    await page.clock.setFixedTime(new Date('2026-08-19T10:00:00'))
+    await page.clock.setFixedTime(PINNED_NOW)
 
     await signInAsDemo(page)
     await createRoom(page, roomName, '4')
@@ -198,7 +203,7 @@ test.describe('K. Settings - People (admin only)', () => {
     const newName = `K88 Guest Renamed ${runId}`
     const roomName = `K88 Room ${runId}`
     const subject = `K88 Meeting ${runId}`
-    await page.clock.setFixedTime(new Date('2026-08-19T10:00:00'))
+    await page.clock.setFixedTime(PINNED_NOW)
 
     await signInAsDemo(page)
     await createRoom(page, roomName, '4')

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { darkTokens, lightTokens } from '../../webapp/src/theme/tokens'
+import { formatDateParam, pinnedWeekday } from './support/pinnedDates'
 
 // mootmaker/docs/reference/use-cases.md, section M (Cross-cutting / non-functional), cases 92-99. M.98 is
 // deliberately NOT re-implemented here - the catalog explicitly treats J.81's own test as already
@@ -40,12 +41,14 @@ test('M.92 - a first cold visit shows a full spinner; a same-session revisit sho
   const runId = `${Date.now()}-${Math.floor(Math.random() * 10_000)}`
   const roomName = `M92 Room ${runId}`
   const subject = `M92 meeting ${runId}`
-  const dateStr = '2026-08-19'
+  // A Wednesday inside business hours (08:00-17:00), derived from now() rather than hardcoded:
+  // RoomAvailabilityPage only ever renders business hours, and a literal date expires as soon as
+  // the server's retention boundary advances past it. See support/pinnedDates.ts.
+  const pinnedNow = pinnedWeekday('Wednesday')
+  const dateStr = formatDateParam(pinnedNow)
   const availabilityUrl = new RegExp(`/rooms/${dateStr}/availability`)
 
-  // Wednesday, safely inside business hours (08:00-17:00) - see add-meeting.spec.ts's identical
-  // pinning for why this matters (RoomAvailabilityPage only ever renders business hours).
-  await page.clock.setFixedTime(new Date(`${dateStr}T10:00:00`))
+  await page.clock.setFixedTime(pinnedNow)
 
   await signInAsDemo(page)
 

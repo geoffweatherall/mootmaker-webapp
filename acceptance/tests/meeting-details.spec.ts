@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test'
+import { formatDateParam, pinnedWeekday } from './support/pinnedDates'
 
 // mootmaker/docs/reference/use-cases.md, section H (Meeting Details), cases 68-73. All sign in as the demo user
 // (a real, pre-verified, always-admin Cognito account with a linked Person already resolved - see
@@ -23,8 +24,11 @@ function requireEnv(name: string): string {
 // Pinning exactly to the meeting's intended start time means AddMeetingPage's own defaults
 // (next-15-minute-boundary start, start+1h end) land exactly on 10:00-11:00 with no need to touch
 // either time picker.
-const PINNED_NOW = new Date('2026-08-24T10:00:00')
-const MEETING_DATE = '2026-08-24'
+// Derived from now() rather than hardcoded: this file creates meetings, so a literal date stops
+// being bookable the moment the server's retention boundary advances past it, and the failure shows
+// up as a missing meeting rather than as a date problem. See support/pinnedDates.ts.
+const PINNED_NOW = pinnedWeekday('Monday')
+const MEETING_DATE = formatDateParam(PINNED_NOW)
 
 async function signInAsDemo(page: Page) {
   const demoEmail = requireEnv('DEMO_USER_EMAIL')

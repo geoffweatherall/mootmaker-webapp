@@ -3,6 +3,29 @@ import { expect, test, type Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { freshTestAccount } from '../../support/testAccount'
 
+/**
+ * Credentials for the account that deliberately has NO linked Person.
+ *
+ * A separate account from the e2e user, which used to have no Person only by accident: it is
+ * created directly rather than through sign-up, so PostConfirmationCreatePersonHandler never ran.
+ * Giving it one was right - the whole suite had been running as a degraded identity - but it left
+ * the degraded path itself with no fixture, and these tests with no premise. See
+ * mootmaker-api's cognito.tf and mootmaker-webapp#54.
+ *
+ * Skips rather than fails where the account does not exist. It is not created in production, where
+ * a personless account would not be a fixture but a real person's broken login.
+ */
+function noPersonCredentials(): { email: string; password: string } {
+  const email = process.env.NO_PERSON_USER_EMAIL
+  const password = process.env.NO_PERSON_USER_PASSWORD
+  test.skip(
+    !email || !password,
+    'This environment has no personless account (deliberately absent in production).',
+  )
+  return { email: email as string, password: password as string }
+}
+
+
 // mootmaker/docs/reference/use-cases.md, section I (Settings - Your name), cases 74-76.
 //
 // I.74 and I.75 deliberately use a fresh signed-up account rather than the demo user: renaming
@@ -19,13 +42,6 @@ function yourNameSection(page: Page) {
   return page.locator('section').filter({ has: page.getByRole('heading', { name: 'Your name' }) })
 }
 
-function requireEnv(name: string): string {
-  const value = process.env[name]
-  if (!value) {
-    throw new Error(`${name} is not set - see acceptance/run.sh.`)
-  }
-  return value
-}
 
 test('I.74: updating your own display name saves, toasts, and updates the sidebar immediately without a reload', async ({
   page,
@@ -87,12 +103,11 @@ test('I.75: submitting a blank name is rejected and leaves the stored name uncha
 test('I.76: the Your name section is disabled with an explanatory note for an account with no linked Person', async ({
   page,
 }) => {
-  const e2eEmail = requireEnv('E2E_USER_EMAIL')
-  const e2ePassword = requireEnv('E2E_USER_PASSWORD')
+  const noPerson = noPersonCredentials()
 
   await page.goto('/signin')
-  await page.getByLabel('Email').fill(e2eEmail)
-  await page.getByLabel('Password').fill(e2ePassword)
+  await page.getByLabel('Email').fill(noPerson.email)
+  await page.getByLabel('Password').fill(noPerson.password)
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page.getByText('Sign out')).toBeVisible()
 

@@ -16,6 +16,18 @@ function daysFromToday(date: Date): number {
   return Math.round((startOfDay(date) - startOfDay(new Date())) / 86_400_000)
 }
 
+test('the anchor is shared across the whole run, which needs a single worker', () => {
+  // pinnedDates.ts captures its anchor Monday ONCE, when the module is first imported, so that a run
+  // spanning midnight cannot compute different anchors for tests either side of it. That only holds
+  // while one worker process imports the module once. Raise `workers` and each worker gets its own
+  // module instance, its own anchor, and - on the wrong night - its own week.
+  //
+  // Asserted rather than commented because of how it would fail: tests would collide on dates the
+  // way G.63 did, reporting a wrong day-cell count and saying nothing whatsoever about workers.
+  // This turns that into a named failure at the top of the file.
+  expect(test.info().config.workers).toBe(1)
+})
+
 test('every pinned date is a weekday, because the calendar grid only has Monday-Friday cells', () => {
   for (const weeks of [-2, -1, 0, 1, 8, 16]) {
     for (const weekday of ['Monday', 'Wednesday', 'Friday'] as const) {

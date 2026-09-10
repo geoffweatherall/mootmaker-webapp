@@ -33,6 +33,14 @@ email_testing_dir="${repo_root}/../mootmaker-email-testing"
 
 owns_environment=""
 environment="${1:-}"
+# Everything after the environment is passed straight through to Playwright, so a single spec or a
+# --grep can be iterated on without paying for the whole suite. The full run takes ~47 minutes
+# against a real environment, which is long enough that not being able to narrow it changes how
+# people work: they stop re-running it.
+if [[ $# -gt 0 ]]; then
+  shift
+fi
+playwright_args=("$@")
 
 if [[ -z "${environment}" ]]; then
   echo "No environment given - creating a fresh one..." >&2
@@ -90,4 +98,4 @@ aws lambda invoke \
   "$(mktemp)" >/dev/null
 
 cd "${repo_root}"
-npm run test:acceptance
+npm run test:acceptance -- "${playwright_args[@]}"

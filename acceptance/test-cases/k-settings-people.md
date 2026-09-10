@@ -99,12 +99,12 @@ See [README.md](README.md) for the entry format and test-data conventions.
 6. Navigate to own Calendar / the meeting's Details page; assert the new name appears there too.
 
 **Assertions:**
-- Step 5: sidebar name = new name (Cognito's `name` attribute was updated server-side by `UpdatePersonHandler`, best-effort, and `AuthProvider`'s `myPerson` query is the ultimate source of truth regardless).
+- Step 5: sidebar name = new name (Cognito's `name` attribute was updated server-side by `UpdatePersonHandler`, best-effort, and `AuthProvider`'s `workspace { me }` read is the ultimate source of truth regardless).
 - Step 6: the meeting's Attendees row shows the new name.
 
 **Out of scope:** N/A.
 
-**Notes:** `UpdatePersonHandler`'s Cognito `name`-attribute sync is explicitly best-effort (logged and swallowed on failure) — this test's assertions rely on `myPerson` (the DynamoDB `Person.name`, the actual source of truth) rather than the Cognito JWT `name` claim directly, since the JWT claim could be briefly stale even on success (only updated on the *next* token refresh/sign-in) while `myPerson` is correct immediately. Signing out and back in (step 4) is what makes the JWT-claim path relevant at all; without it, this test would only be proving the DynamoDB-side update, which K.88 already covers more cheaply.
+**Notes:** `UpdatePersonHandler`'s Cognito `name`-attribute sync is explicitly best-effort (logged and swallowed on failure) — this test's assertions rely on `workspace { me }` (the DynamoDB `Person.name`, the actual source of truth) rather than the Cognito JWT `name` claim directly, since the JWT claim could be briefly stale even on success (only updated on the *next* token refresh/sign-in) while `workspace { me }` is correct immediately. Signing out and back in (step 4) is what makes the JWT-claim path relevant at all; without it, this test would only be proving the DynamoDB-side update, which K.88 already covers more cheaply.
 
 ---
 

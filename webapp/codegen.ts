@@ -26,7 +26,18 @@ const schema = existsSync(SIBLING_SCHEMA) ? SIBLING_SCHEMA : PUBLISHED_SCHEMA
 
 const config: CodegenConfig = {
   schema,
-  documents: ['src/**/*.ts', 'src/**/*.tsx', '!src/graphql/generated/**'],
+  // Test files are excluded, not just the generated directory. A `gql` document written inside a
+  // test is a fixture, not part of the API surface - but codegen cannot tell, so without this it
+  // emits types and DocumentNodes for it into the generated production artifacts. That happened:
+  // a throwaway `query W` in daysInvalidated.test.ts appeared as WQuery/WDocument, and would have
+  // been committed as though it were real.
+  documents: [
+    'src/**/*.ts',
+    'src/**/*.tsx',
+    '!src/graphql/generated/**',
+    '!src/**/*.test.ts',
+    '!src/**/*.test.tsx',
+  ],
   ignoreNoDocuments: true,
   generates: {
     'src/graphql/generated/': {

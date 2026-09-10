@@ -20,6 +20,7 @@ import { useAuth } from '../auth/authContext'
 import { datePickerFormat, timePickerUsesAmPm } from '../graphql/formatDateTime'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { SubmitButton } from '../components/SubmitButton'
+import { dayInvalidations } from '../apolloClient'
 import { errorMessages } from '../graphql/errorMessages'
 import { CREATE_MEETING } from '../graphql/mutations'
 import { REFERENCE_DATA, SUGGEST_ROOM } from '../graphql/queries'
@@ -232,17 +233,20 @@ export default function AddMeetingPage() {
       return
     }
     if (payload?.meeting) {
-      // The meeting travels with the navigation, not just the toast. The schedule we are about to
-      // land on reads meetings through the `bucket + startTime` GSI, and DynamoDB rejects
-      // ConsistentRead on an index - so a query issued this soon after the write can legitimately
-      // come back without the meeting that was just created, and nothing would fetch again.
-      //
-      // Carrying it avoids the read entirely for the one meeting we already have authoritatively:
-      // createMeeting returns exactly the fields ListMeetings selects, so RoomAvailabilityPage can
-      // merge it in as an equal. See mootmaker-webapp#12.
-      navigate(`/rooms/${payload.meeting.startTime.slice(0, 10)}/availability`, {
-        // No createdMeeting carried any more. The mutation returned the whole affected day, which
-        // Apollo wrote over that day's cache entity - so the page being navigated to already has it.
+      const bookedDate = payload.meeting.startTime.slice(0, 10)
+
+      // This tab is also a subscriber, so the server's broadcast for this booking comes back to
+      // us. Without this it would evict the Day our own mutation response just wrote
+      // authoritatively, and re-render empty while refetching - the person who made the booking
+      // watching their own screen flicker, on every create.
+      dayInvalidations.noteOwnWrite([bookedDate])
+
+      // Nothing is carried with the navigation any more: createMeeting returns the whole affected
+      // Day, which Apollo has written over that day's cache entity, so the page being navigated to
+      // already holds it. (This used to hand the new meeting over, because the old read went
+      // through a GSI and DynamoDB rejects ConsistentRead on an index - both the GSI and that race
+      // are gone.)
+      navigate(`/rooms/${bookedDate}/availability`, {
         state: { toast: 'Meeting was successfully scheduled.' },
       })
     }

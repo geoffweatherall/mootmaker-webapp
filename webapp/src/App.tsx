@@ -1,4 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { useAuth } from './auth/authContext'
+import { useDaysInvalidated } from './realtime/useDaysInvalidated'
 import { Layout } from './components/Layout'
 import { RequireAuth } from './components/RequireAuth'
 import AboutPage from './pages/AboutPage'
@@ -13,6 +15,12 @@ import SignInPage from './pages/SignInPage'
 import SignUpPage from './pages/SignUpPage'
 
 function App() {
+  // Mounted here, above the router, so the subscription survives navigation. Per-page it would
+  // reconnect on every route change, and days cached for screens the user is not currently looking
+  // at would silently stop being maintained - the failure it exists to prevent.
+  const { email } = useAuth()
+  useDaysInvalidated(Boolean(email))
+
   return (
     <Routes>
       <Route element={<Layout />}>

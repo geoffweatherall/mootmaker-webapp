@@ -24,15 +24,14 @@ import { EmptyState } from '../components/EmptyState'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { errorMessages } from '../graphql/errorMessages'
 import { formatLocalTime } from '../graphql/formatDateTime'
-import { LIST_MEETINGS, LIST_PEOPLE, LIST_ROOMS } from '../graphql/queries'
-import type { Meeting, MeetingsFilter, Person, Room } from '../graphql/types'
+import { PAGE_LOAD, REFERENCE_DATA } from '../graphql/queries'
+import type { Meeting, Person } from '../graphql/types'
 import { roomColorAt } from '../theme/roomColor'
 
 const WEEKS_SHOWN = 6
 const WORK_DAYS_PER_WEEK = 5
 const WORK_DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 const DATE_KEY_FORMAT = 'YYYY-MM-DD'
-const DATE_TIME_FORMAT = 'YYYY-MM-DDTHH:mm:ss'
 
 // dayjs .day() is 0 (Sunday) .. 6 (Saturday); shift so the week starts Monday.
 function startOfWorkWeek(from: Dayjs): Dayjs {
@@ -55,20 +54,20 @@ export default function PersonCalendarPage() {
     data: peopleData,
     loading: peopleLoading,
     error: peopleError,
-  } = useQuery<{ people: Person[] }>(LIST_PEOPLE, { fetchPolicy: 'cache-first' })
+  } = useQuery(REFERENCE_DATA, { fetchPolicy: 'cache-first' })
 
   // Fetched purely to colour-code each meeting by room below (see theme/roomColor.ts) - sorted
   // the same way RoomAvailabilityPage sorts its own room list, so a room gets the same colour on
   // both pages. Likely already warm in Apollo's cache if RoomAvailabilityPage was visited this
   // session, since both use the same query with the same `cache-first` policy.
-  const { data: roomsData } = useQuery<{ rooms: Room[] }>(LIST_ROOMS, { fetchPolicy: 'cache-first' })
+  const { data: roomsData } = useQuery(REFERENCE_DATA, { fetchPolicy: 'cache-first' })
   const roomIndexById = useMemo(() => {
-    const sorted = [...(roomsData?.rooms ?? [])].sort((a, b) => a.name.localeCompare(b.name))
+    const sorted = [...(roomsData?.workspace.rooms ?? [])].sort((a, b) => a.name.localeCompare(b.name))
     return new Map(sorted.map((room, index) => [room.id, index]))
   }, [roomsData])
 
   const people = useMemo(
-    () => [...(peopleData?.people ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
+    () => [...(peopleData?.workspace.people ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
     [peopleData],
   )
   // Before the full people list has loaded, fall back to the signed-in user's own name - already
@@ -103,30 +102,71 @@ export default function PersonCalendarPage() {
     [firstMonday],
   )
 
-  // This person's meetings across the full visible window (first Monday through the last
-  // Friday shown) - the API filters server-side (organiser-or-attendee match, date range) so
-  // this page never fetches another person's meetings or meetings outside the weeks shown.
-  const meetingsFilter = useMemo<MeetingsFilter>(() => {
-    const lastFriday = firstMonday.add((WEEKS_SHOWN - 1) * 7 + (WORK_DAYS_PER_WEEK - 1), 'day')
-    return {
-      fromStartTime: firstMonday.format(DATE_TIME_FORMAT),
-      toEndTime: lastFriday.add(1, 'day').format(DATE_TIME_FORMAT),
-      personId,
-    }
-  }, [firstMonday, personId])
+  // The weekdays actually shown, as an explicit list rather than a range.
+  //
+  // A range cannot express a discontiguous set, and weekends are not displayed - so asking for the
+  // 30 weekdays directly means the server never reads ten day items nobody looks at. It is also
+  // comfortably inside the 42-date limit, with room for the UI to start showing weekends.
+  const visibleDates = useMemo(
+    () => weeks.flat().map((day) => day.format(DATE_KEY_FORMAT)),
+    [weeks],
+  )
+
   const {
     data: meetingsData,
     loading: meetingsLoading,
     error: meetingsError,
-  } = useQuery<{ meetings: Meeting[] }, { filter: MeetingsFilter }>(LIST_MEETINGS, {
-    variables: { filter: meetingsFilter },
+  } = useQuery(PAGE_LOAD, {
+    variables: { dates: visibleDates },
     skip: !personId,
     fetchPolicy: 'cache-and-network',
   })
 
+  /**
+   * The window this calendar may navigate in, published by the server and never computed here.
+   *
+   * Working it out client-side would put two authorities on one fact: the cleanup job uses the
+   * server's date, the browser uses the user's. Someone in UTC+13, or with a skewed clock, would
+   * then be offered a week the server already considers expired - and a test would not catch it,
+   * because the test would encode the same assumption the code does.
+   *
+   * Until the first response lands there are no bounds, so navigation is unrestricted rather than
+   * wrongly restricted: guessing a floor and being wrong is worse than briefly having none.
+   */
+  const boundaries = meetingsData?.workspace.boundaries
+
+  // The back button is disabled when the week BEFORE this one is entirely unreachable - not when
+  // the current week touches the boundary - so the last retained week stays reachable.
+  const canGoBack =
+    !boundaries ||
+    firstMonday.subtract(7, 'day').format(DATE_KEY_FORMAT) >= startOfWorkWeek(dayjs(boundaries.earliestRetainedDate)).format(DATE_KEY_FORMAT)
+
+  // Forward stops where booking does. A week whose first day is past the horizon can hold nothing,
+  // so paging into it would show empty weeks that can never fill.
+  const canGoForward =
+    !boundaries || firstMonday.add(7, 'day').format(DATE_KEY_FORMAT) <= boundaries.latestBookableDate
+
+  // Room names come from the reference data this page already holds, not from each meeting - the
+  // day-embedded meetings carry ids only, so the server does no per-meeting room lookup.
+  const roomsById = useMemo(
+    () => new Map((roomsData?.workspace.rooms ?? []).map((room) => [room.id, room])),
+    [roomsData],
+  )
+
   const meetingsByDate = useMemo(() => {
     const map = new Map<string, Meeting[]>()
-    for (const meeting of meetingsData?.meetings ?? []) {
+    // Filtered here rather than server-side: there is no personId argument any more, because the
+    // join table that answered "this person's meetings" without a date range is gone. Every query
+    // this page makes carries its dates, so the filtering is over six weeks of one office's
+    // meetings - small, and it removed a whole derived index from the backend.
+    const forPerson = (meetingsData?.workspace.days ?? [])
+      .flatMap((day) => day.meetings)
+      .filter(
+        (meeting) =>
+          meeting.organiser.id === personId ||
+          meeting.attendees.some((attendee) => attendee.id === personId),
+      )
+    for (const meeting of forPerson) {
       const dateKey = meeting.startTime.slice(0, 10)
       const list = map.get(dateKey) ?? []
       list.push(meeting)
@@ -136,7 +176,7 @@ export default function PersonCalendarPage() {
       list.sort((a, b) => a.startTime.localeCompare(b.startTime))
     }
     return map
-  }, [meetingsData])
+  }, [meetingsData, personId])
 
   function handlePersonChange(selected: Person | null) {
     if (selected) {
@@ -167,6 +207,7 @@ export default function PersonCalendarPage() {
           <IconButton
             onClick={() => setFirstMonday((current) => current.subtract(7, 'day'))}
             aria-label="Previous week"
+            disabled={!canGoBack}
           >
             <ChevronLeftIcon />
           </IconButton>
@@ -175,6 +216,7 @@ export default function PersonCalendarPage() {
           </Typography>
           <IconButton
             onClick={() => setFirstMonday((current) => current.add(7, 'day'))}
+            disabled={!canGoForward}
             aria-label="Next week"
           >
             <ChevronRightIcon />
@@ -297,7 +339,7 @@ export default function PersonCalendarPage() {
                             <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
                               {formatLocalTime(meeting.startTime, timeFormat)}–
                               {formatLocalTime(meeting.endTime, timeFormat)}{' '}
-                              {meeting.subject} – {meeting.room.name}
+                              {meeting.subject} – {roomsById.get(meeting.room.id)?.name ?? ''}
                             </Typography>
                           </ButtonBase>
                           )

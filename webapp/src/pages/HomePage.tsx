@@ -24,8 +24,8 @@ import { EmptyState } from '../components/EmptyState'
 import { CalendarIcon } from '../icons'
 import { SignInForm } from '../components/SignInForm'
 import { formatLocalTime } from '../graphql/formatDateTime'
-import { LIST_MEETINGS } from '../graphql/queries'
-import type { Meeting, MeetingsFilter } from '../graphql/types'
+import { PAGE_LOAD } from '../graphql/queries'
+import type { Meeting, Room } from '../graphql/types'
 
 const SIGN_UP_STEPS = [
   'Enter your name, email address, and password.',
@@ -34,15 +34,16 @@ const SIGN_UP_STEPS = [
 ]
 
 const DATE_KEY_FORMAT = 'YYYY-MM-DD'
-const DATE_TIME_FORMAT = 'YYYY-MM-DDTHH:mm:ss'
 
 interface AgendaListProps {
   title: string
   meetings: Meeting[]
+  /** Room names are resolved by the page from the same response, not carried on each meeting. */
+  roomsById: Map<string, Room>
   loading: boolean
 }
 
-function AgendaList({ title, meetings, loading }: AgendaListProps) {
+function AgendaList({ title, meetings, loading, roomsById }: AgendaListProps) {
   const { timeFormat } = useAuth()
 
   return (
@@ -62,7 +63,7 @@ function AgendaList({ title, meetings, loading }: AgendaListProps) {
             <ListItemButton key={meeting.id} component={Link} to={`/meetings/${meeting.id}`} sx={{ borderRadius: 1 }}>
               <ListItemText
                 primary={meeting.subject}
-                secondary={`${formatLocalTime(meeting.startTime, timeFormat)}–${formatLocalTime(meeting.endTime, timeFormat)} · ${meeting.room.name}`}
+                secondary={`${formatLocalTime(meeting.startTime, timeFormat)}–${formatLocalTime(meeting.endTime, timeFormat)} · ${roomsById.get(meeting.room.id)?.name ?? ""}`}
               />
             </ListItemButton>
           ))}
@@ -77,39 +78,48 @@ export default function HomePage() {
   const { email, personId, personLoading } = useAuth()
 
   // Today through the end of tomorrow, for the signed-in person - the API filters server-side so
-  // this only ever fetches the two days' worth of meetings the agenda actually shows. Kept as its
-  // own filtered query rather than reusing PersonCalendarPage's broader one: Apollo's cache keys
-  // a list field by its exact arguments, so a 2-day window isn't served from a cached 6-week one
-  // even when it's a subset, and this is the landing route - it usually runs before that page has
-  // ever been visited in the session anyway. Skipped until both the caller is signed in and their
-  // Person id has resolved, since that's what the filter needs.
-  const meetingsFilter = useMemo<MeetingsFilter>(() => {
+  // The landing route, so it loads through the composite entry point: rooms, people and the three
+  // days the agenda shows, in one request. That is the whole startup path now - there is no longer a
+  // myPerson call to wait on before meetings can be asked for, because the caller's id arrives on
+  // the token.
+  const agendaDates = useMemo(() => {
     const todayStart = dayjs().startOf('day')
-    return {
-      fromStartTime: todayStart.format(DATE_TIME_FORMAT),
-      toEndTime: todayStart.add(2, 'day').format(DATE_TIME_FORMAT),
-      personId: personId ?? undefined,
-    }
-  }, [personId])
-  const { data: meetingsData, loading: meetingsLoading } = useQuery<
-    { meetings: Meeting[] },
-    { filter: MeetingsFilter }
-  >(LIST_MEETINGS, {
-    variables: { filter: meetingsFilter },
+    return [0, 1, 2].map((offset) => todayStart.add(offset, 'day').format(DATE_KEY_FORMAT))
+  }, [])
+
+  const { data, loading: meetingsLoading } = useQuery(PAGE_LOAD, {
+    variables: { dates: agendaDates },
     fetchPolicy: 'cache-and-network',
-    skip: !email || !personId,
+    skip: !email,
   })
+
+  // Rooms come back in the same response, so a meeting carries only a room id and the name is
+  // resolved here. That is deliberate: asking for the name per meeting would make the server do a
+  // lookup for data this page already holds.
+  const roomsById = useMemo(
+    () => new Map<string, Room>((data?.workspace.rooms ?? []).map((room) => [room.id, room])),
+    [data],
+  )
 
   const today = dayjs().format(DATE_KEY_FORMAT)
   const tomorrow = dayjs().add(1, 'day').format(DATE_KEY_FORMAT)
 
+  // The server no longer filters by person - a date range is a list of day keys, and there is no
+  // personId argument. Three days of meetings is small enough that filtering here costs nothing,
+  // and it removed a whole join table from the backend.
   function agendaFor(dateKey: string): Meeting[] {
-    return (meetingsData?.meetings ?? [])
-      .filter((meeting) => meeting.startTime.startsWith(dateKey))
+    const day = (data?.workspace.days ?? []).find((candidate) => candidate.date === dateKey)
+    return (day?.meetings ?? [])
+      .filter(
+        (meeting) =>
+          !personId ||
+          meeting.organiser.id === personId ||
+          meeting.attendees.some((attendee) => attendee.id === personId),
+      )
       .sort((a, b) => a.startTime.localeCompare(b.startTime))
   }
 
-  const agendaLoading = personLoading || (meetingsLoading && !meetingsData)
+  const agendaLoading = personLoading || (meetingsLoading && !data)
 
   if (!email) {
     // Not secrets - this is a demo system, so the whole point is that these are shown here for
@@ -263,8 +273,8 @@ export default function HomePage() {
       </Paper>
 
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3}>
-        <AgendaList title="Today" meetings={agendaFor(today)} loading={agendaLoading} />
-        <AgendaList title="Tomorrow" meetings={agendaFor(tomorrow)} loading={agendaLoading} />
+        <AgendaList title="Today" meetings={agendaFor(today)} loading={agendaLoading} roomsById={roomsById} />
+        <AgendaList title="Tomorrow" meetings={agendaFor(tomorrow)} loading={agendaLoading} roomsById={roomsById} />
       </Stack>
     </Stack>
   )

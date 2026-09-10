@@ -33,8 +33,8 @@ export const PERSON_ERROR_MESSAGES: Record<PersonError, string> = {
 }
 
 export const MEETING_ERROR_MESSAGES: Record<MeetingError, string> = {
-  StartMissaligned: 'Start time must fall on a 15 minute boundary.',
-  EndMissaligned: 'End time must fall on a 15 minute boundary.',
+  StartMisaligned: 'Start time must fall on a 15 minute boundary.',
+  EndMisaligned: 'End time must fall on a 15 minute boundary.',
   SpansMultipleDays: 'A meeting cannot span midnight - start and end time must be on the same day.',
   EndBeforeStart: 'End time must be after the start time.',
   InsufficientCapacity: 'The room does not have enough capacity for all attendees.',

@@ -10,9 +10,7 @@ import { http, HttpResponse, type HttpHandler } from 'msw'
 import type {
   CreateMeetingResult,
   DateFormat,
-  Meeting,
   MeetingError,
-  MeetingsFilter,
   Room,
   TimeFormat,
   UpdateMyPreferencesResult,
@@ -54,17 +52,6 @@ function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string): b
   return aStart < bEnd && bStart < aEnd
 }
 
-function meetingMatchesFilter(meeting: Meeting, filter: MeetingsFilter | undefined): boolean {
-  if (!filter) return true
-  if (filter.fromStartTime && meeting.startTime < filter.fromStartTime) return false
-  if (filter.toEndTime && meeting.startTime >= filter.toEndTime) return false
-  if (filter.personId) {
-    const isOrganiser = meeting.organiser.id === filter.personId
-    const isAttendee = meeting.attendees.some((attendee) => attendee.id === filter.personId)
-    if (!isOrganiser && !isAttendee) return false
-  }
-  return true
-}
 
 function isFifteenMinuteAligned(isoLocalDateTime: string): boolean {
   const minute = Number(isoLocalDateTime.slice(14, 16))
@@ -94,8 +81,8 @@ function validateMeetingInput(input: MeetingInput): MeetingError[] {
   else if (!people.some((person) => person.id === input.organiserId)) errors.push('OrganiserNotFound')
   if (input.organiserId && input.attendeeIds.includes(input.organiserId)) errors.push('OrganiserIsAttendee')
   if (input.attendeeIds.some((id) => !people.some((person) => person.id === id))) errors.push('AttendeeNotFound')
-  if (!isFifteenMinuteAligned(input.startTime)) errors.push('StartMissaligned')
-  if (!isFifteenMinuteAligned(input.endTime)) errors.push('EndMissaligned')
+  if (!isFifteenMinuteAligned(input.startTime)) errors.push('StartMisaligned')
+  if (!isFifteenMinuteAligned(input.endTime)) errors.push('EndMisaligned')
   if (input.startTime.slice(0, 10) !== input.endTime.slice(0, 10)) errors.push('SpansMultipleDays')
   else if (input.endTime <= input.startTime) errors.push('EndBeforeStart')
 
@@ -113,28 +100,93 @@ function validateMeetingInput(input: MeetingInput): MeetingError[] {
   return errors
 }
 
+
+/**
+ * The bookable window the real API publishes. Wide enough that no fixture date falls outside it -
+ * only tests about the window itself should have to think about it.
+ */
+const BOUNDARIES = { earliestRetainedDate: '2000-01-01', latestBookableDate: '2099-12-31' }
+
+/** The signed-in viewer, resolved the way the real API does: from the caller, not from an argument. */
+function viewerOf(request: Request) {
+  const email = emailFromAuthHeader(request)
+  return (email && linkedPersonByEmail[email]) ?? null
+}
+
+/**
+ * Days for exactly the dates asked for, in that order, including dates holding nothing.
+ *
+ * Never sparse, matching the real resolver - an empty day means empty, not unfetched, and the
+ * client's cache depends on being able to tell those apart. Meetings carry ids only for room,
+ * organiser and attendees, again matching the server: names are resolved by the page from the
+ * rooms and people it already holds.
+ */
+function daysFor(dates: string[]) {
+  return dates.map((date) => ({
+    date,
+    meetings: meetings
+      .filter((meeting) => meeting.startTime.startsWith(date))
+      .map((meeting) => ({
+        id: meeting.id,
+        subject: meeting.subject,
+        startTime: meeting.startTime,
+        endTime: meeting.endTime,
+        room: { id: meeting.room.id },
+        organiser: { id: meeting.organiser.id },
+        attendees: meeting.attendees.map((attendee) => ({ id: attendee.id })),
+      })),
+  }))
+}
+
 export const handlers: HttpHandler[] = [
   http.post(GRAPHQL_ENDPOINT, async ({ request }) => {
     const body = (await request.json()) as GraphQLRequestBody
     const variables = body.variables ?? {}
 
     switch (body.operationName) {
-      case 'ListRooms':
-        if (window.__mockControls?.listRoomsGate) {
-          await window.__mockControls.listRoomsGate
-        }
-        return HttpResponse.json({ data: { rooms } })
-
-      case 'ListPeople':
-        return HttpResponse.json({ data: { people } })
-
-      case 'MyPerson': {
+      // One entry point now serves what four operations used to. The mock answers only what each
+      // query selected, the way the real resolver does - a query that omits `dates` gets no days.
+      case 'Session': {
         if (window.__mockControls?.myPersonGate) {
           await window.__mockControls.myPersonGate
         }
-        const email = emailFromAuthHeader(request)
-        const person = (email && linkedPersonByEmail[email]) ?? null
-        return HttpResponse.json({ data: { myPerson: person } })
+        return HttpResponse.json({ data: { workspace: { me: viewerOf(request) } } })
+      }
+
+      case 'ReferenceData':
+        if (window.__mockControls?.listRoomsGate) {
+          await window.__mockControls.listRoomsGate
+        }
+        return HttpResponse.json({ data: { workspace: { rooms, people } } })
+
+      case 'PageLoad': {
+        if (window.__mockControls?.listRoomsGate) {
+          await window.__mockControls.listRoomsGate
+        }
+        if (window.__mockControls?.myPersonGate) {
+          await window.__mockControls.myPersonGate
+        }
+        return HttpResponse.json({
+          data: {
+            workspace: {
+              me: viewerOf(request),
+              rooms,
+              people,
+              boundaries: BOUNDARIES,
+              days: daysFor((variables.dates as string[] | undefined) ?? []),
+            },
+          },
+        })
+      }
+
+      case 'Days':
+        return HttpResponse.json({
+          data: { workspace: { days: daysFor((variables.dates as string[] | undefined) ?? []) } },
+        })
+
+      case 'MeetingById': {
+        const found = meetings.find((candidate) => candidate.id === variables.id) ?? null
+        return HttpResponse.json({ data: { meeting: found } })
       }
 
       case 'SuggestRoom': {
@@ -158,17 +210,11 @@ export const handlers: HttpHandler[] = [
         return HttpResponse.json({ data: { suggestRoom: suggestions } })
       }
 
-      case 'ListMeetings': {
-        const filter = variables.filter as MeetingsFilter | undefined
-        const matching = meetings.filter((meeting) => meetingMatchesFilter(meeting, filter))
-        return HttpResponse.json({ data: { meetings: matching } })
-      }
-
       case 'CreateMeeting': {
         const input = variables.meeting as MeetingInput
         const errors = validateMeetingInput(input)
         if (errors.length > 0) {
-          const result: CreateMeetingResult = { meeting: null, errors }
+          const result: CreateMeetingResult = { meeting: null, day: null, errors }
           return HttpResponse.json({ data: { createMeeting: result } })
         }
         const room = rooms.find((candidate) => candidate.id === input.roomId)!
@@ -182,7 +228,13 @@ export const handlers: HttpHandler[] = [
           startTime: input.startTime,
           endTime: input.endTime,
         })
-        const result: CreateMeetingResult = { meeting, errors: [] }
+        // Returns the whole affected day as well, which is what removes the client's cache-update
+        // code: Day is keyed by date, so writing it replaces that day's meetings outright.
+        const result: CreateMeetingResult = {
+          meeting,
+          day: { date: meeting.startTime.slice(0, 10), meetings: daysFor([meeting.startTime.slice(0, 10)])[0].meetings },
+          errors: [],
+        }
         return HttpResponse.json({ data: { createMeeting: result } })
       }
 

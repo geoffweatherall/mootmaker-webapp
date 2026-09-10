@@ -263,10 +263,10 @@ test.describe('J. Settings - Rooms (admin only)', () => {
     // mutations do), so the same standard-user token can read the list to find one.
     const listResponse = await page.request.post(graphqlUrl, {
       headers: { Authorization: token },
-      data: { query: 'query { rooms { id } }' },
+      data: { query: 'query { workspace { rooms { id } } }' },
     })
     const listBody = await listResponse.json()
-    const existingRoomId: string | undefined = listBody.data?.rooms?.[0]?.id
+    const existingRoomId: string | undefined = listBody.data?.workspace?.rooms?.[0]?.id
     if (!existingRoomId) throw new Error('No existing room found in this environment to attempt updateRoom against.')
 
     const updateResponse = await page.request.post(graphqlUrl, {

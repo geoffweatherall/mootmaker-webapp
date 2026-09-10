@@ -214,14 +214,19 @@ async function directApiContext(page: Page, roomName: string): Promise<{ token: 
   await createRoom(page, roomName, 4)
   const token = await getIdToken(page)
 
-  const personResult = await graphqlRequest<{ myPerson: { id: string } }>(page, token, 'query { myPerson { id } }', {})
-  const organiserId = personResult.data?.myPerson.id
+  // workspace { me }, not the deleted Query.myPerson: the caller's own Person is resolved from the
+  // custom:personId claim on the token, which is what removed the myPerson -> meetings waterfall.
+  const personResult = await graphqlRequest<{ workspace: { me: { id: string } | null } }>(
+    page, token, 'query { workspace { me { id } } }', {})
+  const organiserId = personResult.data?.workspace.me?.id
   if (!organiserId) {
-    throw new Error(`Could not resolve the signed-in user's own Person via myPerson: ${JSON.stringify(personResult)}`)
+    throw new Error(`Could not resolve the signed-in user's own Person via workspace { me }: ${JSON.stringify(personResult)}`)
   }
 
-  const roomsResult = await graphqlRequest<{ rooms: { id: string; name: string }[] }>(page, token, 'query { rooms { id name } }', {})
-  const room = roomsResult.data?.rooms.find((candidate) => candidate.name === roomName)
+  // workspace { rooms }, not the deleted Query.rooms - the same composite entry point as above.
+  const roomsResult = await graphqlRequest<{ workspace: { rooms: { id: string; name: string }[] } }>(
+    page, token, 'query { workspace { rooms { id name } } }', {})
+  const room = roomsResult.data?.workspace.rooms.find((candidate) => candidate.name === roomName)
   if (!room) {
     throw new Error(`Room "${roomName}" not found via a direct GraphQL query: ${JSON.stringify(roomsResult)}`)
   }

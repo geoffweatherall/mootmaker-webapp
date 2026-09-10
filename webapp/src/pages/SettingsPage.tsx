@@ -35,7 +35,7 @@ import {
   UPDATE_PERSON,
   UPDATE_ROOM,
 } from '../graphql/mutations'
-import { LIST_PEOPLE, LIST_ROOMS } from '../graphql/queries'
+import { REFERENCE_DATA } from '../graphql/queries'
 import {
   type CreateRoomResult,
   type DateFormat,
@@ -43,6 +43,7 @@ import {
   type Room,
   type TimeFormat,
   type UpdateMyPreferencesResult,
+  type CreatePersonResult,
   type UpdatePersonResult,
   type UpdateRoomResult,
 } from '../graphql/types'
@@ -287,12 +288,13 @@ function DateTimeFormatSection() {
  * time.
  */
 function AdminSections() {
-  const rooms = useQuery<{ rooms: Room[] }>(LIST_ROOMS, { fetchPolicy: 'cache-and-network' })
-  const people = useQuery<{ people: Person[] }>(LIST_PEOPLE, { fetchPolicy: 'cache-and-network' })
+    // One query for both sections, so they can no longer settle independently and appear one at a
+  // time - the layout-shift problem webapp#50 was about.
+  const referenceData = useQuery(REFERENCE_DATA, { fetchPolicy: 'cache-and-network' })
 
   // An errored query has settled, even though it has no data - so this waits for the network, not
   // for success, and a failure still renders the section with its ErrorBanner.
-  if ((rooms.loading && !rooms.data) || (people.loading && !people.data)) {
+  if (referenceData.loading && !referenceData.data) {
     return (
       <Paper component="section" sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
@@ -304,8 +306,8 @@ function AdminSections() {
 
   return (
     <>
-      <RoomsSection rooms={rooms.data?.rooms ?? []} error={rooms.error} refetch={rooms.refetch} />
-      <PeopleSection people={people.data?.people ?? []} error={people.error} refetch={people.refetch} />
+      <RoomsSection rooms={referenceData.data?.workspace.rooms ?? []} error={referenceData.error} refetch={referenceData.refetch} />
+      <PeopleSection people={referenceData.data?.workspace.people ?? []} error={referenceData.error} refetch={referenceData.refetch} />
     </>
   )
 }
@@ -379,28 +381,15 @@ function RoomDialog({ room, onClose, onSaved }: RoomDialogProps) {
   const [name, setName] = useState(room?.name ?? '')
   const [capacity, setCapacity] = useState(room ? String(room.capacity) : '')
   const [fieldErrors, setFieldErrors] = useState<string[]>([])
-  // Write the created room straight into the cached list rather than relying on the refetch to
-  // bring it back. The refetch is still useful, but it is not sufficient on its own: a room has
-  // been observed missing from the list immediately after a successful create, with the dialog
-  // closed (so the mutation returned cleanly) and peoples created moments earlier in the same test
-  // present. Making the API's reads strongly consistent (mootmaker-api#31) did not eliminate it,
-  // which points at a race between concurrent fetches of this query rather than at DynamoDB - a
-  // response issued before the write can land after the refetch's and overwrite it, and nothing
-  // fetches again afterwards.
+  // No update function, and no refetch to race it.
   //
-  // The mutation's own result is authoritative and needs no read at all, so this closes the window
-  // regardless of which fetch wins. See mootmaker-webapp#1 and #12.
-  const [createRoom, createState] = useMutation<{ createRoom: CreateRoomResult }>(CREATE_ROOM, {
-    update(cache, { data }) {
-      const created = data?.createRoom?.room
-      if (!created) return
-      cache.updateQuery<{ rooms: Room[] }>({ query: LIST_ROOMS }, (existing) =>
-        !existing || existing.rooms.some((r) => r.id === created.id)
-          ? existing
-          : { rooms: [...existing.rooms, created] },
-      )
-    },
-  })
+  // createRoom now returns the whole `rooms` collection alongside the created room, so the cached
+  // list is replaced by an authoritative one that came back with the write. The old version merged
+  // the single created room into the cached list by hand, because a room had been observed missing
+  // from the list immediately after a successful create - a race between concurrent fetches of the
+  // list query, where a response issued before the write landed after the refetch's and overwrote
+  // it. There is no read to lose that race now. See mootmaker-webapp#1 and #12.
+  const [createRoom, createState] = useMutation<{ createRoom: CreateRoomResult }>(CREATE_ROOM)
   const [updateRoom, updateState] = useMutation<{ updateRoom: UpdateRoomResult }>(UPDATE_ROOM)
   const loading = createState.loading || updateState.loading
   const bannerMessages = [...fieldErrors, ...errorMessages(createState.error), ...errorMessages(updateState.error)]
@@ -526,28 +515,9 @@ interface PersonDialogProps {
 function PersonDialog({ person, onClose, onSaved }: PersonDialogProps) {
   const [name, setName] = useState(person?.name ?? '')
   const [fieldErrors, setFieldErrors] = useState<string[]>([])
-  // Write the created person straight into the cached list rather than relying on the refetch to
-  // bring it back. The refetch is still useful, but it is not sufficient on its own: a person has
-  // been observed missing from the list immediately after a successful create, with the dialog
-  // closed (so the mutation returned cleanly) and rooms created moments earlier in the same test
-  // present. Making the API's reads strongly consistent (mootmaker-api#31) did not eliminate it,
-  // which points at a race between concurrent fetches of this query rather than at DynamoDB - a
-  // response issued before the write can land after the refetch's and overwrite it, and nothing
-  // fetches again afterwards.
-  //
-  // The mutation's own result is authoritative and needs no read at all, so this closes the window
-  // regardless of which fetch wins. See mootmaker-webapp#1 and #12.
-  const [createPerson, createState] = useMutation<{ createPerson: Person }>(CREATE_PERSON, {
-    update(cache, { data }) {
-      const created = data?.createPerson
-      if (!created) return
-      cache.updateQuery<{ people: Person[] }>({ query: LIST_PEOPLE }, (existing) =>
-        !existing || existing.people.some((p) => p.id === created.id)
-          ? existing
-          : { people: [...existing.people, created] },
-      )
-    },
-  })
+  // No update function here either - createPerson returns the whole `people` collection with the
+  // write, so there is no cached list to merge into and no read that could lose a race with it.
+  const [createPerson, createState] = useMutation<{ createPerson: CreatePersonResult }>(CREATE_PERSON)
   const [updatePerson, updateState] = useMutation<{ updatePerson: UpdatePersonResult }>(UPDATE_PERSON)
   const loading = createState.loading || updateState.loading
   const bannerMessages = [...fieldErrors, ...errorMessages(createState.error), ...errorMessages(updateState.error)]

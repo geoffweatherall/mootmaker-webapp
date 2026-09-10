@@ -4,7 +4,13 @@
 // trying to mirror mootmaker-demo-data's larger, more realistic data set used against a
 // real deployed API.
 import { ADMIN_USER, DEMO_USER } from '../../auth/cognito.mock'
-import type { Meeting, MyPerson, Person, Room } from '../../graphql/types'
+/**
+ * Fixtures hold the FULL shape - room, organiser and attendees with their names - the way stored
+ * data does. Each mocked query then projects what it selected, exactly as the real resolver does:
+ * a meeting inside a day carries ids only, while `meeting(id:)` carries names. Storing the narrow
+ * shape would make the mock unable to answer the wide one.
+ */
+import type { MeetingDetails as Meeting, MyPerson, Person, Room } from '../../graphql/types'
 
 export const rooms: Room[] = [
   { id: 'room-boardroom', name: 'Boardroom', capacity: 4 },

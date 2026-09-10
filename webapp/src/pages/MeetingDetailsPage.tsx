@@ -6,8 +6,7 @@ import { ErrorBanner } from '../components/ErrorBanner'
 import { errorMessages } from '../graphql/errorMessages'
 import { useAuth } from '../auth/authContext'
 import { formatLocalDate, formatLocalTime } from '../graphql/formatDateTime'
-import { LIST_MEETINGS } from '../graphql/queries'
-import type { Meeting } from '../graphql/types'
+import { MEETING_BY_ID } from '../graphql/queries'
 import { useState } from 'react'
 
 interface DetailRowProps {
@@ -32,11 +31,21 @@ export default function MeetingDetailsPage() {
   const navigate = useNavigate()
   const [dismissedError, setDismissedError] = useState(false)
 
-  const { data, loading, error } = useQuery<{ meetings: Meeting[] }>(LIST_MEETINGS, {
+  // One meeting, by id, in two point reads on the server - an id-to-date pointer and then that day.
+  // This used to fetch EVERY meeting ever stored and find() the right one client-side, which the
+  // schema's own documentation warned against and which got slower with every meeting booked.
+  //
+  // Names are selected here, unlike the day-embedded meetings elsewhere: a details page reached cold
+  // from a shared or bookmarked link has no cached rooms or people to resolve ids against.
+  const { data, loading, error } = useQuery(MEETING_BY_ID, {
+    variables: { id: meetingId ?? '' },
+    skip: !meetingId,
     fetchPolicy: 'cache-and-network',
   })
 
-  const meeting = data?.meetings.find((candidate) => candidate.id === meetingId)
+  // Null covers both "no such meeting" and "its day has aged out of retention" - deliberately the
+  // same answer, so this page has one not-found state rather than two.
+  const meeting = data?.meeting
 
   return (
     <Stack spacing={3}>

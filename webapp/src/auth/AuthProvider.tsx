@@ -6,8 +6,7 @@ import {
   type DateFormat,
   type TimeFormat,
 } from '../graphql/formatDateTime'
-import { MY_PERSON } from '../graphql/queries'
-import type { MyPerson } from '../graphql/types'
+import { SESSION } from '../graphql/queries'
 import { AuthContext } from './authContext'
 import * as cognito from './cognito'
 
@@ -41,16 +40,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  /**
+   * Asks the composite entry point for `me` and nothing else. Selection is what the server charges
+   * for, so this costs no rooms, no people and no day reads.
+   *
+   * This used to be a `myPerson` query that every page had to wait on before it could ask for
+   * meetings — the startup waterfall. It is gone: the caller's id now arrives on the token, so a
+   * screen that wants meetings asks for them in the same request rather than after this one.
+   */
   function refreshPerson() {
     setPersonLoading(true)
     apolloClient
-      .query<{ myPerson: MyPerson | null }>({ query: MY_PERSON, fetchPolicy: 'network-only' })
+      .query({ query: SESSION, fetchPolicy: 'network-only' })
       .then(({ data }) => {
-        if (data?.myPerson) {
-          setDisplayName(data.myPerson.name)
-          setPersonId(data.myPerson.id)
-          setDateFormat(data.myPerson.dateFormat)
-          setTimeFormat(data.myPerson.timeFormat)
+        const me = data?.workspace?.me
+        if (me) {
+          setDisplayName(me.name)
+          setPersonId(me.id)
+          setDateFormat(me.dateFormat)
+          setTimeFormat(me.timeFormat)
         }
       })
       .catch(() => {

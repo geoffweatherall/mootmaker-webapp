@@ -42,8 +42,8 @@ describe('PERSON_ERROR_MESSAGES', () => {
 
 describe('MEETING_ERROR_MESSAGES', () => {
   const codes: MeetingError[] = [
-    'StartMissaligned',
-    'EndMissaligned',
+    'StartMisaligned',
+    'EndMisaligned',
     'SpansMultipleDays',
     'EndBeforeStart',
     'InsufficientCapacity',

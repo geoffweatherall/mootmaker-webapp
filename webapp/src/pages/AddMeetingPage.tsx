@@ -22,7 +22,7 @@ import { ErrorBanner } from '../components/ErrorBanner'
 import { SubmitButton } from '../components/SubmitButton'
 import { errorMessages } from '../graphql/errorMessages'
 import { CREATE_MEETING } from '../graphql/mutations'
-import { LIST_PEOPLE, LIST_ROOMS, SUGGEST_ROOM } from '../graphql/queries'
+import { REFERENCE_DATA, SUGGEST_ROOM } from '../graphql/queries'
 import {
   MEETING_ERROR_MESSAGES,
 } from '../graphql/validationMessages'
@@ -81,15 +81,10 @@ export default function AddMeetingPage() {
   const viewedDate = (location.state as { date?: string } | null)?.date
 
   const {
-    data: roomsData,
-    loading: roomsLoading,
-    error: roomsError,
-  } = useQuery<{ rooms: Room[] }>(LIST_ROOMS)
-  const {
-    data: peopleData,
-    loading: peopleLoading,
-    error: peopleError,
-  } = useQuery<{ people: Person[] }>(LIST_PEOPLE)
+    data: referenceData,
+    loading: referenceLoading,
+    error: referenceError,
+  } = useQuery(REFERENCE_DATA)
 
   const [subject, setSubject] = useState('')
   const [roomId, setRoomId] = useState('')
@@ -148,8 +143,8 @@ export default function AddMeetingPage() {
 
   // Sorted alphabetically, matching the convention SettingsPage/RoomAvailabilityPage/
   // PersonCalendarPage already use for these same lists.
-  const rooms = [...(roomsData?.rooms ?? [])].sort((a, b) => a.name.localeCompare(b.name))
-  const people = [...(peopleData?.people ?? [])].sort((a, b) => a.name.localeCompare(b.name))
+  const rooms = [...(referenceData?.workspace.rooms ?? [])].sort((a, b) => a.name.localeCompare(b.name))
+  const people = [...(referenceData?.workspace.people ?? [])].sort((a, b) => a.name.localeCompare(b.name))
 
   // The organiser and attendees are kept mutually exclusive: whoever is picked as one is not
   // offered as a choice for the other. This is enforced authoritatively server-side (the
@@ -163,8 +158,8 @@ export default function AddMeetingPage() {
   const attendeeOptions = filterAttendeeOptions(people, organiserId)
 
   const bannerMessages = [
-    ...errorMessages(roomsError),
-    ...errorMessages(peopleError),
+    ...errorMessages(referenceError),
+    ...errorMessages(referenceError),
     ...meetingErrors,
     ...suggestionErrors,
     ...errorMessages(mutationError),
@@ -246,12 +241,14 @@ export default function AddMeetingPage() {
       // createMeeting returns exactly the fields ListMeetings selects, so RoomAvailabilityPage can
       // merge it in as an equal. See mootmaker-webapp#12.
       navigate(`/rooms/${payload.meeting.startTime.slice(0, 10)}/availability`, {
-        state: { toast: 'Meeting was successfully scheduled.', createdMeeting: payload.meeting },
+        // No createdMeeting carried any more. The mutation returned the whole affected day, which
+        // Apollo wrote over that day's cache entity - so the page being navigated to already has it.
+        state: { toast: 'Meeting was successfully scheduled.' },
       })
     }
   }
 
-  const loadingReferenceData = roomsLoading || peopleLoading
+  const loadingReferenceData = referenceLoading
 
   return (
     <Stack spacing={3}>

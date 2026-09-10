@@ -18,7 +18,7 @@ import {
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import emptyRooms from '../assets/empty-rooms.svg'
 import { EmptyState } from '../components/EmptyState'
 import { ErrorBanner } from '../components/ErrorBanner'
@@ -26,14 +26,14 @@ import { BUSINESS_END_HOUR, BUSINESS_START_HOUR } from '../constants/businessHou
 import { errorMessages } from '../graphql/errorMessages'
 import { useAuth } from '../auth/authContext'
 import { formatHourOfDay, formatLocalTime } from '../graphql/formatDateTime'
-import { LIST_MEETINGS, LIST_ROOMS } from '../graphql/queries'
-import type { Meeting, MeetingsFilter, Room } from '../graphql/types'
+import { DAYS, REFERENCE_DATA } from '../graphql/queries'
+import type { Meeting } from '../graphql/types'
 import { alpha } from '@mui/material/styles'
 import { readableTextOn, roomColorAt } from '../theme/roomColor'
 
 const DATE_PARAM_FORMAT = 'YYYY-MM-DD'
 const DATE_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/
-const DATE_TIME_FORMAT = 'YYYY-MM-DDTHH:mm:ss'
+const DATE_KEY_FORMAT = 'YYYY-MM-DD'
 
 const BUSINESS_START_MINUTES = BUSINESS_START_HOUR * 60
 const BUSINESS_END_MINUTES = BUSINESS_END_HOUR * 60
@@ -121,47 +121,26 @@ export default function RoomAvailabilityPage() {
     data: roomsData,
     loading: roomsLoading,
     error: roomsError,
-  } = useQuery<{ rooms: Room[] }>(LIST_ROOMS, { fetchPolicy: 'cache-first' })
+  } = useQuery(REFERENCE_DATA, { fetchPolicy: 'cache-first' })
 
   // Only the selected day's meetings, across every room - the API filters server-side so this
   // page never fetches more than one day's worth of meetings.
-  // A meeting created on AddMeetingPage arrives with the navigation that brought us here. Latch it
-  // into component state on first sight rather than reading location.state where it is used:
-  // useLocationToast (in Layout) rewrites the navigation state to drop the toast as soon as it has
-  // shown it, so location.state is not something to depend on across renders.
-  //
-  // Why it is carried at all: this page reads meetings through the `bucket + startTime` GSI, and
-  // DynamoDB rejects ConsistentRead on an index - so a query issued immediately after the write can
-  // legitimately come back without the meeting just created, and `cache-and-network` will not fetch
-  // again on its own. The result is a schedule that permanently omits the meeting the user was just
-  // told was scheduled. See mootmaker-webapp#12.
-  const location = useLocation()
-  const [createdMeeting, setCreatedMeeting] = useState<Meeting | null>(null)
-  useEffect(() => {
-    const incoming = (location.state as { createdMeeting?: Meeting } | null)?.createdMeeting
-    if (incoming) {
-      setCreatedMeeting(incoming)
-    }
-  }, [location.state])
-
-  const meetingsFilter = useMemo<MeetingsFilter>(() => {
-    const dayStart = selectedDate.startOf('day')
-    return {
-      fromStartTime: dayStart.format(DATE_TIME_FORMAT),
-      toEndTime: dayStart.add(1, 'day').format(DATE_TIME_FORMAT),
-    }
-  }, [selectedDate])
+  // One day, read by its own key. Day-keyed reads are consistent, so a query issued immediately
+  // after a write returns the meeting just created - which is what let the router-state handoff from
+  // AddMeetingPage be deleted outright, along with the merge that paired with it. The workaround
+  // existed only because this page read through a GSI, and DynamoDB refuses ConsistentRead on one.
+  // See mootmaker-webapp#12 for the bug that made it necessary.
   const {
     data: meetingsData,
     loading: meetingsLoading,
     error: meetingsError,
-  } = useQuery<{ meetings: Meeting[] }, { filter: MeetingsFilter }>(LIST_MEETINGS, {
-    variables: { filter: meetingsFilter },
+  } = useQuery(DAYS, {
+    variables: { dates: [selectedDate.format(DATE_KEY_FORMAT)] },
     fetchPolicy: 'cache-and-network',
   })
 
   const rooms = useMemo(
-    () => [...(roomsData?.rooms ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
+    () => [...(roomsData?.workspace.rooms ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
     [roomsData],
   )
 
@@ -182,24 +161,12 @@ export default function RoomAvailabilityPage() {
   }, [gridScrollEl, gridContentEl])
 
   const meetingsByRoom = useMemo(() => {
-    const fetched = meetingsData?.meetings ?? []
-    // Include the just-created meeting only if the server has not caught up yet AND it belongs on
-    // the day being shown - navigating to another date must not drag it along. Once a later fetch
-    // returns it, the fetched copy is authoritative and this adds nothing.
-    // Bounds come from selectedDate rather than meetingsFilter: the generated MeetingsFilter type
-    // has optional fields, and selectedDate is always a Dayjs, so this needs no narrowing.
-    const dayStart = selectedDate.startOf('day').format(DATE_TIME_FORMAT)
-    const dayEnd = selectedDate.startOf('day').add(1, 'day').format(DATE_TIME_FORMAT)
-    const carried =
-      createdMeeting &&
-      !fetched.some((meeting) => meeting.id === createdMeeting.id) &&
-      createdMeeting.startTime >= dayStart &&
-      createdMeeting.startTime < dayEnd
-        ? [createdMeeting]
-        : []
+    // Exactly the day asked for, and nothing to reconcile: the response replaced this day's entity
+    // in the cache, so there is no window in which a just-created meeting is missing.
+    const fetched = meetingsData?.workspace.days.at(0)?.meetings ?? []
 
     const map = new Map<string, Meeting[]>()
-    for (const meeting of [...fetched, ...carried]) {
+    for (const meeting of fetched) {
       const list = map.get(meeting.room.id) ?? []
       list.push(meeting)
       map.set(meeting.room.id, list)
@@ -208,7 +175,7 @@ export default function RoomAvailabilityPage() {
       list.sort((a, b) => a.startTime.localeCompare(b.startTime))
     }
     return map
-  }, [meetingsData, createdMeeting, selectedDate])
+  }, [meetingsData])
 
   const loading = roomsLoading || meetingsLoading
   // True only on a genuine first load - no cached rooms, or no cached meetings for the currently

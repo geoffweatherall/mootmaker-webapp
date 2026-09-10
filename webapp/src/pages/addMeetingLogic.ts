@@ -118,3 +118,23 @@ export function defaultMeetingTimes(now: Dayjs): DefaultMeetingTimes {
   const clampedStart = start.isBefore(end) ? start : end.subtract(15, 'minute')
   return { start: clampedStart, end }
 }
+
+/**
+ * Whether the form may be rendered interactive yet.
+ *
+ * Two independent loads gate it, and the second one is easy to miss because it is not this page's
+ * own query: reference data (rooms and people, which the fields render from) AND the signed-in
+ * user's own Person (which the Organiser field DEFAULTS to, and which arrives from the SESSION
+ * query in AuthProvider).
+ *
+ * Rendering on reference data alone means the form is submittable while Organiser is still blank.
+ * A fast Save then sends `organiserId: ""`, the server rejects it with `OrganiserRequired`, and the
+ * user reads "Please select an organiser." while watching the field fill in with their own name.
+ *
+ * This was latent for as long as reference data always cost a round trip - reliably slower than the
+ * SESSION query, so the person always won. Serving reference data from the cache reverses the order
+ * on any second visit. A race that is invisible until something else gets faster.
+ */
+export function referenceDataReady(referenceLoading: boolean, personLoading: boolean): boolean {
+  return !referenceLoading && !personLoading
+}

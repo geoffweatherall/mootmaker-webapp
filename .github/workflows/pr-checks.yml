@@ -15,7 +15,18 @@ name: PR checks
 
 on:
   pull_request:
-    branches: [main]
+    # No `branches:` filter, deliberately. That filter matches the PR's BASE, so restricting it to
+    # main silently exempts every stacked pull request from this gate - a PR based on another PR is
+    # not based on main, so no run fires at all. Measured on this repository: five of seven open PRs
+    # reported "no checks reported on the branch", because each was based on the one below it.
+    #
+    # 'edited' is here for the same family of reasons, and is not optional. The default activity
+    # types are opened/synchronize/reopened; retargeting a PR's base is none of those, it is
+    # 'edited'. So when PR B is stacked on PR A and A merges, GitHub retargets B and fires no run,
+    # leaving B stuck on "Expected - waiting for status" forever with no push left to trigger it.
+    # The cost is a run on title and body edits too; the concurrency group below cancels anything in
+    # flight, which is the cheaper side of that trade.
+    types: [opened, synchronize, reopened, edited]
   # Lets the gate be re-run without pushing an empty commit.
   workflow_dispatch:
 

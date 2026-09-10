@@ -148,4 +148,27 @@ describe('DayInvalidations', () => {
     expect(invalidations.invalidateEverything()).toEqual(['2026-09-14'])
     expect(holds(cache, '2026-09-14')).toBe(false)
   })
+
+  it('leaves a watched query COMPLETE but empty, which is why eviction alone cannot refill it', () => {
+    // Pins the Apollo behaviour the whole refetch step exists for, because it contradicts the
+    // design's "evict and the ordinary gap fetch refills it". The evicted Day leaves a dangling
+    // reference in workspace.days; Apollo filters those out of a list on read, so the query reads
+    // back complete with one fewer day rather than incomplete. Nothing refetches, and the screen
+    // shows "no meetings" forever.
+    //
+    // If a future Apollo makes this read INCOMPLETE, this test fails - and the refetch in
+    // useDaysInvalidated can then be removed rather than lingering as unexplained belt-and-braces.
+    const cache = cacheHolding('2026-09-14')
+    new DayInvalidations(cache).invalidate(['2026-09-14'])
+
+    const diff = cache.diff({
+      query: WORKSPACE,
+      variables: { dates: ['2026-09-14'] },
+      optimistic: false,
+      returnPartialData: true,
+    })
+
+    expect(diff.complete).toBe(true)
+    expect((diff.result as { workspace: { days: unknown[] } }).workspace.days).toEqual([])
+  })
 })

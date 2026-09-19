@@ -14,20 +14,21 @@ otherwise-fast, hard-to-catch transient state reliably observable — each says 
 **Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. A room and a meeting, so there's real content to render as "stale data."
+**Preconditions:** Signed in as the demo user. A room, so there's a real room to book into.
 
-**Given (a)** a genuinely first, cold visit to Room Availability (nothing cached yet)
+**Given (a)** a genuinely first, cold visit to a day's Room Availability — nothing has fetched or written anything about that day yet
 **Then (a)** a centred `CircularProgress` shows before content appears
 
 **Given (b)** a second visit to the same page later in the same session (rooms already `cache-first`-cached; meetings re-queried `cache-and-network`)
 **Then (b)** the *old* meeting data renders immediately, with only a slim `LinearProgress` bar above it while the background refetch runs — no full-page spinner, no flash of empty content
 
 **Steps:**
-1. Sign in; create a room and a meeting on a fixed date; pin the clock.
+1. Sign in; create a room; pin the clock to a fixed weekday.
 2. `page.route` the GraphQL endpoint to add an artificial delay (e.g. 800ms) to responses for this test only — real network round trips against a real deployed environment are usually too fast to reliably catch a transient loading state otherwise.
-3. Navigate to that date's Room Availability for the first time this session; immediately assert the `CircularProgress` is visible, then assert it's gone and content is present once the delayed response resolves.
-4. Navigate away and back to the same page (or otherwise trigger a refetch of the same query).
-5. Immediately assert: the meeting's block is *already* visible (from cache) AND a `LinearProgress` bar is visible above it; no `CircularProgress` this time.
+3. Navigate (in-app, via the sidebar link) to that day's Room Availability for the first time this session, *before* creating any meeting — immediately assert the `CircularProgress` is visible, then assert it's gone.
+4. Create a meeting on that same day (via Add Meeting), and follow the redirect back to its Room Availability. Assert the meeting is visible and no `CircularProgress` appears.
+5. Navigate away and back to the same page (or otherwise trigger a refetch of the same query).
+6. Immediately assert: the meeting's block is *already* visible (from cache) AND a `LinearProgress` bar is visible above it; no `CircularProgress` this time.
 
 **Assertions:**
 - (a): `CircularProgress` visible before data, gone after.
@@ -36,6 +37,8 @@ otherwise-fast, hard-to-catch transient state reliably observable — each says 
 **Out of scope:** the equivalent loading states on other pages (Home, Person Calendar) — structurally the same `loading`/`showSpinner` pattern per the main README's "Progress indicators" section; one representative page is enough for this use case's own wording, which doesn't call out a specific page.
 
 **Notes:** The artificial network delay (step 2) is what makes this deterministic — without it, a fast real response could resolve before Playwright's assertion even runs, making the "spinner was visible" half flaky or outright unobservable. Scope the route interception narrowly (only this test's own page, only for the duration needed) so it doesn't leak into other tests if run in the same worker.
+
+Step 3 deliberately checks the day *before* a meeting is created on it, not the redirect straight after creating one (that used to be the same thing; it no longer is). mootmaker-webapp#66 fixed `Query.workspace`'s cache read to reconstruct `days` from the requested dates via the already-normalized `Day` entities, rather than trusting whatever `days` list a previous, differently-dated response happened to leave behind. One side effect: `createMeeting`'s own response returns the affected `day`, entity-normalized like any other write, so it now warms that day's cache immediately — the redirect straight after creating a meeting is a revisit to a day the mutation itself just populated, not a genuinely cold visit. That's a real improvement (no unnecessary spinner for data already in hand, asserted in step 4), but it means (a)'s "nothing cached yet" precondition needs a visit that precedes any write to the day being checked.
 
 ---
 

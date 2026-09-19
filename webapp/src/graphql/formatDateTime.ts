@@ -77,16 +77,6 @@ export function formatLocalTime(isoLocalDateTime: string, timeFormat: TimeFormat
   return formatHourMinute(hour24, minute, timeFormat)
 }
 
-/**
- * A whole hour with no date behind it - the Room Availability grid's hour-axis labels, and the
- * "Showing business hours" caption. Those read a plain hour number out of the business-hours
- * constants rather than an ISO string, but they are times shown to a human and so follow the
- * viewer's own format like everything else.
- */
-export function formatHourOfDay(hour24: number, timeFormat: TimeFormat): string {
-  return formatHourMinute(hour24, '00', timeFormat)
-}
-
 // The single place a time's digits become a rendered string, so an hour label and a meeting's
 // start time can never disagree about what the viewer's format means.
 function formatHourMinute(hour24: number, minute: string, timeFormat: TimeFormat): string {

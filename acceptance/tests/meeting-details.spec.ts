@@ -96,8 +96,17 @@ async function createMeetingViaForm(page: Page, options: MeetingFormOptions): Pr
   await expect(page).toHaveURL(/\/rooms\/.+\/availability/)
   await expect(page.getByText('Meeting was successfully scheduled.')).toBeVisible()
 
-  // Find the newly created meeting's id by following its own block back from the schedule.
-  await page.getByText(options.subject).click()
+  // Find the newly created meeting's id by following its own row back from the schedule. The
+  // meeting only renders once its room's card is expanded (RoomAvailabilityPage.tsx's "See
+  // <day>'s meetings" Collapse toggle) - confirmed against a real run that a collapsed card's
+  // meeting row is absent from role queries entirely, not just visually hidden. Not getByText: the
+  // card's own status sublabel can independently reference this meeting's subject too (see
+  // roomAvailabilityLogic.ts) - only the meeting row itself has role 'link'.
+  const roomCard = page
+    .getByText(options.roomName, { exact: true })
+    .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
+  await roomCard.getByRole('button', { name: /'s meetings/ }).click()
+  await roomCard.getByRole('link', { name: options.subject, exact: false }).click()
   await expect(page).toHaveURL(/\/meetings\/.+/)
   const url = page.url()
   const match = url.match(/\/meetings\/([^/?#]+)/)
@@ -245,9 +254,16 @@ test.describe('H. Meeting Details', () => {
     await createRoom(page, roomName, '4')
     await createMeetingViaForm(page, { subject, roomName })
 
-    // Entry point 1: Room Availability.
+    // Entry point 1: Room Availability. The meeting only renders once its room's card is expanded
+    // (RoomAvailabilityPage.tsx's "See <day>'s meetings" Collapse toggle), and only the meeting
+    // row itself has role 'link' - the card's own status sublabel can independently reference this
+    // meeting's subject too (see roomAvailabilityLogic.ts).
     await page.goto(`/rooms/${MEETING_DATE}/availability`)
-    await page.getByText(subject).click()
+    const roomCard = page
+      .getByText(roomName, { exact: true })
+      .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
+    await roomCard.getByRole('button', { name: /'s meetings/ }).click()
+    await roomCard.getByRole('link', { name: subject, exact: false }).click()
     await expect(page).toHaveURL(/\/meetings\/.+/)
     await page.getByRole('button', { name: 'Back' }).click()
     await expect(page).toHaveURL(new RegExp(`/rooms/${MEETING_DATE}/availability`))

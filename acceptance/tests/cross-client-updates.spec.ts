@@ -155,16 +155,25 @@ test('a booking made by another client appears without a refresh', async ({ brow
     await createPerson(page, organiser)
     const token = await getIdToken(page)
 
-    // Watching the day BEFORE the booking exists, and never reloading after this point.
+    // Watching the day BEFORE the booking exists, and never reloading after this point. The room's
+    // card is expanded once, up front, and must stay expanded (a pure local UI state, untouched by
+    // the broadcast/refetch below) so the meeting appearing needs no further user action to see -
+    // meetings only render inside an expanded card's Collapse, see RoomAvailabilityPage.tsx.
     await page.goto(`/rooms/${date}/availability`)
     await expect(page.getByText(room)).toBeVisible()
+    const roomCard = page
+      .getByText(room, { exact: true })
+      .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
+    await roomCard.getByRole('button', { name: /'s meetings/ }).click()
     await expect(page.getByText(subject)).toHaveCount(0)
 
     await bookViaApi(page, token, { roomName: room, organiserName: organiser, subject, date })
 
     // No reload, no navigation, no user action: the only thing that can make this appear is the
-    // broadcast evicting the day and the refetch refilling it.
-    await expect(page.getByText(subject)).toBeVisible({ timeout: 30_000 })
+    // broadcast evicting the day and the refetch refilling it. Not a plain getByText(subject): the
+    // card's own status sublabel can independently reference this meeting's subject too (see
+    // roomAvailabilityLogic.ts) - only the meeting row itself has role 'link'.
+    await expect(roomCard.getByRole('link', { name: subject, exact: false })).toBeVisible({ timeout: 30_000 })
   } finally {
     await observer.close()
   }
@@ -222,11 +231,10 @@ test('the tab that made the booking does not lose it to its own broadcast', asyn
   try {
     const page = await context.newPage()
 
-    // Pinned to 10:00 so the form's default start/end land inside business hours.
-    // RoomAvailabilityPage only ever renders 08:00-17:00, so a meeting created outside that window
-    // is created SUCCESSFULLY and then falls outside the visible grid - the assertion below fails
-    // and blames real-time updates for what is actually the clock. add-meeting.spec.ts hit exactly
-    // this at 17:30 local; this run hit it at 19:50, defaulting to 20:00-21:00.
+    // Pinned to 10:00 so the form's default start/end don't drift near midnight - a run right
+    // before midnight could otherwise default to a start/end pair spanning two calendar days,
+    // which the API rejects (SpansMultipleDays), and the assertion below would fail blaming
+    // real-time updates for what is actually the clock.
     //
     // Today's date rather than a hardcoded one: the day must stay inside the bookable window, and a
     // fixed date eventually drifts out of it.
@@ -248,16 +256,26 @@ test('the tab that made the booking does not lose it to its own broadcast', asyn
     await page.getByRole('button', { name: 'Save' }).click()
 
     // Lands on the availability page for the booked date, already holding the Day the mutation
-    // returned - no fetch needed.
+    // returned - no fetch needed. The meeting only renders once its room's card is expanded (see
+    // RoomAvailabilityPage.tsx), and stays expanded - a pure local UI state - for the rest of this
+    // test.
     await expect(page).toHaveURL(/\/rooms\/.+\/availability/)
-    await expect(page.getByText(subject)).toBeVisible()
+    const roomCard = page
+      .getByText(room, { exact: true })
+      .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
+    await roomCard.getByRole('button', { name: /'s meetings/ }).click()
+    // Not a plain getByText(subject): the card's own status sublabel can independently reference
+    // this meeting's subject too (see roomAvailabilityLogic.ts) - only the meeting row itself has
+    // role 'link'.
+    const meetingLink = roomCard.getByRole('link', { name: subject, exact: false })
+    await expect(meetingLink).toBeVisible()
 
     // The broadcast round trip completes well inside this window. Asserted CONTINUOUSLY rather
     // than once at the end: a flicker is transient, so a single later assertion would pass right
     // through it and report nothing.
     const deadline = Date.now() + 10_000
     while (Date.now() < deadline) {
-      await expect(page.getByText(subject)).toBeVisible()
+      await expect(meetingLink).toBeVisible()
       await page.waitForTimeout(250)
     }
   } finally {

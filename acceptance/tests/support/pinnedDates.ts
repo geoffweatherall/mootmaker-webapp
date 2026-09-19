@@ -13,11 +13,12 @@
  *
  * **What the dates have to preserve**, and why this is not simply `new Date()`:
  *
- * - **A weekday.** PersonCalendarPage renders a Monday-Friday grid, so a weekend date has no cell to
- *   assert against.
- * - **Business hours.** RoomAvailabilityPage renders only 08:00-17:00, so a meeting created outside
- *   that window is created successfully and falls off the visible grid - which reads as a missing
- *   meeting rather than as a time problem.
+ * - **A weekday.** PersonCalendarPage's agenda only ever shows Monday-Friday, so a weekend date has
+ *   no day section to assert against.
+ * - **A normal hour of day.** Kept as a matter of habit from when RoomAvailabilityPage only ever
+ *   rendered 08:00-17:00 (neither the API nor the page enforce that any more - see
+ *   designs/room-availability-and-person-calendar-redesign.md) - there's no live reason to move it
+ *   off a business hour either, so every pinned time in this suite still defaults to one.
  * - **Relationships between dates.** Some tests need consecutive days, or the same weekday across
  *   consecutive weeks. Those must move together, not be re-derived independently.
  *
@@ -32,7 +33,7 @@ export type Weekday = (typeof WEEKDAYS)[number]
 export interface PinnedWeekdayOptions {
   /** Whole weeks from the current one. Negative is the past. Kept well inside retention. */
   weeks?: number
-  /** Hour of day, 24-hour. Defaults to 10:00, comfortably inside the 08:00-17:00 grid. */
+  /** Hour of day, 24-hour. Defaults to 10:00, a normal business hour. */
   hour?: number
   minute?: number
 }

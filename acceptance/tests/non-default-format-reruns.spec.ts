@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { freshTestAccount } from '../../support/testAccount'
 
@@ -13,8 +13,8 @@ import { freshTestAccount } from '../../support/testAccount'
 //
 // One scenario is taken from each of the three views that render a date or a time differently:
 // Meeting Details (both a date row and a time row), Person Calendar (a time-only range), and Room
-// Availability (a time-only range inside a tooltip). Between them they cover every call site of
-// formatLocalDate and formatLocalTime in the app.
+// Availability (a time-only range in an expanded card's meeting row). Between them they cover
+// every call site of formatLocalDate and formatLocalTime in the app.
 //
 // Expectations are *computed* from the format rather than hardcoded, which is the whole point: a
 // literal would prove only that this file agrees with itself.
@@ -58,9 +58,16 @@ async function signInAsNonDefaultAccount(page: Page): Promise<void> {
 // A deployed environment's rooms have generated names, and business hours (08:00-17:00) are
 // exactly the range sample-data fills, so neither a room name nor a free slot can be hardcoded.
 // Book into whichever room accepts: each room gets only 0-2 generated meetings a day.
-async function selectRoomByIndex(page: Page, index: number): Promise<void> {
+// Returns the room's plain name, not the option's full accessible label - AddMeetingPage's Room
+// Autocomplete renders each option as "<name> (capacity <capacity>)" (getOptionLabel), but
+// RoomAvailabilityPage's own card shows just the plain name.
+async function selectRoomByIndex(page: Page, index: number): Promise<string> {
   await page.getByRole('combobox', { name: 'Room' }).click()
-  await page.getByRole('option').nth(index).click()
+  const option = page.getByRole('option').nth(index)
+  const label = (await option.textContent()) ?? ''
+  const roomName = label.replace(/\s*\(capacity \d+\)\s*$/, '')
+  await option.click()
+  return roomName
 }
 
 // Navigates first: this is called before any attempt, so the Add Meeting form is not open yet.
@@ -73,7 +80,6 @@ async function roomCount(page: Page): Promise<number> {
   return count
 }
 
-// Kept inside Person Calendar's own 6-week window, since one of these scenarios reads that page.
 function weekdayDaysAhead(days: number): { year: number; month: number; day: number } {
   const d = new Date()
   d.setDate(d.getDate() + days)
@@ -112,16 +118,17 @@ async function typeAmPmTime(page: Page, groupName: string, hour24: number, minut
   await page.keyboard.type(hour24 < 12 ? 'AM' : 'PM')
 }
 
+/** Returns the room's plain name on success (see selectRoomByIndex), or null if this slot was rejected. */
 async function trySave(
   page: Page,
   subject: string,
   date: { year: number; month: number; day: number },
   roomIndex: number,
-): Promise<boolean> {
+): Promise<string | null> {
   await page.goto('/meetings/add')
   await expect(page.getByRole('heading', { name: 'Add Meeting' })).toBeVisible()
   await page.getByLabel('Subject').fill(subject)
-  await selectRoomByIndex(page, roomIndex)
+  const roomName = await selectRoomByIndex(page, roomIndex)
   await typeBritishDate(page, date)
   await typeAmPmTime(page, 'Start time', 14, 30)
   await typeAmPmTime(page, 'End time', 15, 30)
@@ -133,20 +140,33 @@ async function trySave(
       .waitFor({ timeout: 15_000 })
       .catch(() => undefined),
   ])
-  return /\/rooms\/.+\/availability/.test(page.url())
+  return /\/rooms\/.+\/availability/.test(page.url()) ? roomName : null
 }
 
-/** Books a 14:30-15:30 meeting, trying each room in turn. Leaves the page on Room Availability. */
+/**
+ * Books a 14:30-15:30 meeting, trying each room in turn. Leaves the page on Room Availability,
+ * with the booked room's own card expanded - the meeting only renders once its card is expanded
+ * (RoomAvailabilityPage.tsx's "See <day>'s meetings" Collapse toggle) - and returns that card so
+ * callers can keep scoping further checks to it.
+ */
 async function addAfternoonMeeting(
   page: Page,
   subject: string,
   date: { year: number; month: number; day: number },
-): Promise<void> {
+): Promise<Locator> {
   const rooms = await roomCount(page)
   for (let i = 0; i < rooms; i++) {
-    if (await trySave(page, subject, date, i)) {
-      await expect(page.getByText(subject, { exact: true })).toBeVisible()
-      return
+    const roomName = await trySave(page, subject, date, i)
+    if (roomName !== null) {
+      // Not a plain getByText(subject): the card's own status sublabel can independently
+      // reference this meeting's subject too (see roomAvailabilityLogic.ts) - only the meeting
+      // row itself has role 'link'.
+      const roomCard = page
+        .getByText(roomName, { exact: true })
+        .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
+      await roomCard.getByRole('button', { name: /'s meetings/ }).click()
+      await expect(roomCard.getByRole('link', { name: subject, exact: false })).toBeVisible()
+      return roomCard
     }
   }
   throw new Error(`Could not find a free room for ${subject} across ${rooms} room(s)`)
@@ -160,9 +180,9 @@ test("H.68 under British + AM/PM: Meeting Details renders both rows in the viewe
   await signInAsNonDefaultAccount(page)
   const subject = `Rerun details ${Date.now()}`
   const date = weekdayDaysAhead(14)
-  await addAfternoonMeeting(page, subject, date)
+  const roomCard = await addAfternoonMeeting(page, subject, date)
 
-  await page.getByText(subject, { exact: true }).click()
+  await roomCard.getByRole('link', { name: subject, exact: false }).click()
   await expect(page).toHaveURL(/\/meetings\/[^/]+$/)
 
   await expect(detailRow(page, 'Date')).toHaveText(expectedBritishDate(date.year, date.month, date.day))
@@ -179,27 +199,42 @@ test('G.59 under British + AM/PM: Person Calendar renders its meeting rows in AM
   await page.getByRole('link', { name: 'Calendar', exact: true }).click()
   await expect(page).toHaveURL(/\/persons\/[^/]+\/calendar$/)
 
-  const row = page.getByText(subject, { exact: false }).first()
+  // PersonCalendarPage shows one Monday-Friday week at a time, defaulting to the current week -
+  // this fixture's date is well outside it (chosen to avoid colliding with H.68/E.26's own
+  // fixtures, which don't need to be calendar-visible), so navigate forward the right number of
+  // weeks first. Both weeks are anchored to their own Monday (ISO week start) before differencing,
+  // matching PersonCalendarPage.tsx's own startOfWorkWeek() math.
+  const mondayOf = (d: Date): Date => {
+    const day = d.getDay()
+    const diff = day === 0 ? 6 : day - 1
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate() - diff)
+  }
+  const targetDate = new Date(date.year, date.month - 1, date.day)
+  const weeksAhead = Math.round((mondayOf(targetDate).getTime() - mondayOf(new Date()).getTime()) / (7 * 86_400_000))
+  const nextWeek = page.getByRole('button', { name: 'Next week' })
+  for (let i = 0; i < weeksAhead; i++) {
+    await nextWeek.click()
+  }
+
+  // Not a plain getByText(subject): the meeting row's subject and its time+room caption are two
+  // separate sibling Typography elements (PersonCalendarPage.tsx), so a text match on the subject
+  // alone wouldn't contain the time. The row itself is a ButtonBase (role 'button'), whose
+  // accessible name is its full text content - subject and caption both.
+  const row = page.getByRole('button', { name: subject, exact: false })
   await expect(row).toContainText(expectedAmPmTime(14, 30))
   await expect(row).not.toContainText('14:30')
 })
 
-test('E.26 under British + AM/PM: Room Availability renders its meeting tooltip in AM/PM', async ({ page }) => {
+test("E.26 under British + AM/PM: Room Availability renders a meeting's time range in AM/PM", async ({ page }) => {
   await signInAsNonDefaultAccount(page)
   const subject = `Rerun availability ${Date.now()}`
   const date = weekdayDaysAhead(18)
-  await addAfternoonMeeting(page, subject, date)
 
-  // addAfternoonMeeting lands on the availability page for the meeting's own day.
-  //
-  // Same locator and aria-label reading as E.32's own case: MUI's Tooltip (describeChild defaults
-  // to false) sets aria-label to the whole "<subject>: <start>-<end>" string on the child rather
-  // than a native `title`, so the range is readable without triggering a real hover. The subject
-  // Typography is the link's own child one DOM hop below, so finding the text and going up is
-  // unambiguous regardless of what the tooltip does to the accessible name.
-  const block = page.getByText(subject, { exact: true }).locator('xpath=..')
-  await expect(block).toHaveAttribute(
-    'aria-label',
-    `${subject}: ${expectedAmPmTime(14, 30)}\u2013${expectedAmPmTime(15, 30)}`,
-  )
+  // addAfternoonMeeting lands on the availability page for the meeting's own day, with its room's
+  // card already expanded. Same reasoning as room-availability.spec.ts's E.32: only the meeting
+  // row itself has role 'link', so this can't accidentally match the card's own status sublabel
+  // even where it independently references the same subject.
+  const roomCard = await addAfternoonMeeting(page, subject, date)
+  const meetingLink = roomCard.getByRole('link', { name: subject, exact: false })
+  await expect(meetingLink).toContainText(`${expectedAmPmTime(14, 30)}\u2013${expectedAmPmTime(15, 30)}`)
 })

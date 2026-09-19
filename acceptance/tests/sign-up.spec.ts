@@ -173,9 +173,8 @@ test('can immediately schedule a meeting as themselves right after signing up', 
   await page.getByRole('button', { name: 'Confirm' }).click()
   await expect(page.getByText('Sign out')).toBeVisible()
 
-  // AddMeetingPage's start-time default (next 15-minute boundary from now) needs to land inside
-  // RoomAvailabilityPage's business-hours grid (08:00-17:00) for the meeting to be visibly
-  // asserted afterward - same reasoning as add-meeting.spec.ts.
+  // Pinned so the form's default start/end don't drift near midnight, which could otherwise span
+  // two calendar days and get rejected (SpansMultipleDays) - same reasoning as add-meeting.spec.ts.
   await page.clock.setFixedTime(PINNED_NOW)
 
   await page.goto('/meetings/add')
@@ -192,10 +191,17 @@ test('can immediately schedule a meeting as themselves right after signing up', 
 
   await expect(page).toHaveURL(/\/rooms\/.+\/availability/)
   await expect(page.getByText('Meeting was successfully scheduled.')).toBeVisible()
-  await expect(page.getByText(subject)).toBeVisible()
 
-  // Organiser is this user, not blank - checked on the Meeting Details page reached from the
-  // grid.
-  await page.getByText(subject).click()
+  // The meeting only renders once its room's card is expanded (RoomAvailabilityPage.tsx's "See
+  // <day>'s meetings" Collapse toggle). Not a plain getByText(subject): the card's own status
+  // sublabel can independently reference this meeting's subject too (see
+  // roomAvailabilityLogic.ts) - only the meeting row itself has role 'link'.
+  const roomCard = page
+    .getByText(roomName, { exact: true })
+    .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
+  await roomCard.getByRole('button', { name: /'s meetings/ }).click()
+
+  // Organiser is this user, not blank - checked on the Meeting Details page reached from here.
+  await roomCard.getByRole('link', { name: subject, exact: false }).click()
   await expect(page.getByText(account.name)).toBeVisible()
 })

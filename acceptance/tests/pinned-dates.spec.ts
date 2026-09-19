@@ -47,9 +47,12 @@ test('the named weekday is the weekday you get', () => {
   expect(pinnedWeekday('Wednesday', { weeks: -2 }).getDay()).toBe(3)
 })
 
-test('pinned dates default to inside the 08:00-17:00 availability grid', () => {
-  // A meeting booked outside business hours is created successfully and then simply does not appear
-  // on RoomAvailabilityPage, which reads as a missing meeting rather than as a time problem.
+test('pinned dates default to inside 08:00-17:00', () => {
+  // A legacy default from when RoomAvailabilityPage only ever rendered business hours - neither
+  // the API nor the page enforce that any more (see
+  // designs/room-availability-and-person-calendar-redesign.md), but there's no live reason to move
+  // it off a normal business hour either, so it stays as the shared default every other pinned
+  // time in this suite is computed relative to.
   const pinned = pinnedWeekday('Wednesday')
   expect(pinned.getHours()).toBeGreaterThanOrEqual(8)
   expect(pinned.getHours()).toBeLessThan(17)

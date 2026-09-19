@@ -41,9 +41,8 @@ test('M.92 - a first cold visit shows a full spinner; a same-session revisit sho
   const runId = `${Date.now()}-${Math.floor(Math.random() * 10_000)}`
   const roomName = `M92 Room ${runId}`
   const subject = `M92 meeting ${runId}`
-  // A Wednesday inside business hours (08:00-17:00), derived from now() rather than hardcoded:
-  // RoomAvailabilityPage only ever renders business hours, and a literal date expires as soon as
-  // the server's retention boundary advances past it. See support/pinnedDates.ts.
+  // A Wednesday inside business hours, derived from now() rather than hardcoded: a literal date
+  // expires as soon as the server's retention boundary advances past it. See support/pinnedDates.ts.
   const pinnedNow = pinnedWeekday('Wednesday')
   const dateStr = formatDateParam(pinnedNow)
   const availabilityUrl = new RegExp(`/rooms/${dateStr}/availability`)
@@ -111,7 +110,15 @@ test('M.92 - a first cold visit shows a full spinner; a same-session revisit sho
   await page.getByRole('button', { name: 'Save' }).click()
 
   await page.waitForURL(availabilityUrl)
-  await expect(page.getByText(subject)).toBeVisible()
+  // The meeting only renders once its room's card is expanded - RoomAvailabilityPage.tsx's "See
+  // <day>'s meetings" Collapse toggle. Not a plain getByText(subject): the card's own status
+  // sublabel can independently reference this meeting's subject too (see
+  // roomAvailabilityLogic.ts) - only the meeting row itself has role 'link'.
+  const roomCard = page
+    .getByText(roomName, { exact: true })
+    .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
+  await roomCard.getByRole('button', { name: /'s meetings/ }).click()
+  await expect(roomCard.getByRole('link', { name: subject, exact: false })).toBeVisible()
   await expect(circularProgress).toHaveCount(0)
 
   // (b) Navigating away and back to the exact same day - via real in-app link clicks, not
@@ -125,7 +132,13 @@ test('M.92 - a first cold visit shows a full spinner; a same-session revisit sho
   await page.getByRole('link', { name: 'Room Availability' }).click()
   await page.waitForURL(availabilityUrl)
 
-  await expect(page.getByText(subject)).toBeVisible()
+  // A real navigation away and back remounts RoomAvailabilityPage, so its expandedRoomIds state
+  // resets - the card needs expanding again before its (still-cached) meeting is visible.
+  const roomCardAfterNav = page
+    .getByText(roomName, { exact: true })
+    .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
+  await roomCardAfterNav.getByRole('button', { name: /'s meetings/ }).click()
+  await expect(roomCardAfterNav.getByRole('link', { name: subject, exact: false })).toBeVisible()
   await expect(linearProgress).toBeVisible()
   await expect(circularProgress).toHaveCount(0)
   await expect(linearProgress).toBeHidden()

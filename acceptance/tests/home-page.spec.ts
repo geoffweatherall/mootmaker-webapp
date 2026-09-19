@@ -191,8 +191,8 @@ test('D.21 - signed-out home page shows the sign-in form pre-filled with demo cr
  * drifts out of that window and the failure names something else entirely - a failed navigation, a
  * missing meeting - rather than the date.
  *
- * Pinning itself must stay: RoomAvailabilityPage renders only business hours (08:00-17:00), so an
- * unpinned run books after-hours meetings that are created successfully and fall off the grid.
+ * Pinning itself must stay: it's what keeps "Today"/"Tomorrow" deterministic and avoids booking a
+ * start/end pair that spans midnight (rejected by the API as SpansMultipleDays).
  */
 test('D.22 - signed in with a linked Person shows Calendar/Room availability/Add Meeting entry points plus a Today/Tomorrow agenda sorted by start time, each linking to its own meeting details', async ({
   page,

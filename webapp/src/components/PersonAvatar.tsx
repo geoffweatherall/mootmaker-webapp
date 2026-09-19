@@ -21,7 +21,13 @@ interface PersonAvatarProps {
 export function PersonAvatar({ name, size = 32 }: PersonAvatarProps) {
   const theme = useTheme()
   return (
+    // aria-hidden: purely decorative. Without it, the initials text ("BB") gets concatenated into
+    // the accessible name of whatever interactive ancestor it sits inside - confirmed against a
+    // real Autocomplete option, whose computed name became "BBBob Brown" instead of "Bob Brown"
+    // and broke every test locating it by exact name. The adjacent visible name text already
+    // conveys identity; this avatar adds nothing a screen reader needs to hear separately.
     <Avatar
+      aria-hidden="true"
       sx={{
         width: size,
         height: size,

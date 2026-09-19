@@ -313,7 +313,7 @@ export default function AddMeetingPage() {
                 return (
                   <Box component="li" key={key} {...optionProps} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                     <PersonAvatar name={option.name} size={24} />
-                    {option.name}
+                    <ListItemText primary={option.name} />
                   </Box>
                 )
               }}

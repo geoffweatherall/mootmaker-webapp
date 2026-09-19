@@ -272,13 +272,11 @@ test('add a meeting with all required fields succeeds and it appears on the room
   const subject = `Acceptance test meeting ${runId}`
 
   // AddMeetingPage defaults the start time to the next 15-minute boundary from now - fine most of
-  // the time, but RoomAvailabilityPage only ever renders business hours (08:00-17:00, see that
-  // page's own "Showing business hours" note), so this test would flake whenever it happened to
-  // run outside that window (caught for real: failed at 17:30 local time, the meeting was created
-  // successfully but fell just outside the grid's visible range). Pinning just
-  // Date.now()/new Date() (not the timers - setFixedTime keeps those running normally) to a known
-  // time safely inside business hours makes that deterministic instead, matching the same fix
-  // already used in webapp/tests/meeting-details.spec.ts for the same class of problem.
+  // the time, but close enough to midnight it can default to a start/end pair spanning two
+  // calendar days, which the API rejects (SpansMultipleDays). Pinning just Date.now()/new Date()
+  // (not the timers - setFixedTime keeps those running normally) to a known time well clear of
+  // midnight makes that deterministic instead, matching the same fix already used in
+  // webapp/tests/meeting-details.spec.ts for the same class of problem.
   await page.clock.setFixedTime(pinnedWeekday('Wednesday'))
 
   await page.goto('/signin')
@@ -312,10 +310,19 @@ test('add a meeting with all required fields succeeds and it appears on the room
   // Success navigates to that day's room availability (case 38), with a confirmation toast -
   // both the navigation target and the meeting actually showing up there are asserted, not just
   // the toast text, since a toast passing while the meeting silently failed to persist would be a
-  // false positive.
+  // false positive. The meeting itself only renders once its room's card is expanded - see
+  // RoomAvailabilityPage.tsx's "See <day>'s meetings" Collapse toggle.
   await expect(page).toHaveURL(/\/rooms\/.+\/availability/)
   await expect(page.getByText('Meeting was successfully scheduled.')).toBeVisible()
-  await expect(page.getByText(subject)).toBeVisible()
+  const card = page
+    .getByText(roomName, { exact: true })
+    .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
+  await card.getByRole('button', { name: /'s meetings/ }).click()
+  // Not a plain getByText(subject): if this meeting is currently in progress under the real
+  // clock, the card's own status sublabel is the bare subject with no other text (see
+  // roomAvailabilityLogic.ts) - a second, exact duplicate elsewhere on the card. Only the meeting
+  // row itself has role 'link'.
+  await expect(card.getByRole('link', { name: subject, exact: false })).toBeVisible()
 })
 
 test('organiser defaults to the signed-in user\'s own Person without any interaction', async ({ page }) => {
@@ -593,7 +600,14 @@ test('an overlapping time slot in the same room is rejected with TimeRangeUnavai
   await setTime(page, 'End time', 11, 0)
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page).toHaveURL(/\/rooms\/.+\/availability/)
-  await expect(page.getByText(subject1)).toBeVisible()
+  // Not a plain getByText(subject1): the card's own status sublabel can also reference this
+  // meeting's subject (see roomAvailabilityLogic.ts) - only the meeting row itself, visible once
+  // the card is expanded, has role 'link'.
+  const card = page
+    .getByText(roomName, { exact: true })
+    .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
+  await card.getByRole('button', { name: /'s meetings/ }).click()
+  await expect(card.getByRole('link', { name: subject1, exact: false })).toBeVisible()
 
   // Second meeting: 10:30-11:30, same room - genuinely overlapping (contrast with E.34's legal
   // touching case), not just touching.
@@ -828,8 +842,18 @@ test('double-clicking Save does not double-submit - exactly one meeting is creat
   await spinnerCheck
 
   await expect(page).toHaveURL(/\/rooms\/.+\/availability/)
-  // The real, reliable assertion this use case cares about (see F.56's catalog Notes).
-  await expect(page.getByText(subject)).toHaveCount(1)
+  // The meeting only renders once its room's card is expanded (RoomAvailabilityPage.tsx's "See
+  // <day>'s meetings" Collapse toggle) - confirmed against a real run that a collapsed card's
+  // meeting row is absent from role queries entirely, not just visually hidden.
+  const card = page
+    .getByText(roomName, { exact: true })
+    .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
+  await card.getByRole('button', { name: /'s meetings/ }).click()
+  // The real, reliable assertion this use case cares about (see F.56's catalog Notes). Not
+  // getByText: the card's own status sublabel can independently reference this meeting's subject
+  // too (see roomAvailabilityLogic.ts) - only the meeting row itself has role 'link', and exactly
+  // one existing is exactly the double-submit guard this case is checking.
+  await expect(card.getByRole('link', { name: subject, exact: false })).toHaveCount(1)
 })
 
 test('at mobile width the Save/Cancel actions stack vertically instead of a cramped row', async ({ page }) => {

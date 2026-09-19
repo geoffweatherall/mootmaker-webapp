@@ -18,7 +18,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **Given** a signed-in user
 **When** they navigate to `/rooms/<today>/availability` (e.g. via the sidebar's "Room Availability" item)
-**Then** the grid loads showing today's date, business hours (08:00–17:00), and every existing room as a lane
+**Then** the page loads showing today's date and a card for every existing room
 
 **Steps:**
 1. Sign in as the demo user; ensure at least one room exists.
@@ -27,12 +27,13 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 **Assertions:**
 - URL matches `/rooms/<today's YYYY-MM-DD>/availability`.
 - The date picker shows today's date.
-- "Showing business hours (08:00–17:00)." text is visible.
-- At least one room lane is rendered with its name and capacity.
+- At least one room card is rendered with its name and capacity.
 
-**Out of scope:** meetings actually shown in the grid (E.31/E.32); other dates (E.27/E.28).
+**Out of scope:** meetings actually shown in a card's expanded list (E.31/E.32); other dates (E.27/E.28).
 
 **Notes:** None.
+
+**2026-09-19: redesigned along with the whole page.** The old fixed-hour timeline grid, and its "Showing business hours (08:00–17:00)." caption, were replaced by room-status cards with no fixed hour range - see `designs/room-availability-and-person-calendar-redesign.md`. Meetings outside 08:00-17:00 are no longer hidden; a card's status simply reflects whatever meetings exist that day.
 
 ---
 
@@ -150,7 +151,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 <a id="tc-e31"></a>
 ### E.31 — Rooms exist but none has meetings that day
 
-**Use case:** [use-cases.md#uc-31](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-31) — "Rooms exist but none has meetings that day → grid shows with empty lanes."
+**Use case:** [use-cases.md#uc-31](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-31) — "Rooms exist but none has meetings that day → cards show a 'Free all day'/zero-meetings status, not the no-rooms empty state."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
@@ -158,113 +159,116 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **Given** rooms exist but none has a meeting on the viewed date
 **When** a user views that date's availability
-**Then** the grid itself renders (room lanes, hour marks) with no meeting blocks, not the "no rooms" empty state
+**Then** the room's card renders with a "Free all day" status and a "(0)" meeting count, not the "no rooms" empty state
 
 **Steps:**
 1. Sign in; ensure a room exists; pin the clock to a far-future date.
 2. Navigate to that date's availability.
 
 **Assertions:**
-- Room lane(s) with name/capacity are visible.
-- No meeting `ButtonBase`/tooltip elements are present.
+- The room's card, with its name and capacity, is visible.
+- The card's "See <day>'s meetings" toggle button reads "(0)".
 - The "No rooms exist yet." empty state is NOT shown (distinguishing this from E.30).
 
 **Out of scope:** N/A.
 
 **Notes:** Picking a date far enough in the future to be collision-free with every other fixture in this catalog is simpler than trying to guarantee isolation any other way, given there's no way to query/clear meetings directly.
 
-**2026-08-27 root cause: test bug, fixed.** The link-count assertion was scoped via a raw `page.locator('.MuiPaper-root')`, which - confirmed against a real run - also matches `Layout.tsx`'s own sidebar `Drawer` (always in the DOM as a Paper, even when CSS-hidden at some viewports) alongside the availability grid's own Paper, so it picked up the sidebar's 6 nav links too ("Expected: 0, Received: 6"). Fixed by adding a `gridPaper(page)` helper that walks up from the grid's own unique "08:00" hour-mark text to its nearest `MuiPaper-root` ancestor, isolating just the grid. Re-verified live and passing.
+**2026-09-19: redesigned along with the whole page.** `RoomAvailabilityPage`'s fixed-hour timeline grid was replaced by a scrollable list of room-status cards - see `designs/room-availability-and-person-calendar-redesign.md`. The "grid, not empty state" distinction this case checks still holds, just via the card's own zero-meetings status rather than an empty lane in an hour-axis grid.
 
 ---
 
 <a id="tc-e32"></a>
-### E.32 — Meeting block tooltip and click-through to details
+### E.32 — A room card's expanded meeting list and click-through to details
 
-**Use case:** [use-cases.md#uc-32](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-32) — "A meeting block's tooltip shows subject + time range; clicking it navigates to Meeting Details."
+**Use case:** [use-cases.md#uc-32](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-32) — "A room card's expanded meeting list shows subject + time range; clicking a meeting navigates to Meeting Details."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. A room and a meeting on it exist (create via Add Meeting), clock pinned to that meeting's date.
 
-**Given** a meeting visible on the grid
-**When** the user hovers its block and then clicks it
-**Then** a tooltip shows `"<subject>: <start>–<end>"`, and clicking navigates to that meeting's own Details page
+**Given** a meeting on a room's card
+**When** the user expands that card's meeting list and clicks the meeting
+**Then** the list shows `"<start>–<end>"` and the subject, and clicking navigates to that meeting's own Details page
 
 **Steps:**
 1. Sign in; create a room and a meeting with a known subject/time; pin the clock to its date.
 2. Navigate to that date's availability.
-3. Hover the meeting block (`getByText(subject)` within the grid).
-4. Assert the MUI `Tooltip` content.
-5. Click the block.
+3. Click the room card's "See <day>'s meetings (N)" toggle to expand it.
+4. Locate the meeting row (the only element inside the card with role `link`) and assert its text.
+5. Click it.
 
 **Assertions:**
-- Tooltip text equals `"<subject>: <HH:mm>–<HH:mm>"` (via `formatLocalTime`).
+- The meeting row's text contains `"<HH:mm>–<HH:mm>"` (via `formatLocalTime`) and the subject.
 - After click: URL is `/meetings/<id>`; `MeetingDetailsPage` shows the same subject.
 
 **Out of scope:** the details page's own field-by-field content (section H covers that).
 
-**Notes:** Playwright tooltip hover can be flaky in headless mode — consider asserting via the element's `title`/ARIA description attribute if MUI exposes one, rather than relying purely on a real hover-triggered popper being visible, when this is implemented.
+**Notes:** The meeting row isn't reliably locatable by plain subject text alone: the card's own status sublabel (e.g. "Busy until 09:30", or its bare subject when a meeting is in progress right now) can independently contain the same subject as a substring or, for an in-progress meeting, an exact duplicate. Scoping by role `link` - only the meeting row itself has one - avoids that ambiguity regardless of which status branch is showing.
 
-**2026-08-27 root cause: test bug, fixed.** The tooltip assertion checked a native `title` HTML attribute, but confirmed against both `@mui/material`'s own `Tooltip` source and a real run: with the default `describeChild={false}` (used here), MUI never sets a `title` attribute at all - only `aria-label`, unconditionally (real run: asserting `title` failed with "Received: null"; the element's actual `aria-label` was `"<subject>: 09:00–09:30"`). Fixed by asserting `aria-label` instead. Re-verified live and passing.
+**2026-09-19: redesigned along with the whole page.** This case used to be about a `Tooltip`'s `aria-label` on an always-visible, absolutely-positioned meeting block. The card redesign removed both the tooltip and the block layout: a meeting is now a plain row in a list, shown only once its room's card is expanded. See `designs/room-availability-and-person-calendar-redesign.md`.
 
 ---
 
 <a id="tc-e33"></a>
-### E.33 — Overlapping meetings in different rooms render in their own lanes
+### E.33 — Overlapping meetings in different rooms each show only on their own card
 
-**Use case:** [use-cases.md#uc-33](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-33) — "Multiple overlapping-in-time meetings across different rooms render in their own room's lane without visual confusion."
+**Use case:** [use-cases.md#uc-33](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-33) — "Multiple overlapping-in-time meetings across different rooms each show only on their own room's card, without leaking into another room's."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. Two rooms ("Room A", "Room B"). Two meetings on the same date: Room A 10:00–11:00, Room B 10:30–11:30 (time-overlapping, different rooms — legal, since `TimeRangeUnavailable` is scoped per room). Clock pinned to that date.
 
 **Given** two meetings overlapping in time but in different rooms
-**When** the user views that day's grid
-**Then** each meeting renders inside its own room's row, and both are simultaneously visible and individually clickable
+**When** the user expands both rooms' cards
+**Then** each meeting appears only inside its own room's card, and both are independently clickable
 
 **Steps:**
 1. Sign in; create Room A and Room B; create both meetings; pin the clock.
 2. Navigate to the shared date's availability.
-3. Locate Room A's row (`getByText('Room A')`'s ancestor row) and assert the Room A meeting's subject is within it.
-4. Locate Room B's row similarly for its own meeting.
+3. Expand Room A's card and Room B's card.
+4. Assert Room A's meeting subject is within Room A's card and absent from Room B's, and vice versa.
+5. Click each meeting in turn (re-expanding the other room's card after the first navigate-away-and-back, since a real navigation remounts the page and resets which cards are expanded) and assert it reaches its own Meeting Details page.
 
 **Assertions:**
-- Room A's meeting subject appears only within Room A's row's bounding box (not Room B's).
-- Room B's meeting subject appears only within Room B's row's bounding box.
-- Both blocks are independently clickable to their own `/meetings/<id>`.
+- Room A's meeting subject appears only within Room A's card (not Room B's), and vice versa.
+- Both meetings are independently clickable to their own `/meetings/<id>`.
 
-**Out of scope:** the exact pixel horizontal-overlap rendering within a single lane (not applicable here — different lanes rule that out by construction); same-room overlap, which is actually rejected server-side (`TimeRangeUnavailable`) and can't be created as a fixture at all — see E.34 for the same-room, non-overlapping (touching) case that *is* legal.
+**Out of scope:** same-room overlap, which is actually rejected server-side (`TimeRangeUnavailable`) and can't be created as a fixture at all — see E.34 for the same-room, non-overlapping (touching) case that *is* legal.
 
-**Notes:** "Without visual confusion" is operationalised here as "each block is scoped to the correct room's row" — the strongest deterministic proxy for the visual claim without doing pixel-level screenshot comparison.
+**Notes:** "Without leaking into another room's card" is operationalised as "each meeting is scoped to the correct room's own card" — each room's meetings are only ever rendered inside that room's own `Collapse`, so this is a structural guarantee rather than something that could flake.
+
+**2026-09-19: redesigned along with the whole page.** Previously about two rows in a grid; now about two cards. See `designs/room-availability-and-person-calendar-redesign.md`.
 
 ---
 
 <a id="tc-e34"></a>
-### E.34 — Back-to-back meetings in the same room render distinctly
+### E.34 — Back-to-back meetings in the same room render as distinct, ordered rows
 
-**Use case:** [use-cases.md#uc-34](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-34) — "Same room, back-to-back meetings (one ending exactly when another starts) both render distinctly, non-overlapping."
+**Use case:** [use-cases.md#uc-34](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-34) — "Same room, back-to-back meetings (one ending exactly when another starts) both succeed and render as distinct, chronologically-ordered rows in the card's expanded meeting list."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. One room. Two meetings in it on the same date: 09:00–10:00 and 10:00–11:00 (touching end-to-start — explicitly allowed by the API's `[startTime, endTime)` half-open-interval rule, per `mootmaker-api/README.md`'s Validation table). Clock pinned.
 
 **Given** two meetings in the same room that touch but don't overlap
-**When** the user views that day's grid
-**Then** both meetings are created successfully (proving the server-side boundary rule) and both render as two separate, non-overlapping blocks
+**When** the user expands that room's card
+**Then** both meetings were created successfully (proving the server-side boundary rule) and both appear as two separate rows, in start-time order
 
 **Steps:**
 1. Sign in; create the room; create the 09:00–10:00 meeting; create the 10:00–11:00 meeting (assert this second creation succeeds — it's the actual boundary condition under test, not just the rendering).
-2. Navigate to the shared date's availability.
-3. Get bounding boxes for both meeting blocks (`boundingBox()`).
+2. Navigate to the shared date's availability and expand the room's card.
+3. Read the card's meeting rows (elements with role `link`) in DOM order.
 
 **Assertions:**
 - Both meetings were created without a `TimeRangeUnavailable` error.
-- Both subjects are visible as two distinct elements.
-- Block 1's right edge x-coordinate is ≤ block 2's left edge x-coordinate (no horizontal pixel overlap) — read as `right(block1) <= left(block2) + 1` to allow for sub-pixel rounding.
+- Exactly two rows exist, the first containing "09:00" and the first subject, the second containing "10:00" and the second subject.
 
 **Out of scope:** a genuinely overlapping pair (e.g. 09:00–10:01 and 10:00–11:00) — that's a negative case belonging to F.50, not this one, which is specifically about the *legal* touching boundary.
 
 **Notes:** This is the most direct proof in the whole catalog of the `[startTime, endTime)` half-open interval semantics actually working end-to-end (API + UI), not just documented.
+
+**2026-09-19: redesigned along with the whole page.** The old assertion read the two meeting blocks' bounding boxes to confirm no horizontal pixel overlap - a concept specific to the old grid's absolutely-positioned blocks. The card redesign renders meetings as a plain vertical list, so "distinct, non-overlapping" is now checked as "two separate rows, correctly ordered" instead. See `designs/room-availability-and-person-calendar-redesign.md`.
 
 ---
 
@@ -275,63 +279,56 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user (organiser, so the meeting shows on their own Person Calendar too). One room, one meeting on a date within the visible 6-week calendar window, clock pinned accordingly.
+**Preconditions:** Signed in as the demo user (organiser, so the meeting shows on their own Person Calendar too). One room, one meeting on a date within the visible week, clock pinned accordingly.
 
 **Given** a meeting in a specific room, visible on both Room Availability and the organiser's Person Calendar
 **When** the same room's colour swatch is read from both pages
 **Then** the two computed colours are identical
 
 **Steps:**
-1. Sign in; create the room and the meeting; pin the clock to a date within the current 6-week window.
-2. Navigate to that date's Room Availability; read the room lane's colour dot's computed `background-color` via `evaluate(el => getComputedStyle(el).backgroundColor)`.
-3. Navigate to `/persons/<demoPersonId>/calendar`; find the same date's cell, read the meeting row's colour dot's computed `background-color` the same way.
+1. Sign in; create the room and the meeting; pin the clock to a date within the visible week.
+2. Navigate to that date's Room Availability; read the room card's colour dot's computed `background-color` via `evaluate(el => getComputedStyle(el).backgroundColor)`.
+3. Navigate to `/persons/<demoPersonId>/calendar`; find the meeting row (a `ButtonBase`, role `button`, matched by its accessible name - its visible text - rather than by role `link`, since clicking it opens a detail panel instead of navigating), read its colour dot (the row's first child element) the same way.
 
 **Assertions:**
 - The two computed `background-color` (or equivalent CSS custom property/`rgb()`) values are identical.
 
 **Out of scope:** the actual palette-assignment algorithm (position-in-sorted-room-list) or its 8-hue wraparound — that's `theme/roomColor.ts` logic, already unit-tested per the main README's "Unit tests" section; this case only checks the two pages agree with *each other*, not that the algorithm itself is "correct" in some abstract sense.
 
+**2026-09-19: locators updated for the redesign.** Room Availability's own colour-dot markup is unchanged. Person Calendar's meeting row changed from an `<a>` to a `ButtonBase` (see G.65), so step 3's locator changed from role `link` to role `button` accordingly. See `designs/room-availability-and-person-calendar-redesign.md`.
+
 **Notes:** Both pages sort rooms the same way (`name.localeCompare`) specifically so this holds — if this test ever fails, check whether that sort order assumption still holds in both places before assuming a real regression.
 
 ---
 
 <a id="tc-e36"></a>
-### E.36 — Mobile viewport: horizontal scroll, pinned room column, scroll-fade hints
+### E.36 — Mobile viewport: single-column cards, no horizontal scroll
 
-**Use case:** [use-cases.md#uc-36](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-36) — "On a narrow/mobile viewport: grid scrolls horizontally, room name column stays pinned, scroll-fade hints appear/disappear correctly at the edges."
+**Use case:** [use-cases.md#uc-36](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-36) — "On a narrow/mobile viewport: room-status cards stack in a single column, with no horizontal scrolling needed."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. At least one room (the grid's `minWidth: 720` needs to exceed a narrow viewport for scrolling to be possible at all).
+**Preconditions:** Signed in as the demo user. At least one room.
 
-**Given** a signed-in user on a narrow viewport viewing a grid wider than the screen
-**When** they scroll the grid horizontally
-**Then** the room-name column stays visually pinned at the left, and the left/right fade hints appear and disappear correctly as the scroll position changes
+**Given** a signed-in user on a narrow viewport
+**When** they view Room Availability
+**Then** room cards stack in a single column and the page never needs horizontal scrolling to be read
 
 **Steps:**
-1. `page.setViewportSize({ width: 375, height: 667 })` (a typical mobile width, well under the grid's 720px `minWidth`).
+1. `page.setViewportSize({ width: 375, height: 667 })` (a typical mobile width).
 2. Sign in; ensure a room exists; navigate to availability.
-3. Assert the right-edge fade hint is visible, the left-edge one is not (starting scrolled fully left).
-4. Scroll the grid container fully right (`element.evaluate(el => el.scrollLeft = el.scrollWidth)`).
-5. Assert the left fade hint is now visible, the right one is not.
-6. Read the room-name column's bounding-box x-position before and after scrolling.
+3. Compare `document.documentElement.scrollWidth` to `clientWidth`.
+4. Read the room card's bounding-box width.
 
 **Assertions:**
-- Step 3: right fade visible, left fade absent.
-- Step 5: left fade visible, right fade absent.
-- Step 6: room-name column's x-position is unchanged by the scroll (it's `position: sticky; left: 0`).
+- `scrollWidth <= clientWidth` (no horizontal overflow).
+- The room card's width is close to the full viewport width (a single column, not sharing a row with a second card the way the ≥`md` two-column layout would).
 
-**Out of scope:** the equivalent "Add Meeting" button relocating to the page footer below `sm` (not part of this use case's own wording, though visible in the same viewport — see this catalog's Notes for a candidate future case if that's ever worth its own entry).
+**Out of scope:** the exact breakpoint at which the layout switches from one column to two (an implementation detail of the `sx` grid template, not part of this use case's own wording).
 
-**Notes:** `Layout.tsx`'s own mobile app bar is unrelated chrome around this — make sure the viewport used is narrow enough to trigger the grid's own horizontal scroll (which depends on the 720px inner `minWidth` vs. the outer `Container maxWidth="md"`, not directly on MUI's own `xs`/`sm` breakpoints) rather than assuming a specific MUI breakpoint name is what matters here.
+**Notes:** N/A.
 
-**2026-08-27 root cause: test bug, fixed.** Same `.MuiPaper-root` over-matching as E.31 (confirmed against a real run: `strict mode violation: locator('.MuiPaper-root') resolved to 3 elements` - the fixed mobile `AppBar`, the sidebar `Drawer`, and the grid, all Papers). Fixed by reusing the same `gridPaper(page)` helper introduced for E.31. Re-verified live and passing.
-
-**2026-08-27, separate failure found later the same day: real product bug, fixed (root cause corrected below after a first fix attempt didn't actually work).** A different failure - `expect(fadeHint).toHaveCount(1)` got 0 - first appeared against an environment that had accumulated 36 rooms from every earlier spec in the same run, leading to an initial (wrong) theory that this was about that accumulated content or web-font load timing, fixed by swapping a one-shot `scrollWidth`/`clientWidth` measurement for a `ResizeObserver`. That fix was re-verified live and **still failed identically** - including in a small, freshly-created environment with only a handful of rooms, which disproved the "large accumulated content" theory outright.
-
-The actual root cause: `RoomAvailabilityPage`'s grid only mounts once *both* `LIST_ROOMS` and `LIST_MEETINGS` have resolved (`showSpinner`), but the fade-hint effect was keyed off the `rooms` array specifically. `LIST_ROOMS` (`cache-first`) routinely settles before `LIST_MEETINGS` (`cache-and-network`) does, so `rooms` can stop changing *before* the grid actually mounts - the effect fires once while the grid's ref is still null (a no-op), and never fires again once the grid finally appears, since its own dependency never changes a second time. This reproduces on every load where rooms happen to resolve first, independent of room count or font timing - the 36-room run and the network conditions around it just happened to be where it was first noticed, not what caused it.
-
-Fixed properly by switching `gridScrollRef`/`gridContentRef` from `useRef` to ref-callback state (`useState<HTMLDivElement | null>`, set via `ref={setGridScrollEl}`), and keying the `ResizeObserver` effect on that state instead of on `rooms`. A ref callback fires exactly when React mounts/unmounts the DOM node, decoupled from any query's loading state, so the observer always gets attached at the real mount, regardless of which query settles first. Re-verified live against a fresh environment - all of E.26-E37 pass, E.36 included, resolving well inside the timeout (8.5s) rather than timing out.
+**2026-09-19: redesigned along with the whole page.** This case used to be about a fixed-hour timeline grid wide enough to force horizontal scrolling on a narrow screen (`mootmaker-webapp#11`, the defect this whole redesign exists to close) - the room-name column staying pinned via `position: sticky`, and scroll-fade hints tracking the scrollable edges. The card redesign removes horizontal scrolling from this page entirely: cards stack vertically at every viewport width via a responsive CSS grid (`{ xs: '1fr', md: 'repeat(2, 1fr)' }`), so there is no sticky column and no fade hints to test any more - the case now checks the thing the redesign actually set out to fix. See `designs/room-availability-and-person-calendar-redesign.md`.
 
 ---
 

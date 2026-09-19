@@ -20,8 +20,13 @@ test.describe('Add Meeting form - organiser/attendee mutual exclusivity', () => 
 
     await attendeesSelect.click()
     const attendeeOptions = page.getByRole('option')
-    const firstAttendeeName = (await attendeeOptions.nth(0).textContent())?.trim()
-    const secondAttendeeName = (await attendeeOptions.nth(1).textContent())?.trim()
+    // .MuiListItemText-primary, not a plain .textContent() on the option itself - each option now
+    // also renders a decorative PersonAvatar (aria-hidden, so it's correctly excluded from the
+    // option's own accessible name), but plain DOM textContent() doesn't know about aria-hidden at
+    // all and would read "BBBob Brown" instead of "Bob Brown". Scoping to the name's own element
+    // sidesteps that regardless of what else an option ever grows.
+    const firstAttendeeName = (await attendeeOptions.nth(0).locator('.MuiListItemText-primary').textContent())?.trim()
+    const secondAttendeeName = (await attendeeOptions.nth(1).locator('.MuiListItemText-primary').textContent())?.trim()
     expect(firstAttendeeName?.length).toBeGreaterThan(0)
     expect(secondAttendeeName?.length).toBeGreaterThan(0)
     expect(firstAttendeeName).not.toEqual(secondAttendeeName)
@@ -59,8 +64,8 @@ test.describe('Add Meeting form - organiser/attendee mutual exclusivity', () => 
 
     await organiserSelect.click()
     const organiserOptions = page.getByRole('option')
-    const firstOrganiserName = (await organiserOptions.nth(0).textContent())?.trim()
-    const secondOrganiserName = (await organiserOptions.nth(1).textContent())?.trim()
+    const firstOrganiserName = (await organiserOptions.nth(0).locator('.MuiListItemText-primary').textContent())?.trim()
+    const secondOrganiserName = (await organiserOptions.nth(1).locator('.MuiListItemText-primary').textContent())?.trim()
     expect(firstOrganiserName?.length).toBeGreaterThan(0)
     expect(secondOrganiserName?.length).toBeGreaterThan(0)
     expect(firstOrganiserName).not.toEqual(secondOrganiserName)

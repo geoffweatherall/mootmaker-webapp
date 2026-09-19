@@ -10,12 +10,12 @@ import { formatDateParam, pinnedWeekday } from './support/pinnedDates'
 // Every case here signs in as the demo user (a real, pre-verified, admin, Person-linked Cognito
 // account present in every environment - see acceptance/README.md and add-meeting.spec.ts's own
 // header comment) and pins page.clock.setFixedTime to a known business-hours weekday, for the same
-// flakiness reason add-meeting.spec.ts already documents: RoomAvailabilityPage only ever renders
-// business hours (08:00-17:00), so any test that depends on "today" or a meeting's default time
-// needs a deterministic clock to avoid flaking whenever the suite happens to run outside that
-// window. Every room/meeting subject below is suffixed with a fresh uniqueId() so repeated runs
-// against the same shared environment, and other agents' concurrent runs against sections other
-// than E, never collide.
+// flakiness reason add-meeting.spec.ts already documents: any test that depends on "today" or a
+// meeting's default time needs a deterministic clock to avoid flaking whenever the suite happens to
+// run close to midnight (a default start/end pair spanning two calendar days is rejected by the
+// API as SpansMultipleDays). Every room/meeting subject below is suffixed with a fresh uniqueId()
+// so repeated runs against the same shared environment, and other agents' concurrent runs against
+// sections other than E, never collide.
 //
 // E.37 note: RoomAvailabilityPage's "Add Meeting" links now pass the currently-viewed date via
 // router state, and AddMeetingPage's defaultDate() reads it - this used to be a documented gap in
@@ -140,41 +140,30 @@ async function goToOwnCalendar(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/persons\/[^/]+\/calendar$/)
 }
 
-// A meeting block's clickable element (the coloured ButtonBase-as-<a>) isn't reliably locatable by
-// getByRole('link', { name: subject, exact: true }): MUI's Tooltip defaults to describeChild=false,
-// which sets aria-label (not just a native `title`) to the *whole* tooltip string
-// ("<subject>: <start>-<end>") on the child, which becomes the link's accessible name and so
-// overrides its own visible text content - confirmed against a real run's accessibility snapshot
-// (the link's computed name was "<subject>: 09:00-09:30", not just "<subject>"). The subject
-// Typography is still the link's own single child, one DOM hop below it, so finding the text first
-// and going up is unambiguous regardless of what the tooltip does to the accessible name.
-function meetingBlock(page: Page, subject: string): Locator {
-  return page.getByText(subject, { exact: true }).locator('xpath=..')
-}
-
-// RoomAvailabilityPage's grid accumulates every room ever created in a shared environment (rooms
-// are never deleted), so an unscoped getByText(/Capacity \d+/) matches every room's capacity text
-// once other specs have run first - confirmed against a real run ("resolved to 28 elements").
-// Scoping to the specific room's own name-column Box (two DOM hops above its name Typography - see
-// RoomAvailabilityPage.tsx: Typography(name) -> Stack(name row) -> Box(name column), which also
-// directly contains the Capacity Typography as a sibling of that Stack) keys the check to exactly
-// the room this test itself created.
-function roomNameColumn(page: Page, roomName: string): Locator {
-  return page.getByText(roomName, { exact: true }).locator('xpath=../..')
-}
-
-// A raw `.MuiPaper-root` CSS-class locator (unlike a role/label query) matches Layout.tsx's own
-// chrome too, not just this page's own grid: the permanent sidebar Drawer's Paper is always in the
-// DOM even when CSS-hidden at some viewports (a class selector doesn't respect display:none the
-// way accessibility-tree-based queries do), and at mobile widths the fixed AppBar is a Paper as
-// well - confirmed against real runs ("resolved to 6 elements" scoping E.31's link count across
-// the sidebar's own nav links, "resolved to 3 elements" including the AppBar in E.36). The "08:00"
-// hour mark is unique to this grid's own header row (only rendered at all once rooms exist), so
-// walking up from it to the nearest MuiPaper-root ancestor reliably isolates just the grid.
-function gridPaper(page: Page): Locator {
+// RoomAvailabilityPage's card grid accumulates every room ever created in a shared environment
+// (rooms are never deleted), so an unscoped getByText(/Capacity \d+/) matches every room's
+// capacity text once other specs have run first - confirmed against a real run ("resolved to 28
+// elements") back when this was a grid, and the same risk applies to any per-room text now.
+// Scoping to the specific room's own Paper card - climbing from its name Typography to the
+// nearest MuiPaper-root ancestor, since RoomAvailabilityPage.tsx renders each room as its own
+// `<Paper>` - keys every check below to exactly the room this test itself created.
+function roomCard(page: Page, roomName: string): Locator {
   return page
-    .getByText('08:00', { exact: true })
+    .getByText(roomName, { exact: true })
     .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
+}
+
+function roomNameColumn(page: Page, roomName: string): Locator {
+  return roomCard(page, roomName)
+}
+
+// A room's meetings only show once its card's "See <day>'s meetings (N)" toggle is expanded -
+// Collapse keeps the list mounted but zero-height/hidden until then, see RoomAvailabilityPage.tsx.
+// Returns the card itself so callers can keep scoping further checks to it.
+async function expandMeetings(page: Page, roomName: string): Promise<Locator> {
+  const card = roomCard(page, roomName)
+  await card.getByRole('button', { name: /'s meetings/ }).click()
+  return card
 }
 
 test('E.26 - view room availability for today', async ({ page }) => {
@@ -189,7 +178,6 @@ test('E.26 - view room availability for today', async ({ page }) => {
 
   const today = formatDateParam(pinnedNow)
   await expect(page).toHaveURL(new RegExp(`/rooms/${today}/availability`))
-  await expect(page.getByText('Showing business hours (08:00–17:00).')).toBeVisible()
   await expect(page.getByText(roomName, { exact: true })).toBeVisible()
   await expect(roomNameColumn(page, roomName).getByText(/Capacity \d+/)).toBeVisible()
   await expectDateFieldShows(dateNavGroup(page), pinnedNow)
@@ -225,7 +213,11 @@ test("E.27 - navigating to a future date shows that date's meeting", async ({ pa
 
   await expect(page).toHaveURL(new RegExp(`/rooms/${formatDateParam(futureDate)}/availability`))
   await expectDateFieldShows(dateNavGroup(page), futureDate)
-  await expect(page.getByText(subject)).toBeVisible()
+  const card = await expandMeetings(page, roomName)
+  // Not a plain getByText(subject): a future day's status sublabel is "First: <subject> at
+  // <time>", which also contains the subject as a substring - only the meeting row itself has
+  // role 'link'.
+  await expect(card.getByRole('link', { name: subject, exact: false })).toBeVisible()
 })
 
 test('E.28 - navigating to a past date updates the URL and date picker', async ({ page }) => {
@@ -297,7 +289,7 @@ test('E.29 - the date picker jumps directly to an arbitrary date several weeks a
   await expect(page).toHaveURL(new RegExp(`/rooms/${formatDateParam(target)}/availability`))
 })
 
-test('E.31 - rooms exist but none has meetings that day shows the grid, not the no-rooms empty state', async ({
+test('E.31 - rooms exist but none has meetings that day shows the cards, not the no-rooms empty state', async ({
   page,
 }) => {
   const runId = uniqueId()
@@ -320,19 +312,17 @@ test('E.31 - rooms exist but none has meetings that day shows the grid, not the 
   await expect(page.getByText(roomName, { exact: true })).toBeVisible()
   await expect(roomNameColumn(page, roomName).getByText(/Capacity \d+/)).toBeVisible()
   await expect(page.getByText('No rooms exist yet.')).toHaveCount(0)
-  // Meeting blocks are the only links rendered inside the grid's Paper - zero of them here proves
-  // "no meetings that day" beyond just "the empty state didn't show". Scoped via gridPaper(), not
-  // a raw '.MuiPaper-root' locator - see that helper's own comment for why (confirmed against a
-  // real run: an unscoped locator also picked up the sidebar's own 6 nav links).
-  await expect(gridPaper(page).getByRole('link')).toHaveCount(0)
+  // The card's own toggle button spells out the meeting count for the day - "(0)" here proves "no
+  // meetings that day" beyond just "the empty state didn't show", without needing to expand it.
+  await expect(roomCard(page, roomName).getByRole('button', { name: /'s meetings \(0\)$/ })).toBeVisible()
 })
 
-test("E.32 - a meeting block's tooltip shows subject and time range, and clicking it navigates to Meeting Details", async ({
+test("E.32 - a room card's expanded meeting list shows subject and time range, and clicking a meeting navigates to Meeting Details", async ({
   page,
 }) => {
   const runId = uniqueId()
-  const roomName = `Tooltip Room E32 ${runId}`
-  const subject = `E32 tooltip meeting ${runId}`
+  const roomName = `Card Room E32 ${runId}`
+  const subject = `E32 card meeting ${runId}`
   const pinnedNow = pinnedWeekday('Tuesday', { hour: 9 })
   await page.clock.setFixedTime(pinnedNow)
   await signInAsDemo(page)
@@ -346,23 +336,22 @@ test("E.32 - a meeting block's tooltip shows subject and time range, and clickin
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page).toHaveURL(/\/rooms\/.+\/availability/)
 
-  // MUI's Tooltip, with the default describeChild={false}, never sets a native `title` HTML
-  // attribute at all (that only happens when describeChild is explicitly true) - it sets
-  // aria-label on the child instead, unconditionally (not swapped for aria-describedby while
-  // open, since that swap is also describeChild-only) - confirmed both against @mui/material's
-  // own Tooltip source and a real run (asserting `title` failed with "Received: null"; the child's
-  // actual aria-label was "<subject>: 09:00–09:30"). Reading it directly is far less flaky in
-  // headless mode than triggering and waiting on a real hover-shown popper, per this case's own
-  // catalog Notes.
-  const meetingLink = meetingBlock(page, subject)
-  await expect(meetingLink).toHaveAttribute('aria-label', `${subject}: 09:00–09:30`)
+  // Meetings only render once the card's "See <day>'s meetings (N)" toggle is expanded (see
+  // expandMeetings()'s own comment). Not a plain getByText(subject): this meeting is happening
+  // right now under the pinned clock, so the card's own status sublabel is bare `busy.subject`
+  // (no "Busy until"/"Next"/"First" prefix - see roomAvailabilityLogic.ts) - a second, exact
+  // duplicate of the subject text elsewhere on the card. Only the meeting row itself has role
+  // 'link', so scoping by role sidesteps the ambiguity regardless of which status branch applies.
+  const card = await expandMeetings(page, roomName)
+  const meetingLink = card.getByRole('link', { name: subject, exact: false })
+  await expect(meetingLink).toContainText('09:00–09:30')
 
   await meetingLink.click()
   await expect(page).toHaveURL(/\/meetings\/.+/)
   await expect(page.getByRole('heading', { name: subject, level: 1 })).toBeVisible()
 })
 
-test('E.33 - overlapping meetings in different rooms render in their own lanes', async ({ page }) => {
+test('E.33 - overlapping meetings in different rooms each show only on their own card', async ({ page }) => {
   const runId = uniqueId()
   const roomAName = `Room A E33 ${runId}`
   const roomBName = `Room B E33 ${runId}`
@@ -392,29 +381,29 @@ test('E.33 - overlapping meetings in different rooms render in their own lanes',
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page).toHaveURL(/\/rooms\/.+\/availability/)
 
-  // Each room's row is 3 DOM levels above its name Typography - see RoomAvailabilityPage.tsx:
-  // Typography(name) -> Stack(name row) -> Box(name column) -> Box(the room's own row).
-  const roomARow = page.getByText(roomAName, { exact: true }).locator('xpath=../../..')
-  const roomBRow = page.getByText(roomBName, { exact: true }).locator('xpath=../../..')
+  const roomACard = await expandMeetings(page, roomAName)
+  const roomBCard = await expandMeetings(page, roomBName)
 
-  await expect(roomARow.getByText(subjectA, { exact: true })).toBeVisible()
-  await expect(roomARow.getByText(subjectB, { exact: true })).toHaveCount(0)
-  await expect(roomBRow.getByText(subjectB, { exact: true })).toBeVisible()
-  await expect(roomBRow.getByText(subjectA, { exact: true })).toHaveCount(0)
+  await expect(roomACard.getByText(subjectA, { exact: true })).toBeVisible()
+  await expect(roomACard.getByText(subjectB, { exact: true })).toHaveCount(0)
+  await expect(roomBCard.getByText(subjectB, { exact: true })).toBeVisible()
+  await expect(roomBCard.getByText(subjectA, { exact: true })).toHaveCount(0)
 
-  await roomARow.getByText(subjectA, { exact: true }).click()
+  await roomACard.getByText(subjectA, { exact: true }).click()
   await expect(page).toHaveURL(/\/meetings\/.+/)
   await expect(page.getByRole('heading', { name: subjectA, level: 1 })).toBeVisible()
 
+  // A real navigation away and back unmounts RoomAvailabilityPage, so its expandedRoomIds state
+  // (a plain useState, not persisted anywhere) resets - room B's card needs expanding again.
   await page.goBack()
   await expect(page.getByRole('heading', { name: 'Room Availability' })).toBeVisible()
-  const roomBRowAfterBack = page.getByText(roomBName, { exact: true }).locator('xpath=../../..')
-  await roomBRowAfterBack.getByText(subjectB, { exact: true }).click()
+  const roomBCardAfterBack = await expandMeetings(page, roomBName)
+  await roomBCardAfterBack.getByText(subjectB, { exact: true }).click()
   await expect(page).toHaveURL(/\/meetings\/.+/)
   await expect(page.getByRole('heading', { name: subjectB, level: 1 })).toBeVisible()
 })
 
-test('E.34 - back-to-back meetings in the same room both succeed and render as distinct, non-overlapping blocks', async ({
+test('E.34 - back-to-back meetings in the same room both succeed and render as distinct, ordered rows', async ({
   page,
 }) => {
   const runId = uniqueId()
@@ -433,7 +422,6 @@ test('E.34 - back-to-back meetings in the same room both succeed and render as d
   await setTime(page, 'End time', 10, 0)
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page).toHaveURL(/\/rooms\/.+\/availability/)
-  await expect(page.getByText(subject1)).toBeVisible()
 
   // 10:00-11:00, same room, touching the first meeting's end exactly - the actual boundary
   // condition under test is that this creation succeeds at all, per the API's [startTime, endTime)
@@ -447,18 +435,16 @@ test('E.34 - back-to-back meetings in the same room both succeed and render as d
 
   await expect(page).toHaveURL(/\/rooms\/.+\/availability/)
   await expect(page.getByText('The room already has a meeting scheduled during that time range.')).toHaveCount(0)
-  await expect(page.getByText(subject2)).toBeVisible()
 
-  const block1 = meetingBlock(page, subject1)
-  const block2 = meetingBlock(page, subject2)
-  const box1 = await block1.boundingBox()
-  const box2 = await block2.boundingBox()
-  if (!box1 || !box2) {
-    throw new Error('Could not read bounding boxes for the two meeting blocks.')
-  }
-  // Block 1's right edge <= block 2's left edge (+1px for sub-pixel rounding) - no horizontal
-  // pixel overlap between the two.
-  expect(box1.x + box1.width).toBeLessThanOrEqual(box2.x + 1)
+  // Two distinct rows, in chronological order - not merged into one, and not reordered.
+  const card = await expandMeetings(page, roomName)
+  const rows = card.getByRole('link')
+  await expect(rows).toHaveCount(2)
+  const rowTexts = await rows.allTextContents()
+  expect(rowTexts[0]).toContain('09:00')
+  expect(rowTexts[0]).toContain(subject1)
+  expect(rowTexts[1]).toContain('10:00')
+  expect(rowTexts[1]).toContain(subject2)
 })
 
 test('E.35 - room colour is consistent between Room Availability and Person Calendar', async ({ page }) => {
@@ -471,7 +457,7 @@ test('E.35 - room colour is consistent between Room Availability and Person Cale
   await createRoom(page, roomName, 4)
 
   // Left at the Date field's default (today, same as the pinned clock), so this meeting falls
-  // inside Person Calendar's own 6-week window computed from that same pinned "now".
+  // inside Person Calendar's own visible week, computed from that same pinned "now".
   await goToAddMeeting(page)
   await page.getByLabel('Subject').fill(subject)
   await selectRoom(page, roomName)
@@ -479,7 +465,6 @@ test('E.35 - room colour is consistent between Room Availability and Person Cale
   await setTime(page, 'End time', 10, 30)
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page).toHaveURL(/\/rooms\/.+\/availability/)
-  await expect(page.getByText(subject)).toBeVisible()
 
   const availabilityDot = page.getByText(roomName, { exact: true }).locator('xpath=preceding-sibling::div[1]')
   const availabilityColor = await availabilityDot.evaluate((el) => getComputedStyle(el).backgroundColor)
@@ -488,18 +473,21 @@ test('E.35 - room colour is consistent between Room Availability and Person Cale
   // Rather than guessing/hardcoding the demo user's own Person id, get there the same way a real
   // user would: the sidebar's "Calendar" nav link defaults to the signed-in user's own calendar.
   await goToOwnCalendar(page)
-  const meetingRow = page.locator('a').filter({ hasText: subject })
+  // Person Calendar's meeting rows are a ButtonBase (opens a detail panel, not a link), with no
+  // aria-label of its own - its accessible name is just its visible text (subject, time, room), so
+  // an exact:false role match on the subject finds it. The colour dot is the row's first child div.
+  const meetingRow = page.getByRole('button', { name: subject, exact: false })
   const calendarDot = meetingRow.locator('div').first()
   const calendarColor = await calendarDot.evaluate((el) => getComputedStyle(el).backgroundColor)
 
   expect(calendarColor).toBe(availabilityColor)
 })
 
-test('E.36 - mobile viewport: grid scrolls horizontally, the room column stays pinned, and scroll-fade hints track the edges', async ({
+test('E.36 - mobile viewport: room cards stack in a single column, no horizontal scrolling needed', async ({
   page,
 }) => {
   const runId = uniqueId()
-  const roomName = `Scroll Room E36 ${runId}`
+  const roomName = `Mobile Room E36 ${runId}`
   const pinnedNow = pinnedWeekday('Friday')
   await page.clock.setFixedTime(pinnedNow)
   // Signs in at the default (desktop) viewport first, then switches to mobile - signInAsDemo's own
@@ -508,8 +496,6 @@ test('E.36 - mobile viewport: grid scrolls horizontally, the room column stays p
   // (confirmed against a real run: "unexpected value 'hidden'"). This doesn't change what E.36
   // itself is testing, since sign-in isn't part of this case's own assertions.
   await signInAsDemo(page)
-  // A typical mobile width, well under the grid's own 720px minWidth so it's guaranteed scrollable
-  // regardless of the outer Container's own breakpoint - see e-room-availability.md's tc-e36 Notes.
   await page.setViewportSize({ width: 375, height: 667 })
   await createRoom(page, roomName, 4)
 
@@ -517,44 +503,22 @@ test('E.36 - mobile viewport: grid scrolls horizontally, the room column stays p
   await page.goto(`/rooms/${today}/availability`)
   await expect(page.getByText(roomName, { exact: true })).toBeVisible()
 
-  // The only `div[aria-hidden="true"]` elements this page ever renders are the two scroll-fade
-  // hints themselves (confirmed against RoomAvailabilityPage.tsx's own source) - each is only
-  // mounted at all while its edge is actually scrollable, so exactly one exists at either extreme.
-  const fadeHint = page.locator('div[aria-hidden="true"]')
-  const roomNameLocator = page.getByText(roomName, { exact: true })
+  // This redesign's whole point (mootmaker-webapp#11) was replacing the old fixed-column timeline
+  // grid - which forced horizontal scrolling on narrow screens and had a real rendering defect
+  // where scrolled content bled under its sticky room-name column - with cards that stack in a
+  // single column instead (RoomAvailabilityPage.tsx's grid: `{ xs: '1fr', md: 'repeat(2, 1fr)' }`).
+  // No horizontal scroll should be needed at this mobile width any more.
+  const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth)
+  const clientWidth = await page.evaluate(() => document.documentElement.clientWidth)
+  expect(scrollWidth).toBeLessThanOrEqual(clientWidth)
 
-  await expect(fadeHint).toHaveCount(1)
-  const rightFadeBox = await fadeHint.boundingBox()
-  const xBeforeScroll = (await roomNameLocator.boundingBox())!.x
-
-  // gridPaper(page), not a raw '.MuiPaper-root' locator - see that helper's own comment for why
-  // (confirmed against a real run: an unscoped locator at this mobile viewport also matched the
-  // fixed AppBar and the Drawer's own Paper, "resolved to 3 elements").
-  await gridPaper(page).evaluate((el) => {
-    el.scrollLeft = el.scrollWidth
-  })
-
-  if (!rightFadeBox) {
-    throw new Error('Could not read the scroll-fade hint bounding box.')
+  // Single column: the room card spans (almost) the full viewport width, rather than sharing a row
+  // with a second card the way the >=md two-column layout would.
+  const cardBox = await roomCard(page, roomName).boundingBox()
+  if (!cardBox) {
+    throw new Error('Could not read the room card bounding box.')
   }
-  // The right-edge hint (sx: right: 0) sits further right than the left-edge hint (sx: left: 200)
-  // ever does - a relative comparison rather than an absolute pixel expectation, so it doesn't
-  // depend on the outer Container's exact computed offset.
-  //
-  // expect.poll, not a plain expect on a box read once. Setting scrollLeft above fires onScroll,
-  // which sets React state, which re-renders the hint onto the other edge - all asynchronous, and
-  // measured at ~10ms in the trace of a real failure. The obvious guard, `expect(fadeHint)
-  // .toHaveCount(1)`, does NOT wait for any of it: exactly one hint is mounted whichever edge is
-  // faded, so the assertion is already satisfied by the STALE right-edge hint and returns
-  // immediately. An auto-retrying assertion that is already true waits for nothing. Polling the
-  // position itself is the only form of this that actually waits for the thing under test.
-  await expect
-    .poll(async () => (await fadeHint.boundingBox())?.x ?? Number.POSITIVE_INFINITY)
-    .toBeLessThan(rightFadeBox.x)
-
-  const xAfterScroll = (await roomNameLocator.boundingBox())!.x
-  // The sticky (position: sticky; left: 0) room-name column doesn't move as the grid scrolls.
-  expect(Math.abs(xAfterScroll - xBeforeScroll)).toBeLessThan(1)
+  expect(cardBox.width).toBeGreaterThan(300)
 })
 
 test('E.37 - "Add Meeting" from this page pre-fills the currently viewed date, not today', async ({ page }) => {

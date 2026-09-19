@@ -45,8 +45,21 @@ test.describe('Meeting details - date shown once, not per start/end', () => {
     await page.getByRole('button', { name: 'Save' }).click()
     await page.waitForURL(/\/rooms\/.+\/availability/)
 
-    await page.goto(`/persons/${organiser.id}/calendar`)
-    await page.getByRole('link', { name: new RegExp(subject) }).click()
+    // Reached via Room Availability, not Person Calendar - a room's meetings sit inside a
+    // Collapse'd "See <day>'s meetings" panel by default (see the redesign's room-status-card
+    // decision), so the room's own card needs expanding before its meeting Link is clickable.
+    // (Person Calendar's own meeting rows open an in-page detail panel rather than navigating
+    // directly - a "View full details" link inside it reaches here too, but going through Room
+    // Availability instead is simpler for a case that's really about MeetingDetailsPage itself.)
+    // getByText(subject) alone would match twice while the room is busy right now (the status
+    // pill's own caption also shows the subject, e.g. "Busy until 11:00") - going via the card's
+    // "See ... meetings" button and then its meeting Link keeps this unambiguous.
+    const card = page
+      .getByText(subject, { exact: true })
+      .first()
+      .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
+    await card.getByRole('button', { name: /^See .+'s meetings/ }).click()
+    await card.getByRole('link', { name: new RegExp(subject) }).click()
     await page.waitForURL(/\/meetings\/.+/)
     await expect(page.getByRole('heading', { name: subject })).toBeVisible()
 

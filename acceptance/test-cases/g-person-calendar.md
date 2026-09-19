@@ -1,8 +1,9 @@
 # G. Person Calendar
 
 Use cases [mootmaker/use-cases.md § G](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#g-person-calendar).
-See [README.md](README.md) for the entry format and test-data conventions. **G.62 documents a
-confirmed implementation gap** (no navigation UI exists on this page at all) — see its Notes.
+See [README.md](README.md) for the entry format and test-data conventions. This page shows one
+Monday–Friday work week at a time (not the six-week grid these cases originally described) — see
+`designs/room-availability-and-person-calendar-redesign.md` and G.61/G.62's own Notes.
 
 ---
 
@@ -63,61 +64,63 @@ confirmed implementation gap** (no navigation UI exists on this page at all) —
 ---
 
 <a id="tc-g61"></a>
-### G.61 — Six-week view shows only work days (Mon–Fri)
+### G.61 — The weekly agenda shows only work days (Mon–Fri)
 
-**Use case:** [use-cases.md#uc-61](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-61) — "Six-week view shows only work days (Mon–Fri) per week."
+**Use case:** [use-cases.md#uc-61](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-61) — "The weekly agenda shows only work days (Mon–Fri), one week at a time."
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user.
 
-**Given** the Person Calendar grid
+**Given** the Person Calendar agenda
 **When** viewed
-**Then** exactly 6 rows × 5 columns (30 day-cells total) are rendered, headed Monday–Friday, with no Saturday/Sunday columns
+**Then** exactly 5 day sections are rendered, headed Monday–Friday in order, with no Saturday/Sunday
 
 **Steps:**
 1. Sign in; navigate to own Calendar.
-2. Count the column headers; assert they read exactly `Monday, Tuesday, Wednesday, Thursday, Friday` in that order.
-3. Count the total day-cell `Paper` elements rendered.
+2. Click "Next week" once, so none of the five visible days is substituted with "Today"/"Tomorrow" (the default view always includes today, by definition).
+3. Count the day headings; assert they read exactly `Monday, Tuesday, Wednesday, Thursday, Friday` in that order.
 
 **Assertions:**
-- Column headers: exactly those 5, in that order.
-- Total day cells: exactly 30 (6 weeks × 5 days).
+- Day headings: exactly those 5, in that order.
 
 **Out of scope:** N/A.
 
 **Notes:** None.
 
+**2026-09-19: redesigned along with the whole page.** `PersonCalendarPage` replaced its six-stacked-weeks grid (30 day cells) with a single scrollable week (5 day sections) - see `designs/room-availability-and-person-calendar-redesign.md`. The "work days only" claim carries over unchanged; only the count (5, not 30) and the day-section markup (a plain `Box`, not an outlined `Paper`) changed.
+
 ---
 
 <a id="tc-g62"></a>
-### G.62 — Navigating between weeks/months
+### G.62 — Navigating between weeks
 
-**Use case:** [use-cases.md#uc-62](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-62) — "Navigating between weeks/months."
-**Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts) (week nav now implemented; see Notes)
+**Use case:** [use-cases.md#uc-62](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-62) — "Previous/Next week and This week navigate the visible one-week window, disabled at the server-published booking boundaries."
+**Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** N/A — see Notes.
+**Preconditions:** Signed in as the demo user. Clock pinned (this case books nothing, so a literal instant is fine - see the spec's own comment on why).
 
-**Given / When / Then:** Cannot be written against the current implementation — there is nothing on
-`PersonCalendarPage` to navigate with.
+**Given** the Person Calendar's default (current) week
+**When** the user clicks "Next week" three times, "This week", then "Previous week" once
+**Then** the visible week range updates accordingly each time, and "This week" is disabled exactly when the visible week already is the current one
 
-**Steps:** N/A.
+**Steps:**
+1. Sign in; navigate to own Calendar.
+2. Assert the visible range text and that "This week" is disabled.
+3. Click "Next week" three times; assert the new range and that "This week" is now enabled.
+4. Click "This week"; assert it's back to the original range and disabled again.
+5. Click "Previous week"; assert the range one week behind the original.
 
-**Assertions:** N/A.
+**Assertions:**
+- Each step's visible date range (`D MMM – D MMM YYYY`) matches what `startOfWorkWeek` plus a 5-day window computes for that instant.
+- "This week" is disabled if and only if the visible week is the current one; "Previous week"/"Next week" are disabled only once the server's `earliestRetainedDate`/`latestBookableDate` boundaries are reached.
 
-**Out of scope:** N/A.
+**Out of scope:** the exact retention/booking-horizon values themselves (`mootmaker-api`'s own concern) - this case only checks that the UI's enabled/disabled state and range math track whatever the server publishes.
 
-**Notes:** **Confirmed implementation gap, verified directly against source**:
-`PersonCalendarPage.tsx` computes its visible 6-week window as a fixed `useMemo(() =>
-startOfWorkWeek(dayjs()), [])` — always anchored to "now," with an empty dependency array, and no
-prev/next buttons, date picker, or any other control anywhere on the page besides the Person
-`Autocomplete`. There is currently **no way to view any week other than the current 6-week block**.
-This is a real product gap (or `use-cases.md` describes a feature that was planned but never
-built), not something this catalog can paper over with a differently-scoped test. Recommend one of:
-(a) build the navigation feature, then write this test case for real; or (b) if six-weeks-fixed is
-actually the intended design, update `use-cases.md` case 62's wording to remove this expectation.
-Left as a named gap here rather than silently dropped, so it isn't lost.
+**Notes:** None.
+
+**2026-09-19: this case is now automatable - it previously named a real product gap.** `PersonCalendarPage.tsx` used to compute its 6-week window as a fixed `useMemo(() => startOfWorkWeek(dayjs()), [])`, with no control anywhere on the page to view any other week - a confirmed gap this catalog left on record rather than silently dropping. The redesign added `Previous week`/`Next week`/`This week` controls alongside the new one-week agenda, closing that gap as part of the same change. See `designs/room-availability-and-person-calendar-redesign.md`.
 
 ---
 
@@ -128,25 +131,27 @@ Left as a named gap here rather than silently dropped, so it isn't lost.
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. A room. Three meetings on the same day (within the current 6-week window) at non-chronological creation order (e.g. 14:00, then 09:00, then 11:00), all organised by the demo user.
+**Preconditions:** Signed in as the demo user. A room. Three meetings on the same day (within the visible week) at non-chronological creation order (e.g. 14:00, then 09:00, then 11:00), all organised by the demo user.
 
 **Given** one day with 3 meetings and other days with none
 **When** the calendar is viewed
-**Then** the 3-meeting day's cell lists all three, in ascending start-time order; other visible days show no meeting rows
+**Then** the 3-meeting day's section lists all three, in ascending start-time order; other visible days show no meeting rows
 
 **Steps:**
-1. Sign in; create a room; create the 3 meetings on one fixed date within the window, in non-chronological creation order.
+1. Sign in; create a room; create the 3 meetings on one fixed date within the visible week, in non-chronological creation order.
 2. Navigate to own Calendar.
-3. Locate that date's cell; read its meeting rows in DOM order.
-4. Locate an unrelated date's cell (no fixtures placed there).
+3. Locate that date's section (climb two DOM levels up from its date caption text); read its meeting rows (elements with role `button` - a meeting row opens the detail panel, it isn't a link) in DOM order.
+4. Locate an unrelated date's section (no fixtures placed there).
 
 **Assertions:**
-- The 3-meeting cell's rows read 09:00, 11:00, 14:00 in that order (ascending, independent of creation order).
-- The other cell shows zero meeting rows (just its date caption).
+- The 3-meeting section's rows read 09:00, 11:00, 14:00 in that order (ascending, independent of creation order).
+- The other section shows zero meeting rows (just its date caption).
 
 **Out of scope:** N/A.
 
 **Notes:** None.
+
+**2026-09-19: redesigned along with the whole page.** Day sections are no longer an outlined `Paper` (`.MuiPaper-outlined`), and a meeting row is a `ButtonBase` (role `button`) rather than an `<a>`, since clicking one now opens a detail panel first - see G.65 and `designs/room-availability-and-person-calendar-redesign.md`.
 
 ---
 
@@ -192,28 +197,33 @@ not be a reachable real-world state for this product at all. Left unautomated pe
 ---
 
 <a id="tc-g65"></a>
-### G.65 — Clicking a meeting row navigates to Meeting Details
+### G.65 — Clicking a meeting row opens its detail panel, linking to Meeting Details
 
-**Use case:** [use-cases.md#uc-65](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-65) — "Clicking a meeting row navigates to its Meeting Details page."
+**Use case:** [use-cases.md#uc-65](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-65) — "Clicking a meeting row opens its detail panel (bottom sheet on narrow viewports, a side panel at ≥900px), which links through to its Meeting Details page."
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. A room and one meeting on a date within the visible window.
+**Preconditions:** Signed in as the demo user. A room and one meeting on a date within the visible week.
 
 **Given** a meeting visible on the calendar
-**When** its row is clicked
-**Then** `/meetings/<id>` loads showing that same meeting's subject
+**When** its row is clicked, and then the panel's "View full details" link is clicked
+**Then** the detail panel opens first, showing the subject as its own heading, and only then does `/meetings/<id>` load showing that same subject
 
 **Steps:**
-1. Sign in; create a room and a meeting on a date within the window.
-2. Navigate to own Calendar; click the meeting's row (`getByText(subject, { exact: false })` within its date cell).
+1. Sign in; create a room and a meeting on a date within the visible week.
+2. Navigate to own Calendar; click the meeting's row (`getByText(subject, { exact: false })` within its date section).
+3. Assert the detail panel's heading (level 2) equals the subject.
+4. Click "View full details" (rendered as an anchor, so role `link`, despite reading like a button).
 
 **Assertions:**
-- URL is `/meetings/<id>`; `MeetingDetailsPage`'s heading equals the subject.
+- After step 3: the panel is open, showing the subject as a level-2 heading.
+- After step 4: URL is `/meetings/<id>`; `MeetingDetailsPage`'s (level-1) heading equals the subject.
 
-**Out of scope:** the details page's own content (section H).
+**Out of scope:** the details page's own content (section H); which surface (bottom sheet vs. side panel) renders at which viewport width - covered by the webapp's own mocked-integration suite instead, since it needs no real deployment to verify.
 
 **Notes:** None.
+
+**2026-09-19: redesigned along with the whole page.** Clicking a meeting row used to navigate straight to Meeting Details. The redesign inserts a detail panel first (organiser, attendees, room, time), with its own "View full details" link through to the full page - see `designs/room-availability-and-person-calendar-redesign.md`.
 
 ---
 

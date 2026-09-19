@@ -80,11 +80,10 @@ interface CreateMeetingOptions {
 
 /**
  * Creates a meeting via the real Add Meeting UI (organiser left on its default - the signed-in
- * user's own Person), then clicks through from the Room Availability grid it lands on to that
+ * user's own Person), then clicks through from the Room Availability card it lands on to that
  * meeting's own Details page, returning its id parsed off the resulting URL. Requires the caller
  * to have pinned the clock inside business hours first (see add-meeting.spec.ts's own comment) -
- * RoomAvailabilityPage only ever renders meetings within that window, so the grid block this
- * clicks through wouldn't exist otherwise.
+ * the API only accepts meetings within that window.
  */
 async function createMeetingAndOpenDetails(page: Page, { subject, roomName, attendeeNames = [] }: CreateMeetingOptions): Promise<string> {
   await page.goto('/meetings/add')
@@ -98,9 +97,16 @@ async function createMeetingAndOpenDetails(page: Page, { subject, roomName, atte
   await page.getByRole('option', { name: roomName, exact: false }).click()
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page).toHaveURL(/\/rooms\/.+\/availability/)
-  await expect(page.getByText(subject)).toBeVisible()
 
-  await page.getByText(subject).click()
+  // The meeting only renders once its room's card is expanded (RoomAvailabilityPage.tsx's "See
+  // <day>'s meetings" Collapse toggle). Not a plain getByText(subject): the card's own status
+  // sublabel can independently reference this meeting's subject too (see
+  // roomAvailabilityLogic.ts) - only the meeting row itself has role 'link'.
+  const roomCard = page
+    .getByText(roomName, { exact: true })
+    .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
+  await roomCard.getByRole('button', { name: /'s meetings/ }).click()
+  await roomCard.getByRole('link', { name: subject, exact: false }).click()
   await expect(page).toHaveURL(/\/meetings\/.+/)
   const match = page.url().match(/\/meetings\/([^/?#]+)/)
   if (!match) throw new Error(`Could not extract a meeting id from URL ${page.url()}`)
@@ -136,7 +142,7 @@ test.describe('J. Settings - Rooms (admin only)', () => {
     await expect(page.getByRole('option', { name: roomName, exact: false })).toBeVisible()
     await page.keyboard.press('Escape')
 
-    // Has its own lane on Room Availability's grid for the pinned (today's) date.
+    // Has its own card on Room Availability for the pinned (today's) date.
     await page.goto(`/rooms/${formatDateParam(PINNED_NOW)}/availability`)
     await expect(page.getByText(roomName)).toBeVisible()
   })

@@ -173,24 +173,26 @@ test("G.60 - switching the Person selector to someone else's calendar works for 
   await expect(page.getByRole('combobox', { name: 'Person' })).toHaveValue(aliceName)
 })
 
-test('G.61 - the six-week grid shows exactly Monday-Friday, 30 day cells total', async ({ page }) => {
+test('G.61 - the weekly agenda shows exactly Monday-Friday, five day sections', async ({ page }) => {
   await signInAsDemo(page)
   await goToOwnCalendar(page)
 
-  // The weekday headers are the only subtitle2 (h6) text on this page - each day cell's own date
-  // caption is a "caption" variant, not a heading.
+  // Move off the default (current) week so none of the five days is "Today"/"Tomorrow" -
+  // dayLabelFor() substitutes those for the plain weekday name when a day is that close (see
+  // PersonCalendarPage.tsx), and the default view always includes today by definition. Next week's
+  // Monday-Friday are all safely beyond that, so this asserts the plain weekday-name case.
+  await page.getByRole('button', { name: 'Next week' }).click()
+
+  // The weekday headings are the only subtitle1 (h6) text on this page - each day section's own
+  // date caption is a "body2" variant, not a heading.
   const headers = page.getByRole('heading', { level: 6 })
   await expect(headers).toHaveCount(5)
   await expect(headers).toHaveText(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'])
-
-  // Each day cell is a Paper with variant="outlined"; the grid's own outer Paper is default
-  // elevation, so this class only ever matches the 30 day cells (6 weeks x 5 work days).
-  await expect(page.locator('.MuiPaper-outlined')).toHaveCount(30)
 })
 
-test('G.62 - Previous/Next week and This week navigate the visible six-week window', async ({ page }) => {
+test('G.62 - Previous/Next week and This week navigate the visible one-week window', async ({ page }) => {
   // Deliberately still a literal, unlike the meeting-creating cases below (see
-  // support/pinnedDates.ts). This case books nothing - it only navigates the six-week window - so
+  // support/pinnedDates.ts). This case books nothing - it only navigates the visible week - so
   // the retention boundary never applies, and the three expected ranges below are precomputed from
   // this exact instant. Deriving the date would mean re-deriving PersonCalendarPage's own
   // startOfWorkWeek() math in the test, which is the thing those literals exist to avoid.
@@ -199,11 +201,11 @@ test('G.62 - Previous/Next week and This week navigate the visible six-week wind
   await goToOwnCalendar(page)
 
   // Precomputed directly from PersonCalendarPage's own startOfWorkWeek()/window-length logic for
-  // the pinned "now" above (Wed 26 Aug 2026 -> week starts Mon 24 Aug; 6 weeks later ends Fri 2
-  // Oct 2026), rather than re-deriving dayjs math at runtime in the test.
-  const originalRange = '24 Aug – 2 Oct 2026'
-  const threeWeeksForward = '14 Sep – 23 Oct 2026'
-  const oneWeekBack = '17 Aug – 25 Sep 2026'
+  // the pinned "now" above (Wed 26 Aug 2026 -> week starts Mon 24 Aug, one work week - Mon-Fri -
+  // shown at a time), rather than re-deriving dayjs math at runtime in the test.
+  const originalRange = '24 Aug – 28 Aug 2026'
+  const threeWeeksForward = '14 Sep – 18 Sep 2026'
+  const oneWeekBack = '17 Aug – 21 Aug 2026'
 
   await expect(page.getByText(originalRange, { exact: true })).toBeVisible()
 
@@ -236,12 +238,12 @@ test('G.63 - a day with three meetings lists them in ascending start-time order;
   // retention boundary advances past it. See support/pinnedDates.ts.
   //
   // EIGHT WEEKS OUT, and that isolation is load-bearing rather than arbitrary. This is the only
-  // case in the suite that counts EVERY row in a day cell rather than looking for its own subjects,
-  // so any other test that books a meeting for the demo user on the same day breaks it - and this
-  // environment accumulates every fixture the whole suite creates. Confirmed the hard way: with
-  // this pinned to the current week it read 5 rows instead of 3, having picked up two other cases'
-  // meetings. Week 8 is clear of the current-week fixtures (behind the window) and of the
-  // room-suggestion cases at 16 weeks (beyond it, since the window is only 6 weeks long).
+  // case in the suite that counts EVERY row in a day section rather than looking for its own
+  // subjects, so any other test that books a meeting for the demo user on the same day breaks it -
+  // and this environment accumulates every fixture the whole suite creates. Confirmed the hard way:
+  // with this pinned to the current week it read 5 rows instead of 3, having picked up two other
+  // cases' meetings. Week 8 is clear of the current-week fixtures and of the room-suggestion cases
+  // at 16 weeks.
   const pinnedNow = pinnedWeekday('Wednesday', { hour: 9, weeks: 8 })
   const fixtureDayCell = formatDayCell(pinnedNow)
   const emptyDayCell = formatDayCell(pinnedWeekday('Friday', { weeks: 8 }))
@@ -275,10 +277,13 @@ test('G.63 - a day with three meetings lists them in ascending start-time order;
 
   await goToOwnCalendar(page)
 
-  const fixtureCell = page
-    .locator('.MuiPaper-outlined')
-    .filter({ has: page.getByText(fixtureDayCell, { exact: true }) })
-  const rows = fixtureCell.locator('a')
+  // Each day section is a plain Box, not a distinctly-classed element - PersonCalendarPage.tsx:
+  // Typography(date) -> Stack(header row: weekday, date, Today chip) -> Box(the day section, which
+  // also directly contains the sibling Stack of meeting rows) - so two DOM hops up from the date
+  // text reaches it. Meeting rows are a ButtonBase (opens the detail panel, not a link), hence
+  // getByRole('button') rather than 'a'.
+  const fixtureCell = page.getByText(fixtureDayCell, { exact: true }).locator('xpath=../..')
+  const rows = fixtureCell.getByRole('button')
   await expect(rows).toHaveCount(3)
   const rowTexts = await rows.allTextContents()
   expect(rowTexts[0]).toContain('09:00')
@@ -288,13 +293,11 @@ test('G.63 - a day with three meetings lists them in ascending start-time order;
   expect(rowTexts[2]).toContain('14:00')
   expect(rowTexts[2]).toContain(`Sort Meeting C ${id}`)
 
-  const unrelatedCell = page
-    .locator('.MuiPaper-outlined')
-    .filter({ has: page.getByText(emptyDayCell, { exact: true }) })
-  await expect(unrelatedCell.locator('a')).toHaveCount(0)
+  const unrelatedCell = page.getByText(emptyDayCell, { exact: true }).locator('xpath=../..')
+  await expect(unrelatedCell.getByRole('button')).toHaveCount(0)
 })
 
-test('G.65 - clicking a meeting row on the calendar navigates to its Meeting Details page', async ({
+test('G.65 - clicking a meeting row on the calendar opens its detail panel, which links to Meeting Details', async ({
   page,
 }) => {
   await page.clock.setFixedTime(pinnedWeekday('Wednesday'))
@@ -307,6 +310,13 @@ test('G.65 - clicking a meeting row on the calendar navigates to its Meeting Det
 
   await goToOwnCalendar(page)
   await page.getByText(subject, { exact: false }).click()
+
+  // Clicking a meeting row now opens the bottom-sheet/side-panel detail view first, not a direct
+  // navigation - see designs/room-availability-and-person-calendar-redesign.md. Its own "View full
+  // details" button is what actually navigates to Meeting Details.
+  await expect(page.getByRole('heading', { name: subject, level: 2 })).toBeVisible()
+  // Rendered as `<Button component={Link}>`, an anchor under the hood - role 'link', not 'button'.
+  await page.getByRole('link', { name: 'View full details' }).click()
 
   await expect(page).toHaveURL(/\/meetings\/.+/)
   await expect(page.getByRole('heading', { name: subject, level: 1 })).toBeVisible()
@@ -327,7 +337,10 @@ test("G.66 - the meeting's room colour dot on Person Calendar matches Room Avail
   await addMeeting(page, { subject, roomName, start: '1000', end: '1030' })
 
   await goToOwnCalendar(page)
-  const meetingRow = page.locator('a').filter({ hasText: subject })
+  // Person Calendar's meeting rows are a ButtonBase (opens a detail panel, not a link), with no
+  // aria-label of its own - its accessible name is just its visible text. The colour dot is the
+  // row's first child div.
+  const meetingRow = page.getByRole('button', { name: subject, exact: false })
   const calendarDot = meetingRow.locator('div').first()
   const calendarColor = await calendarDot.evaluate((el) => getComputedStyle(el).backgroundColor)
   expect(calendarColor).toBeTruthy()

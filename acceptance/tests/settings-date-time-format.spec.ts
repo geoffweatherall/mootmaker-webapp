@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { freshTestAccount, type TestAccount } from '../../support/testAccount'
 
@@ -86,9 +86,16 @@ async function setFormats(page: Page, options: { date?: string; time?: string })
 // Business hours (08:00-17:00) are exactly the range sample-data fills, so no time slot is free by
 // construction either. Rather than gamble on one room being idle, book into whichever room accepts:
 // each room gets only 0-2 generated meetings a day, so a free one is found almost immediately.
-async function selectRoomByIndex(page: Page, index: number): Promise<void> {
+// Returns the room's plain name, not the option's full accessible label - AddMeetingPage's Room
+// Autocomplete renders each option as "<name> (capacity <capacity>)" (getOptionLabel), but
+// RoomAvailabilityPage's own card shows just the plain name.
+async function selectRoomByIndex(page: Page, index: number): Promise<string> {
   await page.getByRole('combobox', { name: 'Room' }).click()
-  await page.getByRole('option').nth(index).click()
+  const option = page.getByRole('option').nth(index)
+  const label = (await option.textContent()) ?? ''
+  const roomName = label.replace(/\s*\(capacity \d+\)\s*$/, '')
+  await option.click()
+  return roomName
 }
 
 // Navigates first: this is called before any attempt, so the Add Meeting form is not open yet.
@@ -164,11 +171,12 @@ interface Format {
   dateFormat: 'Iso' | 'British' | 'Usa'
 }
 
-async function fillAndSave(page: Page, fixture: Fixture, format: Format, roomIndex: number): Promise<boolean> {
+/** Returns the room's plain name on success (see selectRoomByIndex), or null if this slot was rejected. */
+async function fillAndSave(page: Page, fixture: Fixture, format: Format, roomIndex: number): Promise<string | null> {
   await page.goto('/meetings/add')
   await expect(page.getByRole('heading', { name: 'Add Meeting' })).toBeVisible()
   await page.getByLabel('Subject').fill(fixture.subject)
-  await selectRoomByIndex(page, roomIndex)
+  const roomName = await selectRoomByIndex(page, roomIndex)
   await typeDate(page, fixture.date, format.dateFormat)
   await typeTime(page, 'Start time', fixture.hour24, fixture.minute, format.amPm)
   await typeTime(page, 'End time', fixture.endHour24, fixture.minute, format.amPm)
@@ -183,15 +191,24 @@ async function fillAndSave(page: Page, fixture: Fixture, format: Format, roomInd
       .waitFor({ timeout: 15_000 })
       .catch(() => undefined),
   ])
-  return /\/rooms\/.+\/availability/.test(page.url())
+  return /\/rooms\/.+\/availability/.test(page.url()) ? roomName : null
 }
 
 /** Books the meeting, trying each room in turn, and returns the created meeting's details URL. */
 async function addMeeting(page: Page, fixture: Fixture, format: Format): Promise<string> {
   const rooms = await roomCount(page)
   for (let i = 0; i < rooms; i++) {
-    if (await fillAndSave(page, fixture, format, i)) {
-      await page.getByText(fixture.subject, { exact: true }).click()
+    const roomName = await fillAndSave(page, fixture, format, i)
+    if (roomName !== null) {
+      // The meeting only renders once its room's card is expanded (RoomAvailabilityPage.tsx's
+      // "See <day>'s meetings" Collapse toggle). Not a plain getByText(subject): the card's own
+      // status sublabel can independently reference this meeting's subject too (see
+      // roomAvailabilityLogic.ts) - only the meeting row itself has role 'link'.
+      const roomCard = page
+        .getByText(roomName, { exact: true })
+        .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
+      await roomCard.getByRole('button', { name: /'s meetings/ }).click()
+      await roomCard.getByRole('link', { name: fixture.subject, exact: false }).click()
       await expect(page).toHaveURL(/\/meetings\/[^/]+$/)
       return page.url()
     }
@@ -226,7 +243,10 @@ function asTwentyFourHour(hour24: number, minute: number): string {
 // The availability route takes an ISO date regardless of anyone's display preference - it is a
 // URL parameter, not something shown to a human.
 function isoToday(): string {
-  const d = new Date()
+  return isoDate(new Date())
+}
+
+function isoDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
@@ -348,20 +368,40 @@ test('N.105: an account with no linked Person sees the section disabled with an 
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible()
 })
 
-test('N.106: the Room Availability hour axis and business-hours caption follow the time format', async ({ page }) => {
-  // These two read plain hour numbers out of the business-hours constants rather than any
-  // meeting's data, which is exactly why they were missed on the first pass - they are times
-  // shown to a human all the same. No meeting needed: the axis and caption are always rendered.
+test("N.106: a meeting's time in Room Availability's expanded list follows the time format", async ({ page }) => {
+  // Room Availability's redesign (designs/room-availability-and-person-calendar-redesign.md)
+  // replaced the old fixed-hour grid - and with it, the hour axis and "Showing business hours"
+  // caption this case used to check without needing a meeting at all - with room-status cards.
+  // There's no longer a plain, data-independent time rendering to check, so this books a real
+  // meeting and reads its time back out of the card's expanded meeting list instead.
   await signInAsFreshAccount(page)
-  await page.goto(`/rooms/${isoToday()}/availability`)
+  const subject = `N106 ${Date.now()}`
+  const date = weekdayDaysAhead(76)
+  const rooms = await roomCount(page)
+  let bookedRoomName: string | null = null
+  for (let i = 0; i < rooms && bookedRoomName === null; i++) {
+    bookedRoomName = await fillAndSave(page, { subject, hour24: 9, minute: 0, endHour24: 10, date }, { amPm: false, dateFormat: 'Iso' }, i)
+  }
+  if (bookedRoomName === null) {
+    throw new Error(`Could not find a free room for ${subject} across ${rooms} room(s)`)
+  }
 
-  await expect(page.getByText('Showing business hours (08:00–17:00).')).toBeVisible()
-  await expect(page.getByText('08:00', { exact: true }).first()).toBeVisible()
+  const isoUrlDate = isoDate(new Date(date.year, date.month - 1, date.day))
+
+  // The meeting only renders once its room's card is expanded (RoomAvailabilityPage.tsx's "See
+  // <day>'s meetings" Collapse toggle).
+  function roomCard(): Locator {
+    return page
+      .getByText(bookedRoomName as string, { exact: true })
+      .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
+  }
+
+  await page.goto(`/rooms/${isoUrlDate}/availability`)
+  await roomCard().getByRole('button', { name: /'s meetings/ }).click()
+  await expect(roomCard().getByRole('link', { name: subject, exact: false })).toContainText('09:00')
 
   await setFormats(page, { time: TIME_OPTION.amPm })
-  await page.goto(`/rooms/${isoToday()}/availability`)
-
-  await expect(page.getByText('Showing business hours (08:00 AM–05:00 PM).')).toBeVisible()
-  await expect(page.getByText('08:00 AM', { exact: true }).first()).toBeVisible()
-  await expect(page.getByText('05:00 PM', { exact: true }).first()).toBeVisible()
+  await page.goto(`/rooms/${isoUrlDate}/availability`)
+  await roomCard().getByRole('button', { name: /'s meetings/ }).click()
+  await expect(roomCard().getByRole('link', { name: subject, exact: false })).toContainText('09:00 AM')
 })

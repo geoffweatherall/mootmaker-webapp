@@ -1,7 +1,8 @@
-import { Avatar, Divider, IconButton, Stack, Tooltip, Typography } from '@mui/material'
+import { Divider, IconButton, Stack, Tooltip, Typography } from '@mui/material'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/authContext'
-import { PersonIcon as PersonRoundedIcon, SettingsIcon as SettingsRoundedIcon } from '../icons'
+import { SettingsIcon as SettingsRoundedIcon } from '../icons'
+import { PersonAvatar } from './PersonAvatar'
 
 interface AccountBoxProps {
   /** Called after navigating via the Settings link - used to close the mobile flyout. */
@@ -24,9 +25,7 @@ export function AccountBox({ onNavigate }: AccountBoxProps) {
     <>
       <Divider />
       <Stack direction="row" spacing={1.5} sx={{ p: 2, alignItems: 'center' }}>
-        <Avatar sx={{ width: 32, height: 32 }}>
-          <PersonRoundedIcon fontSize="small" />
-        </Avatar>
+        <PersonAvatar name={displayName} size={32} />
         <Typography variant="body2" sx={{ flexGrow: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {displayName}
         </Typography>

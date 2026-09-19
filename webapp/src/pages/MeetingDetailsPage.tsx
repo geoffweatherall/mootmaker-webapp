@@ -85,7 +85,7 @@ export default function MeetingDetailsPage() {
         !error && <Typography color="text.secondary">Meeting not found.</Typography>
       ) : (
         <Paper sx={{ maxWidth: 480 }}>
-          <MeetingDetailContent meeting={meeting} roomColor={roomColor} />
+          <MeetingDetailContent meeting={meeting} roomColor={roomColor} headingComponent="h1" />
         </Paper>
       )}
     </Stack>

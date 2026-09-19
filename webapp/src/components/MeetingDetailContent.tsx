@@ -42,11 +42,19 @@ export function MeetingDetailContent({
   meeting,
   roomColor,
   onClose,
+  headingComponent = 'h2',
 }: {
   meeting: MeetingDetails
   roomColor: string
   /** Omitted by MeetingDetailsPage - a full page has no "close", only its own Back/navigation. */
   onClose?: () => void
+  /** 'h2' (default) for the sheet/panel, which sits atop a page that already has its own h1 -
+   * useMeetingDetailOverlay.tsx doesn't pass this. MeetingDetailsPage.tsx passes 'h1': as a full,
+   * standalone page it needs exactly one, for the same accessibility/page-structure reason every
+   * other page's own main heading is an h1 - this component doesn't get to skip that just because
+   * it's shared with a context where h2 is right. Visual size (variant="h6") stays identical in
+   * both - only the semantic level differs. */
+  headingComponent?: 'h1' | 'h2'
 }) {
   const { timeFormat, dateFormat } = useAuth()
   const [linkCopied, setLinkCopied] = useState(false)
@@ -57,7 +65,7 @@ export function MeetingDetailContent({
     // too (MeetingDetailsPage.tsx). This fills whichever it's given.
     <Stack spacing={2} sx={{ p: 3, maxHeight: '80vh', overflowY: 'auto' }}>
       <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <Typography variant="h6" component="h2">
+        <Typography variant="h6" component={headingComponent}>
           {meeting.subject}
         </Typography>
         <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>

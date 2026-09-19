@@ -10,12 +10,64 @@ import { http, HttpResponse, type HttpHandler } from 'msw'
 import type {
   CreateMeetingResult,
   DateFormat,
+  MeetingDetails,
   MeetingError,
+  MyPerson,
+  Person,
   Room,
   TimeFormat,
   UpdateMyPreferencesResult,
 } from '../../graphql/types'
 import { createMeetingFixture, linkedPersonByEmail, meetings, people, rooms } from './fixtures'
+
+/**
+ * Apollo's `InMemoryCache` normalises an entity only when its response carries `__typename` -
+ * which every real resolver does, since Apollo Client adds `__typename` to every outgoing
+ * selection set automatically and the server just resolves what was asked for. A hand-written
+ * fixture has to add it back deliberately, or the mocked suite silently stops exercising
+ * normalisation at all (see mootmaker-webapp#66) while still looking green - the app would ask
+ * for `days`/`rooms`/`people` and get an answer, just never through the same cache-identity path
+ * a real response takes.
+ */
+function asRoom(room: Room) {
+  return { __typename: 'Room' as const, ...room }
+}
+
+// Generic (rather than a fixed `Person | MyPerson` parameter) so the return type narrows to
+// whichever one was actually passed in - a fixed union parameter would make every call site's
+// result the full union, which is what broke `UpdateMyPreferencesResult.person` below (typed as
+// exactly `MyPerson`, not `Person | MyPerson`).
+function asPerson<T extends Person | MyPerson>(person: T) {
+  return { __typename: 'Person' as const, ...person }
+}
+
+/** The full shape `meeting(id:)` selects - names resolved, not just ids. */
+function asMeetingDetails(meeting: MeetingDetails) {
+  return {
+    __typename: 'Meeting' as const,
+    id: meeting.id,
+    subject: meeting.subject,
+    startTime: meeting.startTime,
+    endTime: meeting.endTime,
+    room: asRoom(meeting.room),
+    organiser: asPerson(meeting.organiser),
+    attendees: meeting.attendees.map(asPerson),
+  }
+}
+
+/** The narrow, ids-only shape every day-embedded meeting selects - see daysFor below. */
+function asMeetingSummary(meeting: MeetingDetails) {
+  return {
+    __typename: 'Meeting' as const,
+    id: meeting.id,
+    subject: meeting.subject,
+    startTime: meeting.startTime,
+    endTime: meeting.endTime,
+    room: { __typename: 'Room' as const, id: meeting.room.id },
+    organiser: { __typename: 'Person' as const, id: meeting.organiser.id },
+    attendees: meeting.attendees.map((attendee) => ({ __typename: 'Person' as const, id: attendee.id })),
+  }
+}
 
 const GRAPHQL_ENDPOINT = '/graphql'
 
@@ -105,7 +157,11 @@ function validateMeetingInput(input: MeetingInput): MeetingError[] {
  * The bookable window the real API publishes. Wide enough that no fixture date falls outside it -
  * only tests about the window itself should have to think about it.
  */
-const BOUNDARIES = { earliestRetainedDate: '2000-01-01', latestBookableDate: '2099-12-31' }
+const BOUNDARIES = {
+  __typename: 'Boundaries' as const,
+  earliestRetainedDate: '2000-01-01',
+  latestBookableDate: '2099-12-31',
+}
 
 /** The signed-in viewer, resolved the way the real API does: from the caller, not from an argument. */
 function viewerOf(request: Request) {
@@ -123,18 +179,9 @@ function viewerOf(request: Request) {
  */
 function daysFor(dates: string[]) {
   return dates.map((date) => ({
+    __typename: 'Day' as const,
     date,
-    meetings: meetings
-      .filter((meeting) => meeting.startTime.startsWith(date))
-      .map((meeting) => ({
-        id: meeting.id,
-        subject: meeting.subject,
-        startTime: meeting.startTime,
-        endTime: meeting.endTime,
-        room: { id: meeting.room.id },
-        organiser: { id: meeting.organiser.id },
-        attendees: meeting.attendees.map((attendee) => ({ id: attendee.id })),
-      })),
+    meetings: meetings.filter((meeting) => meeting.startTime.startsWith(date)).map(asMeetingSummary),
   }))
 }
 
@@ -150,14 +197,19 @@ export const handlers: HttpHandler[] = [
         if (window.__mockControls?.myPersonGate) {
           await window.__mockControls.myPersonGate
         }
-        return HttpResponse.json({ data: { workspace: { me: viewerOf(request) } } })
+        const viewer = viewerOf(request)
+        return HttpResponse.json({
+          data: { workspace: { __typename: 'Workspace', me: viewer && asPerson(viewer) } },
+        })
       }
 
       case 'ReferenceData':
         if (window.__mockControls?.listRoomsGate) {
           await window.__mockControls.listRoomsGate
         }
-        return HttpResponse.json({ data: { workspace: { rooms, people } } })
+        return HttpResponse.json({
+          data: { workspace: { __typename: 'Workspace', rooms: rooms.map(asRoom), people: people.map(asPerson) } },
+        })
 
       case 'PageLoad': {
         if (window.__mockControls?.listRoomsGate) {
@@ -166,12 +218,14 @@ export const handlers: HttpHandler[] = [
         if (window.__mockControls?.myPersonGate) {
           await window.__mockControls.myPersonGate
         }
+        const viewer = viewerOf(request)
         return HttpResponse.json({
           data: {
             workspace: {
-              me: viewerOf(request),
-              rooms,
-              people,
+              __typename: 'Workspace',
+              me: viewer && asPerson(viewer),
+              rooms: rooms.map(asRoom),
+              people: people.map(asPerson),
               boundaries: BOUNDARIES,
               days: daysFor((variables.dates as string[] | undefined) ?? []),
             },
@@ -181,12 +235,14 @@ export const handlers: HttpHandler[] = [
 
       case 'Days':
         return HttpResponse.json({
-          data: { workspace: { days: daysFor((variables.dates as string[] | undefined) ?? []) } },
+          data: {
+            workspace: { __typename: 'Workspace', days: daysFor((variables.dates as string[] | undefined) ?? []) },
+          },
         })
 
       case 'MeetingById': {
         const found = meetings.find((candidate) => candidate.id === variables.id) ?? null
-        return HttpResponse.json({ data: { meeting: found } })
+        return HttpResponse.json({ data: { meeting: found && asMeetingDetails(found) } })
       }
 
       case 'SuggestRoom': {
@@ -207,7 +263,7 @@ export const handlers: HttpHandler[] = [
               ),
           )
           .sort((a, b) => a.capacity - b.capacity || a.name.localeCompare(b.name))
-        return HttpResponse.json({ data: { suggestRoom: suggestions } })
+        return HttpResponse.json({ data: { suggestRoom: suggestions.map(asRoom) } })
       }
 
       case 'CreateMeeting': {
@@ -215,7 +271,7 @@ export const handlers: HttpHandler[] = [
         const errors = validateMeetingInput(input)
         if (errors.length > 0) {
           const result: CreateMeetingResult = { meeting: null, day: null, errors }
-          return HttpResponse.json({ data: { createMeeting: result } })
+          return HttpResponse.json({ data: { createMeeting: { __typename: 'CreateMeetingResult', ...result } } })
         }
         const room = rooms.find((candidate) => candidate.id === input.roomId)!
         const organiser = people.find((person) => person.id === input.organiserId)!
@@ -231,11 +287,11 @@ export const handlers: HttpHandler[] = [
         // Returns the whole affected day as well, which is what removes the client's cache-update
         // code: Day is keyed by date, so writing it replaces that day's meetings outright.
         const result: CreateMeetingResult = {
-          meeting,
-          day: { date: meeting.startTime.slice(0, 10), meetings: daysFor([meeting.startTime.slice(0, 10)])[0].meetings },
+          meeting: asMeetingDetails(meeting),
+          day: daysFor([meeting.startTime.slice(0, 10)])[0],
           errors: [],
         }
-        return HttpResponse.json({ data: { createMeeting: result } })
+        return HttpResponse.json({ data: { createMeeting: { __typename: 'CreateMeetingResult', ...result } } })
       }
 
       case 'UpdateMyPreferences': {
@@ -246,15 +302,15 @@ export const handlers: HttpHandler[] = [
         const person = (email && linkedPersonByEmail[email]) ?? null
         if (!person) {
           const result: UpdateMyPreferencesResult = { person: null, errors: ['NoLinkedPerson'] }
-          return HttpResponse.json({ data: { updateMyPreferences: result } })
+          return HttpResponse.json({ data: { updateMyPreferences: { __typename: 'UpdateMyPreferencesResult', ...result } } })
         }
         // Mutates the fixture in place so a later MyPerson query reflects it, the way the real
         // API's stored record would - the Settings section reads its saved value back via
         // refreshPerson() immediately after saving.
         person.dateFormat = preferences.dateFormat
         person.timeFormat = preferences.timeFormat
-        const result: UpdateMyPreferencesResult = { person, errors: [] }
-        return HttpResponse.json({ data: { updateMyPreferences: result } })
+        const result: UpdateMyPreferencesResult = { person: asPerson(person), errors: [] }
+        return HttpResponse.json({ data: { updateMyPreferences: { __typename: 'UpdateMyPreferencesResult', ...result } } })
       }
 
       default:

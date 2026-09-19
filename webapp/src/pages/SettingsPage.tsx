@@ -12,22 +12,26 @@ import {
   IconButton,
   List,
   ListItem,
+  ListItemAvatar,
   ListItemText,
   MenuItem,
   Paper,
   Stack,
   TextField,
   Typography,
+  useTheme,
 } from '@mui/material'
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/authContext'
 import { ErrorBanner } from '../components/ErrorBanner'
+import { PersonAvatar } from '../components/PersonAvatar'
 import { SubmitButton } from '../components/SubmitButton'
 import { SuccessToast } from '../components/SuccessToast'
 import type { ErrorLike } from '@apollo/client'
 import { errorMessages } from '../graphql/errorMessages'
 import { cachePeople, cacheRooms } from '../graphql/referenceDataCache'
+import { roomColorAt } from '../theme/roomColor'
 import {
   CREATE_PERSON,
   CREATE_ROOM,
@@ -322,6 +326,7 @@ interface AdminSectionProps<T> {
 /** Admin only - lists every room, with an edit dialog per row and an "Add room" dialog. */
 function RoomsSection({ rooms: roomList, error, refetch }: { rooms: Room[] } & Omit<AdminSectionProps<Room>, 'items'>) {
   const [dialogRoom, setDialogRoom] = useState<Room | 'new' | null>(null)
+  const theme = useTheme()
 
   const rooms = [...roomList].sort((a, b) => a.name.localeCompare(b.name))
 
@@ -341,19 +346,27 @@ function RoomsSection({ rooms: roomList, error, refetch }: { rooms: Room[] } & O
           !error && <Typography color="text.secondary">No rooms exist yet.</Typography>
         ) : (
           <List dense disablePadding>
-            {rooms.map((room) => (
-              <ListItem
-                key={room.id}
-                secondaryAction={
-                  <IconButton edge="end" aria-label={`Edit ${room.name}`} onClick={() => setDialogRoom(room)}>
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                }
-                disableGutters
-              >
-                <ListItemText primary={room.name} secondary={`Capacity ${room.capacity}`} />
-              </ListItem>
-            ))}
+            {rooms.map((room, index) => {
+              // Same roomColorAt(sorted-index, mode) scheme as RoomAvailabilityPage/PersonCalendarPage,
+              // so a room gets the same colour here as everywhere else it's shown (see theme/roomColor.ts).
+              const roomColor = roomColorAt(index, theme.palette.mode)
+              return (
+                <ListItem
+                  key={room.id}
+                  secondaryAction={
+                    <IconButton edge="end" aria-label={`Edit ${room.name}`} onClick={() => setDialogRoom(room)}>
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  }
+                  disableGutters
+                >
+                  <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexGrow: 1 }}>
+                    <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: roomColor, flexShrink: 0 }} />
+                    <ListItemText primary={room.name} secondary={`Capacity ${room.capacity}`} />
+                  </Stack>
+                </ListItem>
+              )
+            })}
           </List>
         )}
       </Stack>
@@ -492,6 +505,9 @@ function PeopleSection({
                 }
                 disableGutters
               >
+                <ListItemAvatar sx={{ minWidth: 44 }}>
+                  <PersonAvatar name={person.name} size={32} />
+                </ListItemAvatar>
                 <ListItemText primary={person.name} />
               </ListItem>
             ))}

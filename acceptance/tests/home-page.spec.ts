@@ -194,9 +194,17 @@ test('D.21 - signed-out home page shows the sign-in form pre-filled with demo cr
  * Pinning itself must stay: it's what keeps "Today"/"Tomorrow" deterministic and avoids booking a
  * start/end pair that spans midnight (rejected by the API as SpansMultipleDays).
  */
-test('D.22 - signed in with a linked Person shows Calendar/Room availability/Add Meeting entry points plus a Today/Tomorrow agenda sorted by start time, each linking to its own meeting details', async ({
+test('D.22 - signed in with a linked Person shows Calendar/Room availability/Add Meeting entry points plus a Today/Tomorrow agenda sorted by start time, each opening its own meeting details', async ({
   page,
+  context,
 }) => {
+  // Forces MeetingDetailContent's Share button down its clipboard-fallback branch
+  // deterministically - see designs/meeting-detail-consolidation.md's Testing impacts.
+  await page.addInitScript(() => {
+    Object.defineProperty(window.navigator, 'share', { value: undefined, configurable: true })
+  })
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+
   const runId = uniqueId()
   const roomName = `Home Agenda Room ${runId}`
   const subjectToday10 = `D22 today 10am ${runId}`
@@ -244,7 +252,10 @@ test('D.22 - signed in with a linked Person shows Calendar/Room availability/Add
   await expect(page.getByRole('button', { name: 'Room availability today' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Add Meeting' })).toBeVisible()
 
-  const todayRows = agendaPanel(page, 'Today').locator('a')
+  // Each row is a ListItemButton with no component={Link} any more - it opens the shared
+  // detail sheet/panel in place instead of navigating (see designs/
+  // meeting-detail-consolidation.md), so it's a native <button> (role 'button'), not an <a>.
+  const todayRows = agendaPanel(page, 'Today').getByRole('button')
   await expect(todayRows).toHaveCount(2)
   const todayTexts = await todayRows.allTextContents()
   expect(todayTexts[0]).toContain(subjectToday10)
@@ -254,14 +265,20 @@ test('D.22 - signed in with a linked Person shows Calendar/Room availability/Add
   expect(todayTexts[1]).toContain('14:00')
   expect(todayTexts[1]).toContain(roomName)
 
-  const tomorrowRows = agendaPanel(page, 'Tomorrow').locator('a')
+  const tomorrowRows = agendaPanel(page, 'Tomorrow').getByRole('button')
   await expect(tomorrowRows).toHaveCount(1)
   await expect(tomorrowRows).toContainText(subjectTomorrow)
 
-  // Clicking a row navigates to that specific meeting's own details page - the first Today row is
-  // the 10:00 meeting (see the sort-order assertion above).
+  // Clicking a row opens its detail sheet/panel in place - the first Today row is the 10:00
+  // meeting (see the sort-order assertion above). Share reaches that same meeting's full details
+  // page, the same way a real user now would.
   await todayRows.first().click()
-  await expect(page).toHaveURL(/\/meetings\/.+/)
+  await expect(page.getByRole('heading', { name: subjectToday10, level: 2 })).toBeVisible()
+  await page.getByRole('button', { name: 'Share meeting' }).click()
+  const meetingUrl = await page.evaluate(() => navigator.clipboard.readText())
+  expect(meetingUrl).toMatch(/\/meetings\/.+/)
+
+  await page.goto(meetingUrl)
   await expect(page.getByRole('heading', { name: subjectToday10, level: 1 })).toBeVisible()
 })
 

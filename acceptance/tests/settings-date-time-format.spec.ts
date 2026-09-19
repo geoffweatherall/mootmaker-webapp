@@ -2,6 +2,18 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { freshTestAccount, type TestAccount } from '../../support/testAccount'
 
+// N.100/N.101/N.103/N.104 read a real meeting URL off addMeeting's Share button - see that
+// function's own comment. Forces the clipboard-fallback branch deterministically rather than
+// depending on this browser's navigator.share support - see designs/
+// meeting-detail-consolidation.md's Testing impacts. Harmless for the other cases here, which
+// don't create meetings.
+test.beforeEach(async ({ page, context }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window.navigator, 'share', { value: undefined, configurable: true })
+  })
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+})
+
 /**
  * Credentials for the account that deliberately has NO linked Person.
  *
@@ -194,7 +206,10 @@ async function fillAndSave(page: Page, fixture: Fixture, format: Format, roomInd
   return /\/rooms\/.+\/availability/.test(page.url()) ? roomName : null
 }
 
-/** Books the meeting, trying each room in turn, and returns the created meeting's details URL. */
+/**
+ * Books the meeting, trying each room in turn, and returns the created meeting's real Share URL.
+ * Requires the caller to have set up navigator.share/clipboard first - see this file's beforeEach.
+ */
 async function addMeeting(page: Page, fixture: Fixture, format: Format): Promise<string> {
   const rooms = await roomCount(page)
   for (let i = 0; i < rooms; i++) {
@@ -203,14 +218,28 @@ async function addMeeting(page: Page, fixture: Fixture, format: Format): Promise
       // The meeting only renders once its room's card is expanded (RoomAvailabilityPage.tsx's
       // "See <day>'s meetings" Collapse toggle). Not a plain getByText(subject): the card's own
       // status sublabel can independently reference this meeting's subject too (see
-      // roomAvailabilityLogic.ts) - only the meeting row itself has role 'link'.
+      // roomAvailabilityLogic.ts) - only the meeting row itself has role 'button'.
       const roomCard = page
         .getByText(roomName, { exact: true })
         .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
       await roomCard.getByRole('button', { name: /'s meetings/ }).click()
-      await roomCard.getByRole('link', { name: fixture.subject, exact: false }).click()
-      await expect(page).toHaveURL(/\/meetings\/[^/]+$/)
-      return page.url()
+      // Opens the shared detail sheet/panel in place, not a navigation any more - see
+      // designs/meeting-detail-consolidation.md. Its real Share button is the only source of a
+      // usable /meetings/:id URL now.
+      await roomCard.getByRole('button', { name: fixture.subject, exact: false }).click()
+      await page.getByRole('button', { name: 'Share meeting' }).click()
+      const url = await page.evaluate(() => navigator.clipboard.readText())
+      if (!/\/meetings\/[^/]+$/.test(url)) {
+        throw new Error(`Could not extract a meeting URL from the shared URL: ${url}`)
+      }
+      // Scoped via the Share button's own sibling, not a page-wide role query - the clipboard-
+  // fallback confirmation toast (SuccessToast/MUI Alert) also renders its own "Close" button
+  // with the identical accessible name, and a page-wide query resolves to both ambiguously.
+  await page
+    .getByRole('button', { name: 'Share meeting' })
+    .locator('xpath=following-sibling::button[1]')
+    .click()
+      return url
     }
   }
   throw new Error(`Could not find a free room for ${fixture.subject} across ${rooms} room(s)`)
@@ -250,8 +279,19 @@ function isoDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-function detailRow(page: Page, label: string) {
-  return page.getByText(label, { exact: true }).locator('xpath=following-sibling::*[1]')
+/**
+ * Locates the meeting detail sheet/full-page's date or time value by its own shape, not by a
+ * label - unlike the old full-page DetailRow layout, MeetingDetailContent (see designs/
+ * meeting-detail-consolidation.md) renders the date and time as plain, unlabelled lines, matching
+ * the sheet/panel it's shared with. Each regex covers every format this file switches between
+ * (Iso/British/Usa dates render the same digit-slash shape for British and Usa; 24-hour/AM-PM
+ * times), so the same call still resolves to exactly one live element regardless of which format
+ * is active when it's called - the surrounding assertions narrow down the exact expected value.
+ */
+function detailRow(page: Page, kind: 'Date' | 'Time') {
+  return kind === 'Date'
+    ? page.getByText(/^\d{4}-\d{2}-\d{2}$|^\d{2}\/\d{2}\/\d{4}$/)
+    : page.getByText(/^\d{2}:\d{2}(?: [AP]M)?–\d{2}:\d{2}(?: [AP]M)?$/)
 }
 
 test('N.100: changing your date format switches every date shown to you, and persists across a reload', async ({
@@ -398,10 +438,10 @@ test("N.106: a meeting's time in Room Availability's expanded list follows the t
 
   await page.goto(`/rooms/${isoUrlDate}/availability`)
   await roomCard().getByRole('button', { name: /'s meetings/ }).click()
-  await expect(roomCard().getByRole('link', { name: subject, exact: false })).toContainText('09:00')
+  await expect(roomCard().getByRole('button', { name: subject, exact: false })).toContainText('09:00')
 
   await setFormats(page, { time: TIME_OPTION.amPm })
   await page.goto(`/rooms/${isoUrlDate}/availability`)
   await roomCard().getByRole('button', { name: /'s meetings/ }).click()
-  await expect(roomCard().getByRole('link', { name: subject, exact: false })).toContainText('09:00 AM')
+  await expect(roomCard().getByRole('button', { name: subject, exact: false })).toContainText('09:00 AM')
 })

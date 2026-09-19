@@ -172,8 +172,8 @@ test('a booking made by another client appears without a refresh', async ({ brow
     // No reload, no navigation, no user action: the only thing that can make this appear is the
     // broadcast evicting the day and the refetch refilling it. Not a plain getByText(subject): the
     // card's own status sublabel can independently reference this meeting's subject too (see
-    // roomAvailabilityLogic.ts) - only the meeting row itself has role 'link'.
-    await expect(roomCard.getByRole('link', { name: subject, exact: false })).toBeVisible({ timeout: 30_000 })
+    // roomAvailabilityLogic.ts) - only the meeting row itself has role 'button'.
+    await expect(roomCard.getByRole('button', { name: subject, exact: false })).toBeVisible({ timeout: 30_000 })
   } finally {
     await observer.close()
   }
@@ -266,8 +266,8 @@ test('the tab that made the booking does not lose it to its own broadcast', asyn
     await roomCard.getByRole('button', { name: /'s meetings/ }).click()
     // Not a plain getByText(subject): the card's own status sublabel can independently reference
     // this meeting's subject too (see roomAvailabilityLogic.ts) - only the meeting row itself has
-    // role 'link'.
-    const meetingLink = roomCard.getByRole('link', { name: subject, exact: false })
+    // role 'button'.
+    const meetingLink = roomCard.getByRole('button', { name: subject, exact: false })
     await expect(meetingLink).toBeVisible()
 
     // The broadcast round trip completes well inside this window. Asserted CONTINUOUSLY rather

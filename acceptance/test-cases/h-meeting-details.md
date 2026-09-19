@@ -3,6 +3,14 @@
 Use cases [mootmaker/use-cases.md § H](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#h-meeting-details).
 See [README.md](README.md) for the entry format and test-data conventions.
 
+**2026-09-20: `/meetings/:id` is now a deep-link-only route.** Nothing in the app navigates there
+any more - every meeting row opens the shared bottom-sheet/side-panel in place instead (see
+[g-person-calendar.md#tc-g65](g-person-calendar.md#tc-g65)), and that panel's Share action is the
+only way to reach this page from within the app. Every case below now reaches a meeting's id via
+Share (`navigator.share` forced onto its clipboard-fallback branch deterministically, since a real
+OS share sheet can't be driven by Playwright) rather than a navigated-to URL. See
+`../../designs/meeting-detail-consolidation.md` in the hub repo.
+
 ---
 
 <a id="tc-h68"></a>
@@ -16,22 +24,24 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Given** a meeting the signed-in user organises
 **When** they view its Details page
-**Then** every field (subject, room + capacity, organiser, attendees, date, time) is correct
+**Then** every field (subject, room, organiser, attendees, date, time) is correct
 
 **Steps:**
 1. Sign in; create a room and an attendee Person; create a meeting with the demo user as organiser and that person as attendee.
-2. Navigate to `/meetings/<id>` directly (or via the grid).
+2. Open the meeting's row (from Room Availability), click Share, read its real URL off the clipboard, and visit it.
 
 **Assertions:**
 - Subject heading matches.
-- Room row: `"<name> (capacity <n>)"`.
-- Organiser row: "Demo Strater".
-- Attendees row: the attendee's name.
-- Date/Time rows: see H.71 for the exact format assertions.
+- Room name visible (no capacity shown any more - `MeetingDetailContent` never showed it, and the full page now renders the same shared component - see 2026-09-20 update below).
+- The element with exact text "Demo Strater" has a parent containing "Organiser".
+- The attendee's name is visible.
+- Date/Time: see H.71 for the exact format assertions.
 
 **Out of scope:** attending-not-organising (H.69); the Date/Time formatting detail itself (H.71, referenced not duplicated).
 
 **Notes:** None.
+
+**2026-09-20: room capacity no longer shown; organiser/attendee assertions no longer scoped by a "Room"/"Organiser"/"Attendees" DetailRow label.** The full page renders the same shared `MeetingDetailContent` the bottom-sheet/side-panel already used, which never showed capacity and labels the organiser only via an inline "· Organiser" suffix next to their name, not a separate row.
 
 ---
 
@@ -50,11 +60,11 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Steps:**
 1. Sign in; create a room and a Person ("Organiser Person"); create a meeting with "Organiser Person" as organiser and the demo user's own personId as an attendee (requires knowing the demo user's personId — obtainable via the Settings "Your name" field's underlying data, or by first visiting Settings and reading the display name to select the matching Attendee option by name).
-2. Navigate to `/meetings/<id>`.
+2. Open the meeting's row, click Share, read its real URL off the clipboard, and visit it.
 
 **Assertions:**
-- Organiser row: "Organiser Person".
-- Attendees row includes "Demo Strater".
+- The element with exact text "Organiser Person" has a parent containing "Organiser".
+- "Demo Strater" is visible (as an attendee).
 - Page loads with no access error (proving attendee-only access works, distinct from organiser access).
 
 **Out of scope:** N/A.
@@ -73,19 +83,19 @@ See [README.md](README.md) for the entry format and test-data conventions.
 **Preconditions:** Signed in as the demo user. A meeting organised by and attended only by *other* people (two Persons created via Settings, neither the demo user).
 
 **Given** a meeting the signed-in user has no participant relationship to at all
-**When** they navigate directly to its `/meetings/<id>` URL
-**Then** it loads and shows full details anyway — per `ListMeetingsHandler`'s source, `Query.meetings` has no per-caller filtering at the API level (`MeetingDetailsPage` fetches the *entire* unfiltered `LIST_MEETINGS` and finds the matching id client-side)
+**When** they visit its `/meetings/<id>` URL directly (via Share - see this file's header note)
+**Then** it loads and shows full details anyway — `Query.meeting(id:)` has no per-caller filtering at the API level
 
 **Steps:**
 1. Sign in as the demo user; create two Persons ("Third Party A", "Third Party B") and a meeting between them (organiser A, attendee B) via the demo admin's own Add Meeting form (submitting on someone else's behalf).
-2. Navigate directly to `/meetings/<that meeting's id>`.
+2. Open the meeting's row, click Share, read its real URL off the clipboard, and visit it.
 
 **Assertions:**
 - Page loads successfully with the correct subject/organiser/attendee data — not an access-denied state.
 
 **Out of scope:** whether this *should* be restricted (a product-policy question this test doesn't decide, matching G.60's same framing) — this documents actual, current, unrestricted behaviour.
 
-**Notes:** The use case's own "(if reachable...)" phrasing already anticipates the answer might be "yes, and here's what happens" — confirmed: it's reachable, and there is no restriction, since `MeetingDetailsPage.tsx` fetches all meetings via `LIST_MEETINGS` with no filter and finds the one matching `useParams().meetingId`.
+**Notes:** The use case's own "(if reachable...)" phrasing already anticipates the answer might be "yes, and here's what happens" — confirmed: it's reachable via Share (though nothing in the app links to it for someone with no relationship to the meeting), and there is no access restriction on the read itself.
 
 ---
 
@@ -100,49 +110,48 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Given** a meeting with a known date and time range
 **When** its Details page is viewed
-**Then** exactly one "Date" row shows the date once, and one "Time" row shows `"10:00–11:00"` — never two separate full date-time strings
+**Then** the date appears once and the time appears once as `"10:00–11:00"` — never two separate full date-time strings
 
 **Steps:**
 1. Sign in; create the room and meeting.
-2. Navigate to `/meetings/<id>`.
-3. Read the "Date" row's value text.
-4. Read the "Time" row's value text.
+2. Open the meeting's row, click Share, read its real URL off the clipboard, and visit it.
+3. Read the date value's text.
+4. Read the time value's text.
 
 **Assertions:**
-- Date row text is exactly `"2026-08-24"` (`formatLocalDate` returns the raw `YYYY-MM-DD` slice — **not** a human-friendly format like "24 August 2026"; assert the literal value, don't assume prettified output).
-- Time row text is exactly `"10:00–11:00"` (en dash or hyphen — confirm the literal character `formatLocalTime`'s template string uses, `–`, when implementing).
+- The date value's text is exactly `"2026-08-24"` (`formatLocalDate` returns the raw `YYYY-MM-DD` slice — **not** a human-friendly format like "24 August 2026"; assert the literal value, don't assume prettified output).
+- The time value's text is exactly `"10:00–11:00"` (en dash or hyphen — confirm the literal character `formatLocalTime`'s template string uses, `–`, when implementing).
 - No other element on the page shows a full ISO date-time string (a regression check: the old two-full-date-times layout this replaced would fail this).
 
 **Out of scope:** N/A.
 
 **Notes:** `formatLocalDate` is a **raw string slice**, not a locale-aware formatter — this is easy to over-assert (expecting a "nice" date format) if the test author doesn't check the actual implementation first, which is exactly what this note is flagging.
 
+**2026-09-20: the date/time values are no longer inside labelled "Date"/"Time" rows.** `MeetingDetailContent` (shared with the bottom-sheet/side-panel) renders them as plain, unlabelled lines - located by their own shape now, not by a preceding label.
+
 ---
 
 <a id="tc-h72"></a>
-### H.72 — "Back" returns to the previous page
+### H.72 — Removed: "Back" returning to the previous page is no longer a reachable scenario
 
-**Use case:** [use-cases.md#uc-72](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-72) — "'Back' button returns to the previous page (room availability / calendar / home, depending on entry point)."
-**Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts)
-**Android:** not yet automated
+**Status:** ❌ Removed 2026-09-20, not superseded 1:1 — see `../../designs/meeting-detail-consolidation.md` in the hub repo.
 
-**Preconditions:** Signed in as the demo user. A room and a meeting, reachable from both Room Availability and Home's agenda list.
+This case originally covered `MeetingDetailsPage`'s "Back" button returning to whichever page (Room
+Availability, Home) an in-app navigation had come from. Both of those entry points now open the
+shared bottom-sheet/side-panel in place instead of navigating to `/meetings/:id` at all - there is
+no longer any in-app-originated navigation into this route for "Back" to return from, so the
+scenario this case tested no longer occurs.
 
-**Given** a user who navigated to Meeting Details from Room Availability, and separately from Home's "Today" agenda
-**When** they click **Back**
-**Then** each time, they land back on whichever page they actually came from
+"Back"'s actual safety property is now the opposite concern: it must **never** appear for a cold
+link (see H.74 below), since an unconditional `navigate(-1)` there could leave the app entirely,
+into whatever a tab's unrelated prior history happened to be. That's covered by H.74 (real,
+end-to-end, this suite) and by a mocked-integration test in `webapp/tests/`
+(`meeting-detail-share-and-back.spec.ts`, covering a tab with unrelated prior history, which isn't
+practical to simulate against a real deployed environment).
 
-**Steps:**
-1. Sign in; create the room and a meeting scheduled for today; pin the clock accordingly.
-2. From Room Availability, click the meeting's block; on Details, click **Back** (`getByRole('button', { name: 'Back' })`); assert URL is Room Availability's.
-3. From Home, click the same meeting's "Today" agenda row; on Details, click **Back**; assert URL is `/`.
-
-**Assertions:**
-- Both entry points return to their own origin page.
-
-**Out of scope:** entry via Person Calendar specifically (structurally identical `navigate(-1)` mechanism to the two entry points already tested — not worth a third repetition).
-
-**Notes:** `MeetingDetailsPage.tsx`'s Back handler is `navigate(-1)`, same browser-history mechanism as F.55's Cancel button — this test's two sub-cases exist specifically to prove that mechanism does the right thing from *multiple* distinct origins, which is the actual content of this use case's wording ("depending on entry point").
+If a future change reintroduces an in-app link into `/meetings/:id` (see `MeetingDetailsPage.tsx`'s
+own comment on the `fromInApp` router-state mechanism that would gate it), a case like the original
+H.72 would need to return.
 
 ---
 
@@ -165,8 +174,38 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Assertions:**
 - Text "Meeting not found." is visible.
-- No unhandled error/blank page (no React error boundary triggered — check console/page errors are also clean in the test, since `MeetingDetailsPage.tsx`'s `!meeting` branch simply finds no match in the fetched list rather than erroring).
+- No unhandled error/blank page (no React error boundary triggered — check console/page errors are also clean in the test).
 
 **Out of scope:** N/A.
 
-**Notes:** Because `MeetingDetailsPage` fetches the *whole* meetings list and searches client-side (see H.70's Notes), any non-matching id — malformed or merely nonexistent — hits the exact same "not found" branch; no separate "invalid format" case is needed.
+**Notes:** None.
+
+---
+
+<a id="tc-h74"></a>
+### H.74 — A signed-out visitor following a real shared link goes through a real sign-in and lands on the correct meeting
+
+**Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts), new 2026-09-20 — see `../../designs/meeting-detail-consolidation.md` in the hub repo.
+
+**Preconditions:** Signed in as the demo user (to create the meeting and its real Share link), then signed out.
+
+**Given** a real meeting link, produced by the app's own Share button, and a visitor who is not signed in
+**When** they follow that link
+**Then** `RequireAuth` redirects them to `/signin`; a real sign-in returns them to the exact meeting the link named, with no "Back" button shown
+
+**Steps:**
+1. Sign in as the demo user; create a room and a meeting.
+2. Open the meeting's row, click Share, and read its real URL off the clipboard.
+3. Sign out.
+4. Visit the Share-produced URL directly.
+5. Assert the `/signin` redirect; sign in with the demo user's real credentials.
+
+**Assertions:**
+- After step 4: on `/signin`.
+- After step 5: URL is the exact meeting URL from step 2; the meeting's subject heading is visible; no "Back" button is present (`MeetingDetailsPage.tsx`'s `fromInApp` router-state gate correctly does not fire for this cold-link journey).
+
+**Out of scope:** simulating a tab with unrelated prior *other-site* history before the link is followed - not practical against a real deployment; covered instead by a mocked-integration test in `webapp/tests/meeting-detail-share-and-back.spec.ts`.
+
+**Notes:** This is the acceptance-layer half of the unsafe-Back fix - it proves `RequireAuth`,
+Cognito's hosted sign-in, and AppSync are correctly wired together end-to-end for a cold link, which
+a mocked test cannot stand in for. See H.72's removal note above for the full picture.

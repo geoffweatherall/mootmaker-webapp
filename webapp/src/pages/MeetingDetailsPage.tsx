@@ -1,49 +1,30 @@
 import { useQuery } from '@apollo/client/react'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import { Box, Button, CircularProgress, Divider, Paper, Stack, Typography } from '@mui/material'
-import type { ReactNode } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Box, Button, CircularProgress, Paper, Stack, Typography, useTheme } from '@mui/material'
+import { useMemo, useState } from 'react'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ErrorBanner } from '../components/ErrorBanner'
-import { PersonAvatar } from '../components/PersonAvatar'
+import { MeetingDetailContent } from '../components/MeetingDetailContent'
 import { errorMessages } from '../graphql/errorMessages'
-import { useAuth } from '../auth/authContext'
-import { formatLocalDate, formatLocalTime } from '../graphql/formatDateTime'
-import { MEETING_BY_ID } from '../graphql/queries'
-import type { Person } from '../graphql/types'
-import { useState } from 'react'
+import { MEETING_BY_ID, REFERENCE_DATA } from '../graphql/queries'
+import { roomColorAt } from '../theme/roomColor'
 
-interface DetailRowProps {
-  label: string
-  value: ReactNode
-}
-
-function DetailRow({ label, value }: DetailRowProps) {
-  return (
-    <Stack direction="row" spacing={2}>
-      <Typography variant="body2" color="text.secondary" sx={{ width: 140, flexShrink: 0 }}>
-        {label}
-      </Typography>
-      <Typography component="div" variant="body1">
-        {value}
-      </Typography>
-    </Stack>
-  )
-}
-
-/** A person's avatar next to their name - used for both the Organiser and Attendees rows below. */
-function PersonRow({ person }: { person: Person }) {
-  return (
-    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-      <PersonAvatar name={person.name} size={24} />
-      <Typography variant="body1">{person.name}</Typography>
-    </Stack>
-  )
-}
-
+/**
+ * The one lookup that works from a cold, shared or bookmarked link - see designs/
+ * meeting-detail-consolidation.md. Nothing else in this app links here any more: every other
+ * meeting row opens the shared sheet/panel in place instead (useMeetingDetailOverlay.tsx). This
+ * page exists purely so that URL keeps working standalone.
+ *
+ * Renders the SAME MeetingDetailContent the sheet/panel uses - see that component's own
+ * "PARITY INVARIANT" comment (components/MeetingDetailContent.tsx). Do not re-implement this
+ * page's own version of a meeting's fields; render MeetingDetailContent, and if it's missing
+ * something this page needs, add it there.
+ */
 export default function MeetingDetailsPage() {
-  const { dateFormat, timeFormat } = useAuth()
   const { meetingId } = useParams<{ meetingId: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
+  const theme = useTheme()
   const [dismissedError, setDismissedError] = useState(false)
 
   // One meeting, by id, in two point reads on the server - an id-to-date pointer and then that day.
@@ -58,15 +39,39 @@ export default function MeetingDetailsPage() {
     fetchPolicy: 'cache-and-network',
   })
 
+  // Fetched purely for room colour, which needs a room's POSITION in the full sorted-by-name room
+  // list (see theme/roomColor.ts), not just the single room MEETING_BY_ID already returns embedded
+  // on the meeting. A second, independent fetch rather than relying on a warm cache, for the same
+  // "reached cold" reason MEETING_BY_ID selects names itself.
+  const { data: roomsData } = useQuery(REFERENCE_DATA, { fetchPolicy: 'cache-first' })
+  const roomIndexById = useMemo(() => {
+    const sorted = [...(roomsData?.workspace.rooms ?? [])].sort((a, b) => a.name.localeCompare(b.name))
+    return new Map(sorted.map((room, index) => [room.id, index]))
+  }, [roomsData])
+
   // Null covers both "no such meeting" and "its day has aged out of retention" - deliberately the
   // same answer, so this page has one not-found state rather than two.
   const meeting = data?.meeting
+  const roomColor = meeting ? roomColorAt(roomIndexById.get(meeting.room.id) ?? 0, theme.palette.mode) : ''
+
+  // Shown only after a genuine in-app navigation that explicitly says so via router state - NOT
+  // based on browser history depth (history.length, navigate(-1) unconditionally). Pasting this
+  // page's URL into a tab that already had unrelated browsing history, signing in through the
+  // resulting /signin redirect, and clicking an unconditional Back would leave the app entirely -
+  // see designs/meeting-detail-consolidation.md's "Back" trade-off. Nothing in this app currently
+  // sets fromInApp - every other meeting row opens the shared overlay in place rather than
+  // navigating here - so Back does not render today. This is the mechanism to use if a future
+  // internal link into this route is ever added: pass state={{ fromInApp: true }} on that Link/
+  // navigate() call.
+  const cameFromApp = Boolean((location.state as { fromInApp?: boolean } | null)?.fromInApp)
 
   return (
     <Stack spacing={3}>
-      <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)} sx={{ alignSelf: 'flex-start' }}>
-        Back
-      </Button>
+      {cameFromApp && (
+        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)} sx={{ alignSelf: 'flex-start' }}>
+          Back
+        </Button>
+      )}
 
       {!dismissedError && (
         <ErrorBanner messages={errorMessages(error)} onDismiss={() => setDismissedError(true)} />
@@ -79,38 +84,8 @@ export default function MeetingDetailsPage() {
       ) : !meeting ? (
         !error && <Typography color="text.secondary">Meeting not found.</Typography>
       ) : (
-        <Paper sx={{ p: 3 }}>
-          <Stack spacing={2}>
-            <Typography variant="h4" component="h1">
-              {meeting.subject}
-            </Typography>
-            <Divider />
-            <Stack spacing={1.5}>
-              <DetailRow label="Room" value={`${meeting.room.name} (capacity ${meeting.room.capacity})`} />
-              <DetailRow label="Organiser" value={<PersonRow person={meeting.organiser} />} />
-              <DetailRow
-                label="Attendees"
-                value={
-                  meeting.attendees.length === 0 ? (
-                    <Typography variant="body1" color="text.secondary">
-                      None
-                    </Typography>
-                  ) : (
-                    <Stack spacing={1}>
-                      {meeting.attendees.map((attendee) => (
-                        <PersonRow key={attendee.id} person={attendee} />
-                      ))}
-                    </Stack>
-                  )
-                }
-              />
-              <DetailRow label="Date" value={formatLocalDate(meeting.startTime, dateFormat)} />
-              <DetailRow
-                label="Time"
-                value={`${formatLocalTime(meeting.startTime, timeFormat)}–${formatLocalTime(meeting.endTime, timeFormat)}`}
-              />
-            </Stack>
-          </Stack>
+        <Paper sx={{ maxWidth: 480 }}>
+          <MeetingDetailContent meeting={meeting} roomColor={roomColor} headingComponent="h1" />
         </Paper>
       )}
     </Stack>

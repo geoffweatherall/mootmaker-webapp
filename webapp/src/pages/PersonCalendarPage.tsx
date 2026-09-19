@@ -2,7 +2,6 @@ import { useQuery } from '@apollo/client/react'
 import AddIcon from '@mui/icons-material/Add'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
-import CloseIcon from '@mui/icons-material/Close'
 import {
   Autocomplete,
   Box,
@@ -10,14 +9,12 @@ import {
   ButtonBase,
   Chip,
   CircularProgress,
-  Drawer,
   Fab,
   IconButton,
   LinearProgress,
   Stack,
   TextField,
   Typography,
-  useMediaQuery,
   useTheme,
 } from '@mui/material'
 import dayjs, { type Dayjs } from 'dayjs'
@@ -28,6 +25,7 @@ import emptyPeople from '../assets/empty-people.svg'
 import { EmptyState } from '../components/EmptyState'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { PersonAvatar } from '../components/PersonAvatar'
+import { useMeetingDetailOverlay } from '../components/useMeetingDetailOverlay'
 import { errorMessages } from '../graphql/errorMessages'
 import { formatLocalTime } from '../graphql/formatDateTime'
 import { PAGE_LOAD, REFERENCE_DATA } from '../graphql/queries'
@@ -45,96 +43,12 @@ function startOfWorkWeek(from: Dayjs): Dayjs {
   return from.subtract(daysSinceMonday, 'day').startOf('day')
 }
 
-/** Meeting detail shown in the bottom sheet (narrow) / side panel (>=md) - organiser and every
- * attendee with an avatar, no count cap (both surfaces scroll internally if the list is long -
- * see designs/room-availability-and-person-calendar-redesign.md's "no attendee-count cap"
- * decision, which replaced an earlier truncate-at-4 prototype). */
-function MeetingDetail({
-  meeting,
-  roomName,
-  roomColor,
-  timeFormat,
-  peopleById,
-  onClose,
-}: {
-  meeting: Meeting
-  roomName: string
-  roomColor: string
-  timeFormat: Parameters<typeof formatLocalTime>[1]
-  peopleById: Map<string, Person>
-  onClose: () => void
-}) {
-  const organiserName = peopleById.get(meeting.organiser.id)?.name ?? ''
-  return (
-    <Stack spacing={2} sx={{ p: 3, width: { xs: 'auto', md: 340 }, maxHeight: '80vh', overflowY: 'auto' }}>
-      <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <Typography variant="h6" component="h2">
-          {meeting.subject}
-        </Typography>
-        <IconButton size="small" aria-label="Close" onClick={onClose}>
-          <CloseIcon fontSize="small" />
-        </IconButton>
-      </Stack>
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-        <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: roomColor, flexShrink: 0 }} />
-        <Typography variant="body2" color="text.secondary">
-          {roomName}
-        </Typography>
-      </Stack>
-      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-        {formatLocalTime(meeting.startTime, timeFormat)}–{formatLocalTime(meeting.endTime, timeFormat)}
-      </Typography>
-
-      <Stack spacing={1.5} sx={{ pt: 1.5, borderTop: 1, borderColor: 'divider' }}>
-        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-          <PersonAvatar name={organiserName} size={26} />
-          <Typography variant="body2">
-            <strong>{organiserName}</strong>
-            <Typography component="span" variant="body2" color="text.secondary">
-              {' '}
-              · Organiser
-            </Typography>
-          </Typography>
-        </Stack>
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em' }}
-        >
-          Attendees · {meeting.attendees.length}
-        </Typography>
-        {meeting.attendees.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
-            No attendees.
-          </Typography>
-        ) : (
-          meeting.attendees.map((attendee) => {
-            const attendeeName = peopleById.get(attendee.id)?.name ?? ''
-            return (
-              <Stack key={attendee.id} direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-                <PersonAvatar name={attendeeName} size={26} />
-                <Typography variant="body2">{attendeeName}</Typography>
-              </Stack>
-            )
-          })
-        )}
-      </Stack>
-
-      <Button component={Link} to={`/meetings/${meeting.id}`} variant="outlined">
-        View full details
-      </Button>
-    </Stack>
-  )
-}
-
 export default function PersonCalendarPage() {
   const { personId } = useParams<{ personId: string }>()
   const navigate = useNavigate()
   const [dismissedError, setDismissedError] = useState(false)
   const { personId: ownPersonId, displayName: ownDisplayName, timeFormat } = useAuth()
   const theme = useTheme()
-  const isWide = useMediaQuery(theme.breakpoints.up('md'))
-  const [openMeeting, setOpenMeeting] = useState<Meeting | null>(null)
 
   // People change rarely, so fetch once and read from the cache from then on (`cache-first`)
   // instead of refetching on every visit; a full page refresh resets the in-memory cache and
@@ -166,6 +80,8 @@ export default function PersonCalendarPage() {
     () => new Map((peopleData?.workspace.people ?? []).map((person) => [person.id, person])),
     [peopleData],
   )
+  const { open: openMeetingDetail, overlay: meetingDetailOverlay, isOpen: meetingDetailOpen } =
+    useMeetingDetailOverlay(peopleById, roomsById, roomIndexById)
   const selectedPerson = useMemo(() => {
     const fromList = people.find((person) => person.id === personId)
     if (fromList) return fromList
@@ -257,15 +173,6 @@ export default function PersonCalendarPage() {
   }
 
   const lastDayShown = firstMonday.add(WORK_DAYS_PER_WEEK - 1, 'day')
-
-  function closeDetail() {
-    setOpenMeeting(null)
-  }
-
-  const openMeetingRoom = openMeeting ? roomsById.get(openMeeting.room.id) : undefined
-  const openMeetingColor = openMeeting
-    ? roomColorAt(roomIndexById.get(openMeeting.room.id) ?? 0, theme.palette.mode)
-    : ''
 
   return (
     <Stack spacing={3}>
@@ -363,7 +270,7 @@ export default function PersonCalendarPage() {
                       return (
                         <ButtonBase
                           key={meeting.id}
-                          onClick={() => setOpenMeeting(meeting)}
+                          onClick={() => openMeetingDetail(meeting)}
                           sx={{
                             display: 'flex',
                             flexDirection: 'column',
@@ -406,7 +313,7 @@ export default function PersonCalendarPage() {
           anchored to the content column sits close to where the desktop side panel's own left
           edge begins, so this sidesteps that collision outright rather than repositioning around
           it. See the design doc's FAB-visibility decision. */}
-      {!openMeeting && selectedPerson && (
+      {!meetingDetailOpen && selectedPerson && (
         <Box
           sx={{
             position: 'fixed',
@@ -438,57 +345,7 @@ export default function PersonCalendarPage() {
         </Box>
       )}
 
-      {/* Narrow: a real modal bottom sheet (MUI Drawer's default backdrop + dismiss). Wide: a
-          hand-rolled fixed side panel with no backdrop at all, deliberately - a backdrop would sit
-          on top of the day list in z-order and swallow clicks meant for a different meeting row,
-          which would break "click another meeting while the panel is open, no need to close
-          first" (see design doc's Testing impacts). Dismiss on wide screens is the panel's own
-          Close button only. */}
-      {isWide ? (
-        openMeeting && (
-          <Box
-            sx={{
-              position: 'fixed',
-              top: 64,
-              right: 0,
-              bottom: 0,
-              width: 340,
-              bgcolor: 'background.paper',
-              borderLeft: 1,
-              borderColor: 'divider',
-              boxShadow: 6,
-              zIndex: (t) => t.zIndex.drawer,
-            }}
-          >
-            <MeetingDetail
-              meeting={openMeeting}
-              roomName={openMeetingRoom?.name ?? ''}
-              roomColor={openMeetingColor}
-              timeFormat={timeFormat}
-              peopleById={peopleById}
-              onClose={closeDetail}
-            />
-          </Box>
-        )
-      ) : (
-        <Drawer
-          anchor="bottom"
-          open={Boolean(openMeeting)}
-          onClose={closeDetail}
-          slotProps={{ paper: { sx: { borderTopLeftRadius: 16, borderTopRightRadius: 16 } } }}
-        >
-          {openMeeting && (
-            <MeetingDetail
-              meeting={openMeeting}
-              roomName={openMeetingRoom?.name ?? ''}
-              roomColor={openMeetingColor}
-              timeFormat={timeFormat}
-              peopleById={peopleById}
-              onClose={closeDetail}
-            />
-          )}
-        </Drawer>
-      )}
+      {meetingDetailOverlay}
     </Stack>
   )
 }

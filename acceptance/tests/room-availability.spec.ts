@@ -216,8 +216,8 @@ test("E.27 - navigating to a future date shows that date's meeting", async ({ pa
   const card = await expandMeetings(page, roomName)
   // Not a plain getByText(subject): a future day's status sublabel is "First: <subject> at
   // <time>", which also contains the subject as a substring - only the meeting row itself has
-  // role 'link'.
-  await expect(card.getByRole('link', { name: subject, exact: false })).toBeVisible()
+  // role 'button'.
+  await expect(card.getByRole('button', { name: subject, exact: false })).toBeVisible()
 })
 
 test('E.28 - navigating to a past date updates the URL and date picker', async ({ page }) => {
@@ -317,9 +317,17 @@ test('E.31 - rooms exist but none has meetings that day shows the cards, not the
   await expect(roomCard(page, roomName).getByRole('button', { name: /'s meetings \(0\)$/ })).toBeVisible()
 })
 
-test("E.32 - a room card's expanded meeting list shows subject and time range, and clicking a meeting navigates to Meeting Details", async ({
+test("E.32 - a room card's expanded meeting list shows subject and time range, and clicking a meeting opens its detail sheet, from which Share reaches Meeting Details", async ({
   page,
+  context,
 }) => {
+  // Forces MeetingDetailContent's Share button down its clipboard-fallback branch
+  // deterministically - see designs/meeting-detail-consolidation.md's Testing impacts.
+  await page.addInitScript(() => {
+    Object.defineProperty(window.navigator, 'share', { value: undefined, configurable: true })
+  })
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+
   const runId = uniqueId()
   const roomName = `Card Room E32 ${runId}`
   const subject = `E32 card meeting ${runId}`
@@ -341,17 +349,33 @@ test("E.32 - a room card's expanded meeting list shows subject and time range, a
   // right now under the pinned clock, so the card's own status sublabel is bare `busy.subject`
   // (no "Busy until"/"Next"/"First" prefix - see roomAvailabilityLogic.ts) - a second, exact
   // duplicate of the subject text elsewhere on the card. Only the meeting row itself has role
-  // 'link', so scoping by role sidesteps the ambiguity regardless of which status branch applies.
+  // 'button', so scoping by role sidesteps the ambiguity regardless of which status branch
+  // applies.
   const card = await expandMeetings(page, roomName)
-  const meetingLink = card.getByRole('link', { name: subject, exact: false })
-  await expect(meetingLink).toContainText('09:00–09:30')
+  const meetingRow = card.getByRole('button', { name: subject, exact: false })
+  await expect(meetingRow).toContainText('09:00–09:30')
 
-  await meetingLink.click()
-  await expect(page).toHaveURL(/\/meetings\/.+/)
+  // Opens the shared detail sheet/panel in place, not a navigation - see
+  // designs/meeting-detail-consolidation.md. Reach Meeting Details itself via Share, the same way a
+  // real user now would.
+  await meetingRow.click()
+  await expect(page.getByRole('heading', { name: subject, level: 2 })).toBeVisible()
+  await page.getByRole('button', { name: 'Share meeting' }).click()
+  const meetingUrl = await page.evaluate(() => navigator.clipboard.readText())
+  expect(meetingUrl).toMatch(/\/meetings\/.+/)
+
+  await page.goto(meetingUrl)
   await expect(page.getByRole('heading', { name: subject, level: 1 })).toBeVisible()
 })
 
-test('E.33 - overlapping meetings in different rooms each show only on their own card', async ({ page }) => {
+test('E.33 - overlapping meetings in different rooms each show only on their own card', async ({ page, context }) => {
+  // Forces MeetingDetailContent's Share button down its clipboard-fallback branch
+  // deterministically - see designs/meeting-detail-consolidation.md's Testing impacts.
+  await page.addInitScript(() => {
+    Object.defineProperty(window.navigator, 'share', { value: undefined, configurable: true })
+  })
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+
   const runId = uniqueId()
   const roomAName = `Room A E33 ${runId}`
   const roomBName = `Room B E33 ${runId}`
@@ -389,8 +413,13 @@ test('E.33 - overlapping meetings in different rooms each show only on their own
   await expect(roomBCard.getByText(subjectB, { exact: true })).toBeVisible()
   await expect(roomBCard.getByText(subjectA, { exact: true })).toHaveCount(0)
 
+  // Clicking a meeting row opens the shared detail sheet/panel in place, not a navigation any
+  // more (see designs/meeting-detail-consolidation.md) - reach Meeting Details itself, and the
+  // real page navigation this test's "back" step relies on, via Share.
   await roomACard.getByText(subjectA, { exact: true }).click()
-  await expect(page).toHaveURL(/\/meetings\/.+/)
+  await page.getByRole('button', { name: 'Share meeting' }).click()
+  const meetingAUrl = await page.evaluate(() => navigator.clipboard.readText())
+  await page.goto(meetingAUrl)
   await expect(page.getByRole('heading', { name: subjectA, level: 1 })).toBeVisible()
 
   // A real navigation away and back unmounts RoomAvailabilityPage, so its expandedRoomIds state
@@ -399,7 +428,9 @@ test('E.33 - overlapping meetings in different rooms each show only on their own
   await expect(page.getByRole('heading', { name: 'Room Availability' })).toBeVisible()
   const roomBCardAfterBack = await expandMeetings(page, roomBName)
   await roomBCardAfterBack.getByText(subjectB, { exact: true }).click()
-  await expect(page).toHaveURL(/\/meetings\/.+/)
+  await page.getByRole('button', { name: 'Share meeting' }).click()
+  const meetingBUrl = await page.evaluate(() => navigator.clipboard.readText())
+  await page.goto(meetingBUrl)
   await expect(page.getByRole('heading', { name: subjectB, level: 1 })).toBeVisible()
 })
 
@@ -436,9 +467,12 @@ test('E.34 - back-to-back meetings in the same room both succeed and render as d
   await expect(page).toHaveURL(/\/rooms\/.+\/availability/)
   await expect(page.getByText('The room already has a meeting scheduled during that time range.')).toHaveCount(0)
 
-  // Two distinct rows, in chronological order - not merged into one, and not reordered.
+  // Two distinct rows, in chronological order - not merged into one, and not reordered. Filtered
+  // to rows whose name contains a time, not just role 'button' - the card's own "Hide ... meetings"
+  // toggle is role 'button' too now (meeting rows changed from 'link' to 'button' - see
+  // designs/meeting-detail-consolidation.md), so an unfiltered role query would also match it.
   const card = await expandMeetings(page, roomName)
-  const rows = card.getByRole('link')
+  const rows = card.getByRole('button', { name: /\d{2}:\d{2}/ })
   await expect(rows).toHaveCount(2)
   const rowTexts = await rows.allTextContents()
   expect(rowTexts[0]).toContain('09:00')
@@ -475,9 +509,12 @@ test('E.35 - room colour is consistent between Room Availability and Person Cale
   await goToOwnCalendar(page)
   // Person Calendar's meeting rows are a ButtonBase (opens a detail panel, not a link), with no
   // aria-label of its own - its accessible name is just its visible text (subject, time, room), so
-  // an exact:false role match on the subject finds it. The colour dot is the row's first child div.
+  // an exact:false role match on the subject finds it. The colour dot sits two levels deep
+  // (PersonCalendarPage.tsx: ButtonBase > Stack(dot, subject) > Box(dot)) since
+  // mootmaker-webapp#71's alignment fix, so `div` alone now also matches that wrapping Stack -
+  // `div div` (a div nested inside another div) is specific to the dot itself.
   const meetingRow = page.getByRole('button', { name: subject, exact: false })
-  const calendarDot = meetingRow.locator('div').first()
+  const calendarDot = meetingRow.locator('div div').first()
   const calendarColor = await calendarDot.evaluate((el) => getComputedStyle(el).backgroundColor)
 
   expect(calendarColor).toBe(availabilityColor)

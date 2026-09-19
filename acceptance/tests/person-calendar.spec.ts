@@ -297,9 +297,17 @@ test('G.63 - a day with three meetings lists them in ascending start-time order;
   await expect(unrelatedCell.getByRole('button')).toHaveCount(0)
 })
 
-test('G.65 - clicking a meeting row on the calendar opens its detail panel, which links to Meeting Details', async ({
+test('G.65 - clicking a meeting row on the calendar opens its detail panel, and Share reaches Meeting Details', async ({
   page,
+  context,
 }) => {
+  // Forces MeetingDetailContent's Share button down its clipboard-fallback branch
+  // deterministically - see designs/meeting-detail-consolidation.md's Testing impacts.
+  await page.addInitScript(() => {
+    Object.defineProperty(window.navigator, 'share', { value: undefined, configurable: true })
+  })
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+
   await page.clock.setFixedTime(pinnedWeekday('Wednesday'))
   await signInAsDemo(page)
   const id = uniqueId()
@@ -311,14 +319,17 @@ test('G.65 - clicking a meeting row on the calendar opens its detail panel, whic
   await goToOwnCalendar(page)
   await page.getByText(subject, { exact: false }).click()
 
-  // Clicking a meeting row now opens the bottom-sheet/side-panel detail view first, not a direct
-  // navigation - see designs/room-availability-and-person-calendar-redesign.md. Its own "View full
-  // details" button is what actually navigates to Meeting Details.
+  // Clicking a meeting row opens the bottom-sheet/side-panel detail view in place, not a
+  // navigation - see designs/meeting-detail-consolidation.md. The panel no longer has its own
+  // "View full details" link through to the full page (#73/this design's consolidation) - Share is
+  // now the only path from the panel to Meeting Details, and it's what a real user would actually
+  // use to reach it too.
   await expect(page.getByRole('heading', { name: subject, level: 2 })).toBeVisible()
-  // Rendered as `<Button component={Link}>`, an anchor under the hood - role 'link', not 'button'.
-  await page.getByRole('link', { name: 'View full details' }).click()
+  await page.getByRole('button', { name: 'Share meeting' }).click()
+  const meetingUrl = await page.evaluate(() => navigator.clipboard.readText())
+  expect(meetingUrl).toMatch(/\/meetings\/.+/)
 
-  await expect(page).toHaveURL(/\/meetings\/.+/)
+  await page.goto(meetingUrl)
   await expect(page.getByRole('heading', { name: subject, level: 1 })).toBeVisible()
 })
 
@@ -338,10 +349,12 @@ test("G.66 - the meeting's room colour dot on Person Calendar matches Room Avail
 
   await goToOwnCalendar(page)
   // Person Calendar's meeting rows are a ButtonBase (opens a detail panel, not a link), with no
-  // aria-label of its own - its accessible name is just its visible text. The colour dot is the
-  // row's first child div.
+  // aria-label of its own - its accessible name is just its visible text. The colour dot sits two
+  // levels deep (PersonCalendarPage.tsx: ButtonBase > Stack(dot, subject) > Box(dot)) since
+  // mootmaker-webapp#71's alignment fix, so `div` alone now also matches that wrapping Stack -
+  // `div div` (a div nested inside another div) is specific to the dot itself.
   const meetingRow = page.getByRole('button', { name: subject, exact: false })
-  const calendarDot = meetingRow.locator('div').first()
+  const calendarDot = meetingRow.locator('div div').first()
   const calendarColor = await calendarDot.evaluate((el) => getComputedStyle(el).backgroundColor)
   expect(calendarColor).toBeTruthy()
 

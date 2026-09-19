@@ -23,9 +23,10 @@ import homeSignedIn from '../assets/home-signed-in.svg'
 import { EmptyState } from '../components/EmptyState'
 import { CalendarIcon } from '../icons'
 import { SignInForm } from '../components/SignInForm'
+import { useMeetingDetailOverlay } from '../components/useMeetingDetailOverlay'
 import { formatLocalTime } from '../graphql/formatDateTime'
 import { PAGE_LOAD } from '../graphql/queries'
-import type { Meeting, Room } from '../graphql/types'
+import type { Meeting, Person, Room } from '../graphql/types'
 
 const SIGN_UP_STEPS = [
   'Enter your name, email address, and password.',
@@ -41,9 +42,13 @@ interface AgendaListProps {
   /** Room names are resolved by the page from the same response, not carried on each meeting. */
   roomsById: Map<string, Room>
   loading: boolean
+  /** Opens the shared meeting-detail sheet/panel in place - see useMeetingDetailOverlay.tsx. Not a
+   * navigation: nothing in this app links to /meetings/:id any more, see
+   * designs/meeting-detail-consolidation.md. */
+  onMeetingClick: (meeting: Meeting) => void
 }
 
-function AgendaList({ title, meetings, loading, roomsById }: AgendaListProps) {
+function AgendaList({ title, meetings, loading, roomsById, onMeetingClick }: AgendaListProps) {
   const { timeFormat } = useAuth()
 
   return (
@@ -60,7 +65,7 @@ function AgendaList({ title, meetings, loading, roomsById }: AgendaListProps) {
       ) : (
         <List disablePadding>
           {meetings.map((meeting) => (
-            <ListItemButton key={meeting.id} component={Link} to={`/meetings/${meeting.id}`} sx={{ borderRadius: 1 }}>
+            <ListItemButton key={meeting.id} onClick={() => onMeetingClick(meeting)} sx={{ borderRadius: 1 }}>
               <ListItemText
                 primary={meeting.subject}
                 secondary={`${formatLocalTime(meeting.startTime, timeFormat)}–${formatLocalTime(meeting.endTime, timeFormat)} · ${roomsById.get(meeting.room.id)?.name ?? ""}`}
@@ -99,6 +104,22 @@ export default function HomePage() {
   const roomsById = useMemo(
     () => new Map<string, Room>((data?.workspace.rooms ?? []).map((room) => [room.id, room])),
     [data],
+  )
+  // Same response too (see PAGE_LOAD's own comment) - needed to resolve organiser/attendee names
+  // for the shared meeting-detail overlay below, not previously built here since this page didn't
+  // show attendee names before designs/meeting-detail-consolidation.md.
+  const peopleById = useMemo(
+    () => new Map<string, Person>((data?.workspace.people ?? []).map((person) => [person.id, person])),
+    [data],
+  )
+  const roomIndexById = useMemo(() => {
+    const sorted = [...(data?.workspace.rooms ?? [])].sort((a, b) => a.name.localeCompare(b.name))
+    return new Map(sorted.map((room, index) => [room.id, index]))
+  }, [data])
+  const { open: openMeetingDetail, overlay: meetingDetailOverlay } = useMeetingDetailOverlay(
+    peopleById,
+    roomsById,
+    roomIndexById,
   )
 
   const today = dayjs().format(DATE_KEY_FORMAT)
@@ -273,9 +294,23 @@ export default function HomePage() {
       </Paper>
 
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3}>
-        <AgendaList title="Today" meetings={agendaFor(today)} loading={agendaLoading} roomsById={roomsById} />
-        <AgendaList title="Tomorrow" meetings={agendaFor(tomorrow)} loading={agendaLoading} roomsById={roomsById} />
+        <AgendaList
+          title="Today"
+          meetings={agendaFor(today)}
+          loading={agendaLoading}
+          roomsById={roomsById}
+          onMeetingClick={openMeetingDetail}
+        />
+        <AgendaList
+          title="Tomorrow"
+          meetings={agendaFor(tomorrow)}
+          loading={agendaLoading}
+          roomsById={roomsById}
+          onMeetingClick={openMeetingDetail}
+        />
       </Stack>
+
+      {meetingDetailOverlay}
     </Stack>
   )
 }

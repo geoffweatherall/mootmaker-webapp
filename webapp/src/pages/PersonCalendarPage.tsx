@@ -54,14 +54,17 @@ function MeetingDetail({
   roomName,
   roomColor,
   timeFormat,
+  peopleById,
   onClose,
 }: {
   meeting: Meeting
   roomName: string
   roomColor: string
   timeFormat: Parameters<typeof formatLocalTime>[1]
+  peopleById: Map<string, Person>
   onClose: () => void
 }) {
+  const organiserName = peopleById.get(meeting.organiser.id)?.name ?? ''
   return (
     <Stack spacing={2} sx={{ p: 3, width: { xs: 'auto', md: 340 }, maxHeight: '80vh', overflowY: 'auto' }}>
       <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -84,9 +87,9 @@ function MeetingDetail({
 
       <Stack spacing={1.5} sx={{ pt: 1.5, borderTop: 1, borderColor: 'divider' }}>
         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-          <PersonAvatar name={meeting.organiser.name} size={26} />
+          <PersonAvatar name={organiserName} size={26} />
           <Typography variant="body2">
-            <strong>{meeting.organiser.name}</strong>
+            <strong>{organiserName}</strong>
             <Typography component="span" variant="body2" color="text.secondary">
               {' '}
               · Organiser
@@ -105,12 +108,15 @@ function MeetingDetail({
             No attendees.
           </Typography>
         ) : (
-          meeting.attendees.map((attendee) => (
-            <Stack key={attendee.id} direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-              <PersonAvatar name={attendee.name} size={26} />
-              <Typography variant="body2">{attendee.name}</Typography>
-            </Stack>
-          ))
+          meeting.attendees.map((attendee) => {
+            const attendeeName = peopleById.get(attendee.id)?.name ?? ''
+            return (
+              <Stack key={attendee.id} direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+                <PersonAvatar name={attendeeName} size={26} />
+                <Typography variant="body2">{attendeeName}</Typography>
+              </Stack>
+            )
+          })
         )}
       </Stack>
 
@@ -154,6 +160,10 @@ export default function PersonCalendarPage() {
 
   const people = useMemo(
     () => [...(peopleData?.workspace.people ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
+    [peopleData],
+  )
+  const peopleById = useMemo(
+    () => new Map((peopleData?.workspace.people ?? []).map((person) => [person.id, person])),
     [peopleData],
   )
   const selectedPerson = useMemo(() => {
@@ -451,6 +461,7 @@ export default function PersonCalendarPage() {
               roomName={openMeetingRoom?.name ?? ''}
               roomColor={openMeetingColor}
               timeFormat={timeFormat}
+              peopleById={peopleById}
               onClose={closeDetail}
             />
           </Box>
@@ -468,6 +479,7 @@ export default function PersonCalendarPage() {
               roomName={openMeetingRoom?.name ?? ''}
               roomColor={openMeetingColor}
               timeFormat={timeFormat}
+              peopleById={peopleById}
               onClose={closeDetail}
             />
           )}

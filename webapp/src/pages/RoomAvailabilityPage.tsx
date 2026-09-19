@@ -2,16 +2,18 @@ import { useQuery } from '@apollo/client/react'
 import AddIcon from '@mui/icons-material/Add'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import {
   Box,
   Button,
-  ButtonBase,
+  Chip,
   CircularProgress,
+  Collapse,
+  Fab,
   IconButton,
   LinearProgress,
   Paper,
   Stack,
-  Tooltip,
   Typography,
   useTheme,
 } from '@mui/material'
@@ -22,29 +24,16 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import emptyRooms from '../assets/empty-rooms.svg'
 import { EmptyState } from '../components/EmptyState'
 import { ErrorBanner } from '../components/ErrorBanner'
-import { BUSINESS_END_HOUR, BUSINESS_START_HOUR } from '../constants/businessHours'
 import { errorMessages } from '../graphql/errorMessages'
 import { useAuth } from '../auth/authContext'
-import { formatHourOfDay, formatLocalTime } from '../graphql/formatDateTime'
+import { formatLocalTime } from '../graphql/formatDateTime'
 import { DAYS, REFERENCE_DATA } from '../graphql/queries'
 import type { Meeting } from '../graphql/types'
-import { alpha } from '@mui/material/styles'
-import { readableTextOn, roomColorAt } from '../theme/roomColor'
+import { roomColorAt } from '../theme/roomColor'
 
 const DATE_PARAM_FORMAT = 'YYYY-MM-DD'
 const DATE_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 const DATE_KEY_FORMAT = 'YYYY-MM-DD'
-
-const BUSINESS_START_MINUTES = BUSINESS_START_HOUR * 60
-const BUSINESS_END_MINUTES = BUSINESS_END_HOUR * 60
-const BUSINESS_MINUTES = BUSINESS_END_MINUTES - BUSINESS_START_MINUTES
-
-// One mark per hour boundary. The numbers are fixed; how each is written is the viewer's own
-// choice, applied at render time via formatHourOfDay.
-const HOUR_MARKS = Array.from(
-  { length: BUSINESS_END_HOUR - BUSINESS_START_HOUR + 1 },
-  (_, i) => BUSINESS_START_HOUR + i,
-)
 
 function parseDateParam(value: string | undefined): Dayjs | null {
   if (!value || !DATE_PARAM_PATTERN.test(value)) return null
@@ -58,10 +47,41 @@ function minutesSinceMidnight(isoLocalDateTime: string): number {
   return hours * 60 + minutes
 }
 
-// Clamp to the business-hours window and express as a 0-100 percentage across it.
-function percentThroughBusinessDay(minutes: number): number {
-  const clamped = Math.min(Math.max(minutes, BUSINESS_START_MINUTES), BUSINESS_END_MINUTES)
-  return ((clamped - BUSINESS_START_MINUTES) / BUSINESS_MINUTES) * 100
+interface RoomStatus {
+  label: string
+  free: boolean
+  subLabel: string
+}
+
+// The card's headline status and caption. Only "today" has a "now" to be busy/free relative to -
+// a future day gets a plain summary instead of a live pill, since "busy until 14:00" makes no
+// sense for a day that hasn't started yet.
+function statusForRoom(meetings: Meeting[], isToday: boolean, now: Dayjs, dayLabel: string, timeFormat: Parameters<typeof formatLocalTime>[1]): RoomStatus {
+  if (isToday) {
+    const nowMinutes = now.hour() * 60 + now.minute()
+    const busy = meetings.find((m) => {
+      const start = minutesSinceMidnight(m.startTime)
+      const end = minutesSinceMidnight(m.endTime)
+      return start <= nowMinutes && nowMinutes < end
+    })
+    if (busy) {
+      return { label: `Busy until ${formatLocalTime(busy.endTime, timeFormat)}`, free: false, subLabel: busy.subject }
+    }
+    const next = meetings.find((m) => minutesSinceMidnight(m.startTime) > nowMinutes)
+    return {
+      label: 'Free now',
+      free: true,
+      subLabel: next ? `Next: ${next.subject} at ${formatLocalTime(next.startTime, timeFormat)}` : 'No more meetings today',
+    }
+  }
+  if (meetings.length === 0) {
+    return { label: 'Free all day', free: true, subLabel: 'No meetings booked yet.' }
+  }
+  return {
+    label: `${meetings.length} ${meetings.length === 1 ? 'meeting' : 'meetings'}`,
+    free: false,
+    subLabel: `First: ${meetings[0].subject} at ${formatLocalTime(meetings[0].startTime, timeFormat)}`,
+  }
 }
 
 export default function RoomAvailabilityPage() {
@@ -70,32 +90,15 @@ export default function RoomAvailabilityPage() {
   const navigate = useNavigate()
   const [dismissedError, setDismissedError] = useState(false)
   const theme = useTheme()
+  const [expandedRoomIds, setExpandedRoomIds] = useState<Set<string>>(new Set())
 
-  // The grid (fixed-width business-hours columns) scrolls horizontally within its own container
-  // on narrow screens rather than the whole page - these track how far scrolled it is, purely to
-  // show/hide the left/right fade hints below (not to run the scroll itself).
-  //
-  // State (via a ref callback) rather than a plain useRef: this grid only mounts once *both*
-  // LIST_ROOMS and LIST_MEETINGS have resolved (see showSpinner below), and those two queries
-  // settle independently - LIST_ROOMS often finishes first. A useRef + useEffect keyed on the
-  // rooms array can miss the grid's real mount entirely: the rooms array can stop changing before
-  // showSpinner ever goes false, so the effect fires once while the ref is still null (grid not
-  // mounted yet) and never fires again once it actually mounts, since its own dependency never
-  // changes a second time - the ResizeObserver below never gets attached. A ref callback sidesteps
-  // this: React calls it exactly when the DOM node mounts/unmounts, independent of any query's
-  // loading state, so the effect that depends on this state always gets a real chance to run.
-  const [gridScrollEl, setGridScrollEl] = useState<HTMLDivElement | null>(null)
-  // The inner minWidth:720 content box - its rendered width is what actually determines whether
-  // gridScrollEl (the Paper) is scrollable (scrollWidth), independently of the Paper's own box size.
-  const [gridContentEl, setGridContentEl] = useState<HTMLDivElement | null>(null)
-  const [canScrollLeft, setCanScrollLeft] = useState(false)
-  const [canScrollRight, setCanScrollRight] = useState(false)
-
-  function updateScrollFades() {
-    const el = gridScrollEl
-    if (!el) return
-    setCanScrollLeft(el.scrollLeft > 0)
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1)
+  function toggleExpanded(roomId: string) {
+    setExpandedRoomIds((current) => {
+      const next = new Set(current)
+      if (next.has(roomId)) next.delete(roomId)
+      else next.add(roomId)
+      return next
+    })
   }
 
   const parsedDate = parseDateParam(date)
@@ -124,12 +127,10 @@ export default function RoomAvailabilityPage() {
   } = useQuery(REFERENCE_DATA, { fetchPolicy: 'cache-first' })
 
   // Only the selected day's meetings, across every room - the API filters server-side so this
-  // page never fetches more than one day's worth of meetings.
-  // One day, read by its own key. Day-keyed reads are consistent, so a query issued immediately
-  // after a write returns the meeting just created - which is what let the router-state handoff from
-  // AddMeetingPage be deleted outright, along with the merge that paired with it. The workaround
-  // existed only because this page read through a GSI, and DynamoDB refuses ConsistentRead on one.
-  // See mootmaker-webapp#12 for the bug that made it necessary.
+  // page never fetches more than one day's worth of meetings. One day, read by its own key -
+  // day-keyed reads are consistent, so a query issued immediately after a write returns the
+  // meeting just created. See mootmaker-webapp#12 for the bug that made a workaround necessary
+  // before this page moved onto DAYS.
   const {
     data: meetingsData,
     loading: meetingsLoading,
@@ -143,22 +144,6 @@ export default function RoomAvailabilityPage() {
     () => [...(roomsData?.workspace.rooms ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
     [roomsData],
   )
-
-  // Attaches (and re-measures) exactly when both boxes are actually mounted, and re-measures again
-  // whenever either's rendered size changes afterward - rotating a phone from portrait to
-  // landscape, web fonts swapping in after their async load (this app self-hosts via @fontsource -
-  // see main.tsx), or anything else that reflows the grid without gridScrollEl/gridContentEl
-  // themselves changing. See the state declarations above for why this depends on ref-callback
-  // state rather than a rooms-array-keyed effect - that version had a real, confirmed-live bug
-  // where the observer could simply never get attached (e-room-availability.md's E.36 Notes).
-  useEffect(() => {
-    if (!gridScrollEl || !gridContentEl) return
-    const observer = new ResizeObserver(updateScrollFades)
-    observer.observe(gridScrollEl)
-    observer.observe(gridContentEl)
-    updateScrollFades()
-    return () => observer.disconnect()
-  }, [gridScrollEl, gridContentEl])
 
   const meetingsByRoom = useMemo(() => {
     // Exactly the day asked for, and nothing to reconcile: the response replaced this day's entity
@@ -183,6 +168,15 @@ export default function RoomAvailabilityPage() {
   // (meetingsLoading stays true then too, but meetingsData is already populated from the cache).
   const showSpinner = (roomsLoading && !roomsData) || (meetingsLoading && !meetingsData)
   const bannerMessages = [...errorMessages(roomsError), ...errorMessages(meetingsError)]
+
+  const now = dayjs()
+  const isToday = selectedDate.isSame(now, 'day')
+  const isTomorrow = selectedDate.isSame(now.add(1, 'day'), 'day')
+  // "today"/"tomorrow" for the two near days (Google Calendar/Fantastical convention), the plain
+  // weekday name beyond that - avoids "in 4 days" while still reading naturally in "See Friday's
+  // meetings". See designs/room-availability-and-person-calendar-redesign.md's "Day-relative
+  // framing" decision.
+  const dayLabel = isToday ? 'today' : isTomorrow ? 'tomorrow' : selectedDate.format('dddd')
 
   return (
     <Stack spacing={3}>
@@ -209,26 +203,8 @@ export default function RoomAvailabilityPage() {
           <IconButton onClick={() => goToDate(selectedDate.add(1, 'day'))} aria-label="Next day">
             <ChevronRightIcon />
           </IconButton>
-          {/* Hidden below "sm" - the header row has no room to wrap this in sensibly alongside
-              the date-nav controls without it overflowing the viewport, so on narrow screens it
-              moves to its own full-width copy at the foot of the page instead (see below). */}
-          <Button
-            component={Link}
-            to="/meetings/add"
-            state={{ date: selectedDate.format(DATE_PARAM_FORMAT) }}
-            variant="contained"
-            startIcon={<AddIcon />}
-            sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
-          >
-            Add Meeting
-          </Button>
         </Stack>
       </Stack>
-
-      <Typography variant="body2" color="text.secondary">
-        Showing business hours ({formatHourOfDay(BUSINESS_START_HOUR, timeFormat)}–
-        {formatHourOfDay(BUSINESS_END_HOUR, timeFormat)}).
-      </Typography>
 
       <Box sx={{ height: 4 }}>{loading && !showSpinner && <LinearProgress />}</Box>
 
@@ -243,199 +219,133 @@ export default function RoomAvailabilityPage() {
       ) : rooms.length === 0 ? (
         !roomsError && <EmptyState message="No rooms exist yet." illustration={emptyRooms} />
       ) : (
-        <Box sx={{ position: 'relative' }}>
-          <Paper ref={setGridScrollEl} onScroll={updateScrollFades} sx={{ p: 2, overflowX: 'auto' }}>
-            <Box ref={setGridContentEl} sx={{ minWidth: 720 }}>
-              <Box sx={{ display: 'flex' }}>
-                <Box
-                  sx={{ width: 200, flexShrink: 0, position: 'sticky', left: 0, zIndex: 1, bgcolor: 'background.paper' }}
-                />
-                <Box sx={{ position: 'relative', flexGrow: 1, height: 24 }}>
-                  {HOUR_MARKS.map((hour, i) => (
-                    <Typography
-                      key={hour}
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{
-                        position: 'absolute',
-                        left: `${(i / (HOUR_MARKS.length - 1)) * 100}%`,
-                        transform:
-                          i === HOUR_MARKS.length - 1
-                            ? 'translateX(-100%)'
-                            : i === 0
-                              ? undefined
-                              : 'translateX(-50%)',
-                      }}
-                    >
-                      {formatHourOfDay(hour, timeFormat)}
-                    </Typography>
-                  ))}
-                </Box>
-              </Box>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
+            gap: 2,
+            // Room for the fixed FAB below so the last row's expanded content is never hidden
+            // under it.
+            pb: 10,
+          }}
+        >
+          {rooms.map((room, roomIndex) => {
+            // See theme/roomColor.ts - a room's colour is a secondary scan aid, not its only
+            // identity: the room name is always shown as text alongside it too.
+            const roomColor = roomColorAt(roomIndex, theme.palette.mode)
+            const meetings = meetingsByRoom.get(room.id) ?? []
+            const status = statusForRoom(meetings, isToday, now, dayLabel, timeFormat)
+            const expanded = expandedRoomIds.has(room.id)
 
-              {rooms.map((room, roomIndex) => {
-                // See theme/roomColor.ts - a room's colour is a secondary scan aid, not its only
-                // identity: the room name is always shown as text alongside it too.
-                const roomColor = roomColorAt(roomIndex, theme.palette.mode)
-                const meetingTextColor = readableTextOn(roomColor, theme.palette.text.primary)
-                return (
-                  <Box
-                    key={room.id}
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'stretch',
-                      borderTop: '1px solid',
-                      borderColor: 'divider',
-                      py: 1.5,
-                    }}
+            return (
+              <Paper key={room.id} sx={{ p: 2.5 }}>
+                <Stack spacing={1.5}>
+                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                    <Box
+                      sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: roomColor, flexShrink: 0 }}
+                    />
+                    <Typography variant="subtitle1" sx={{ flexGrow: 1, fontWeight: 700 }}>
+                      {room.name}
+                    </Typography>
+                    <Chip label={`Capacity ${room.capacity}`} size="small" variant="outlined" />
+                  </Stack>
+
+                  <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Chip
+                      label={status.label}
+                      size="small"
+                      sx={{
+                        fontWeight: 700,
+                        bgcolor: status.free ? 'rgba(14,143,130,.14)' : 'action.selected',
+                        color: status.free ? 'secondary.dark' : 'text.secondary',
+                      }}
+                    />
+                    <Typography variant="body2" color="text.secondary">
+                      {status.subLabel}
+                    </Typography>
+                  </Stack>
+
+                  <Button
+                    onClick={() => toggleExpanded(room.id)}
+                    aria-expanded={expanded}
+                    sx={{ justifyContent: 'space-between', textTransform: 'none' }}
+                    endIcon={
+                      <ExpandMoreIcon
+                        sx={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 150ms ease' }}
+                      />
+                    }
                   >
-                    <Box
-                      sx={{
-                        width: 200,
-                        flexShrink: 0,
-                        pr: 2,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center',
-                        // Stays put as the grid scrolls horizontally on narrow screens, so a
-                        // room's name/capacity is never scrolled out of view while checking its
-                        // later hours.
-                        position: 'sticky',
-                        left: 0,
-                        zIndex: 1,
-                        bgcolor: 'background.paper',
-                      }}
-                    >
-                      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                        <Box
-                          sx={{
-                            width: 10,
-                            height: 10,
-                            borderRadius: '50%',
-                            bgcolor: roomColor,
-                            flexShrink: 0,
-                          }}
-                        />
-                        <Typography variant="subtitle2">{room.name}</Typography>
-                      </Stack>
-                      <Typography variant="caption" color="text.secondary">
-                        Capacity {room.capacity}
-                      </Typography>
-                    </Box>
-                    <Box
-                      sx={{
-                        position: 'relative',
-                        flexGrow: 1,
-                        height: 48,
-                        bgcolor: alpha(roomColor, 0.14),
-                        borderRadius: 1,
-                      }}
-                    >
-                      {HOUR_MARKS.slice(1, -1).map((hour, i) => (
-                        <Box
-                          key={hour}
-                          sx={{
-                            position: 'absolute',
-                            top: 0,
-                            bottom: 0,
-                            left: `${((i + 1) / (HOUR_MARKS.length - 1)) * 100}%`,
-                            borderLeft: '1px solid',
-                            borderColor: 'divider',
-                          }}
-                        />
-                      ))}
-                      {(meetingsByRoom.get(room.id) ?? []).map((meeting) => {
-                        const left = percentThroughBusinessDay(minutesSinceMidnight(meeting.startTime))
-                        const right = percentThroughBusinessDay(minutesSinceMidnight(meeting.endTime))
-                        if (right <= left) return null
-                        return (
-                          <Tooltip
+                    {expanded ? `Hide ${dayLabel}'s meetings` : `See ${dayLabel}'s meetings (${meetings.length})`}
+                  </Button>
+                  <Collapse in={expanded}>
+                    <Stack spacing={0.5} sx={{ pt: 0.5 }}>
+                      {meetings.length === 0 ? (
+                        <Typography variant="body2" color="text.secondary">
+                          No meetings booked for {dayLabel}.
+                        </Typography>
+                      ) : (
+                        meetings.map((meeting) => (
+                          <Stack
                             key={meeting.id}
-                            title={`${meeting.subject}: ${formatLocalTime(meeting.startTime, timeFormat)}–${formatLocalTime(meeting.endTime, timeFormat)}`}
+                            component={Link}
+                            to={`/meetings/${meeting.id}`}
+                            direction="row"
+                            spacing={1.5}
+                            sx={{
+                              alignItems: 'baseline',
+                              px: 1,
+                              py: 0.75,
+                              borderRadius: 1,
+                              textDecoration: 'none',
+                              color: 'text.primary',
+                              '&:hover': { bgcolor: 'action.hover' },
+                            }}
                           >
-                            <ButtonBase
-                              component={Link}
-                              to={`/meetings/${meeting.id}`}
-                              focusRipple
-                              sx={{
-                                position: 'absolute',
-                                top: 4,
-                                bottom: 4,
-                                left: `${left}%`,
-                                width: `${right - left}%`,
-                                bgcolor: roomColor,
-                                color: meetingTextColor,
-                                borderRadius: 1,
-                                px: 0.75,
-                                overflow: 'hidden',
-                                justifyContent: 'flex-start',
-                                transition: 'filter 120ms ease',
-                                '&:hover': { filter: 'brightness(0.92)' },
-                              }}
-                            >
-                              <Typography variant="caption" noWrap component="span">
-                                {meeting.subject}
-                              </Typography>
-                            </ButtonBase>
-                          </Tooltip>
-                        )
-                      })}
-                    </Box>
-                  </Box>
-                )
-              })}
-            </Box>
-          </Paper>
-          {/* Fade hints for the grid's own horizontal scroll (see gridScrollEl above) - a static
-              width is fine since they only need to signal "there's more this way", not track the
-              exact remaining distance. Sit outside the scrolling Paper so they stay pinned to the
-              visible edges rather than scrolling away with the content. left: 200 keeps the left
-              fade from covering the sticky room-label column it sits beside. */}
-          {canScrollLeft && (
-            <Box
-              aria-hidden
-              sx={{
-                position: 'absolute',
-                top: 0,
-                bottom: 0,
-                left: 200,
-                width: 24,
-                pointerEvents: 'none',
-                background: (t) => `linear-gradient(to right, ${t.palette.background.paper}, transparent)`,
-              }}
-            />
-          )}
-          {canScrollRight && (
-            <Box
-              aria-hidden
-              sx={{
-                position: 'absolute',
-                top: 0,
-                bottom: 0,
-                right: 0,
-                width: 24,
-                pointerEvents: 'none',
-                background: (t) => `linear-gradient(to left, ${t.palette.background.paper}, transparent)`,
-              }}
-            />
-          )}
+                            <Typography variant="body2" sx={{ fontWeight: 600, flexShrink: 0 }}>
+                              {formatLocalTime(meeting.startTime, timeFormat)}–{formatLocalTime(meeting.endTime, timeFormat)}
+                            </Typography>
+                            <Typography variant="body2">{meeting.subject}</Typography>
+                          </Stack>
+                        ))
+                      )}
+                    </Stack>
+                  </Collapse>
+                </Stack>
+              </Paper>
+            )
+          })}
         </Box>
       )}
 
-      {/* The header row's own "Add Meeting" button (see above) is hidden below "sm" - this is
-          its narrow-screen replacement, full-width at the foot of the page rather than crammed
-          into the header alongside the date-nav controls. */}
-      <Button
-        component={Link}
-        to="/meetings/add"
-        state={{ date: selectedDate.format(DATE_PARAM_FORMAT) }}
-        variant="contained"
-        startIcon={<AddIcon />}
-        fullWidth
-        sx={{ display: { xs: 'inline-flex', sm: 'none' } }}
+      {/* Anchored to the same max-width column Layout.tsx's own <Container maxWidth="md"> uses
+          for every page's content, not the bare viewport edge - a plain position:fixed;right:20px
+          drifts away from the content on a wide screen. See the design doc's FAB anchoring
+          decision. */}
+      <Box
+        sx={{
+          position: 'fixed',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          maxWidth: 'md',
+          mx: 'auto',
+          display: 'flex',
+          justifyContent: 'flex-end',
+          p: 3,
+          pointerEvents: 'none',
+        }}
       >
-        Add Meeting
-      </Button>
+        <Fab
+          component={Link}
+          to="/meetings/add"
+          state={{ date: selectedDate.format(DATE_PARAM_FORMAT) }}
+          color="primary"
+          aria-label="Add Meeting"
+          sx={{ pointerEvents: 'auto' }}
+        >
+          <AddIcon />
+        </Fab>
+      </Box>
     </Stack>
   )
 }

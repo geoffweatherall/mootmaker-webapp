@@ -366,8 +366,8 @@ export default function PersonCalendarPage() {
                           onClick={() => setOpenMeeting(meeting)}
                           sx={{
                             display: 'flex',
-                            alignItems: 'flex-start',
-                            gap: 1,
+                            flexDirection: 'column',
+                            alignItems: 'stretch',
                             width: '100%',
                             textAlign: 'left',
                             borderRadius: 1,
@@ -376,17 +376,21 @@ export default function PersonCalendarPage() {
                             '&:hover': { bgcolor: 'action.hover' },
                           }}
                         >
-                          <Box sx={{ width: 8, height: 8, mt: 0.7, borderRadius: '50%', bgcolor: roomColor, flexShrink: 0 }} />
-                          <Stack>
+                          {/* Dot centered against just the subject line's own box via flex, not a
+                              hand-tuned margin - a fixed offset drifts out of alignment whenever a
+                              browser's line-height rendering differs slightly from the one it was
+                              tuned against (see mootmaker-webapp#71). */}
+                          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: roomColor, flexShrink: 0 }} />
                             <Typography variant="body2" sx={{ fontWeight: 600 }}>
                               {meeting.subject}
                             </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {formatLocalTime(meeting.startTime, timeFormat)}–{formatLocalTime(meeting.endTime, timeFormat)}
-                              {' · '}
-                              {roomsById.get(meeting.room.id)?.name ?? ''}
-                            </Typography>
                           </Stack>
+                          <Typography variant="caption" color="text.secondary" sx={{ pl: 2 }}>
+                            {formatLocalTime(meeting.startTime, timeFormat)}–{formatLocalTime(meeting.endTime, timeFormat)}
+                            {' · '}
+                            {roomsById.get(meeting.room.id)?.name ?? ''}
+                          </Typography>
                         </ButtonBase>
                       )
                     })

@@ -509,9 +509,12 @@ test('E.35 - room colour is consistent between Room Availability and Person Cale
   await goToOwnCalendar(page)
   // Person Calendar's meeting rows are a ButtonBase (opens a detail panel, not a link), with no
   // aria-label of its own - its accessible name is just its visible text (subject, time, room), so
-  // an exact:false role match on the subject finds it. The colour dot is the row's first child div.
+  // an exact:false role match on the subject finds it. The colour dot sits two levels deep
+  // (PersonCalendarPage.tsx: ButtonBase > Stack(dot, subject) > Box(dot)) since
+  // mootmaker-webapp#71's alignment fix, so `div` alone now also matches that wrapping Stack -
+  // `div div` (a div nested inside another div) is specific to the dot itself.
   const meetingRow = page.getByRole('button', { name: subject, exact: false })
-  const calendarDot = meetingRow.locator('div').first()
+  const calendarDot = meetingRow.locator('div div').first()
   const calendarColor = await calendarDot.evaluate((el) => getComputedStyle(el).backgroundColor)
 
   expect(calendarColor).toBe(availabilityColor)

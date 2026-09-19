@@ -232,7 +232,13 @@ async function addMeeting(page: Page, fixture: Fixture, format: Format): Promise
       if (!/\/meetings\/[^/]+$/.test(url)) {
         throw new Error(`Could not extract a meeting URL from the shared URL: ${url}`)
       }
-      await page.getByRole('button', { name: 'Close' }).click()
+      // Scoped via the Share button's own sibling, not a page-wide role query - the clipboard-
+  // fallback confirmation toast (SuccessToast/MUI Alert) also renders its own "Close" button
+  // with the identical accessible name, and a page-wide query resolves to both ambiguously.
+  await page
+    .getByRole('button', { name: 'Share meeting' })
+    .locator('xpath=following-sibling::button[1]')
+    .click()
       return url
     }
   }

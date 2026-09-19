@@ -115,7 +115,13 @@ async function createMeetingAndOpenDetails(page: Page, { subject, roomName, atte
   const url = await page.evaluate(() => navigator.clipboard.readText())
   const match = url.match(/\/meetings\/([^/?#]+)/)
   if (!match) throw new Error(`Could not extract a meeting id from the shared URL: ${url}`)
-  await page.getByRole('button', { name: 'Close' }).click()
+  // Scoped via the Share button's own sibling, not a page-wide role query - the clipboard-
+  // fallback confirmation toast (SuccessToast/MUI Alert) also renders its own "Close" button
+  // with the identical accessible name, and a page-wide query resolves to both ambiguously.
+  await page
+    .getByRole('button', { name: 'Share meeting' })
+    .locator('xpath=following-sibling::button[1]')
+    .click()
   return match[1]
 }
 

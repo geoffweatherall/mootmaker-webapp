@@ -144,7 +144,13 @@ async function createMeetingViaForm(page: Page, options: MeetingFormOptions): Pr
   if (!match) {
     throw new Error(`Could not extract a meeting id from the shared URL: ${url}`)
   }
-  await page.getByRole('button', { name: 'Close' }).click()
+  // Scoped via the Share button's own sibling, not a page-wide role query - the clipboard-
+  // fallback confirmation toast (SuccessToast/MUI Alert) also renders its own "Close" button
+  // with the identical accessible name, and a page-wide query resolves to both ambiguously.
+  await page
+    .getByRole('button', { name: 'Share meeting' })
+    .locator('xpath=following-sibling::button[1]')
+    .click()
 
   return { id: match[1], url }
 }
@@ -175,8 +181,11 @@ test.describe('H. Meeting Details', () => {
     // showed it either) renders just the room name, not "<name> (capacity N)". See
     // designs/meeting-detail-consolidation.md's field-order decision.
     await expect(page.getByText(roomName, { exact: true })).toBeVisible()
-    await expect(page.getByText('Demo Strater', { exact: true }).locator('..')).toContainText('Organiser')
-    await expect(page.getByText(attendeeName, { exact: true })).toBeVisible()
+    // Scoped to <main> - the sidebar also shows the signed-in user's own name ("Demo Strater"),
+    // which is the organiser here too, so an unscoped query is ambiguous between the two.
+    const main = page.getByRole('main')
+    await expect(main.getByText('Demo Strater', { exact: true }).locator('..')).toContainText('Organiser')
+    await expect(main.getByText(attendeeName, { exact: true })).toBeVisible()
   })
 
   test('H.69: viewing details of a meeting you attend but did not organise shows the other person as organiser and yourself as an attendee', async ({
@@ -206,8 +215,11 @@ test.describe('H. Meeting Details', () => {
     // Page loads with no access error (proving attendee-only access works) - the full details are
     // visible, with the other person as organiser and the signed-in user among the attendees.
     await expect(page.getByRole('heading', { name: subject })).toBeVisible()
-    await expect(page.getByText(organiserName, { exact: true }).locator('..')).toContainText('Organiser')
-    await expect(page.getByText('Demo Strater', { exact: true })).toBeVisible()
+    // Scoped to <main> - the sidebar also shows the signed-in user's own name ("Demo Strater"),
+    // which is an attendee here too, so an unscoped query is ambiguous between the two.
+    const main = page.getByRole('main')
+    await expect(main.getByText(organiserName, { exact: true }).locator('..')).toContainText('Organiser')
+    await expect(main.getByText('Demo Strater', { exact: true })).toBeVisible()
   })
 
   test('H.70: viewing details of a meeting you are neither organiser nor attendee of still loads full details', async ({

@@ -44,18 +44,21 @@ export const cache = new InMemoryCache({
       keyFields: false,
       fields: {
         /**
-         * Replace, never accumulate.
+         * Replace, never accumulate - a write-time complement to `Query.workspace`'s `read` above.
          *
-         * The design called for a `read` policy mapping `args.dates` onto constructed `Day`
-         * references. That is not implementable as written: `dates` is an argument of `workspace`,
-         * not of `days`, so a field policy on `days` receives no `args` at all. It could read
-         * `variables.dates` instead, but that silently couples the cache to one variable name and
-         * breaks for any query that inlines its dates.
+         * A `read` policy on `days` itself can't map `args.dates` onto constructed `Day` references:
+         * `dates` is an argument of `workspace`, not of `days`, so a field policy on `days` receives
+         * no `args` at all. (It could read `variables.dates` instead, but that silently couples the
+         * cache to one variable name and breaks for any query that inlines its dates.) That's why the
+         * args-aware reconstruction lives on `Query.workspace.read` instead, where `dates` actually
+         * is the field's own argument - see there for the fix to mootmaker-webapp#66 (a stale window
+         * of days rendering on scroll because this field alone never reflected the current `dates`).
          *
-         * Replacing achieves what the read policy was chosen for — the list never grows across a
-         * session, and `workspace.days` means "the days this query asked for" rather than "every day
-         * ever seen". The individual `Day` entities persist independently of it, which is the part
-         * that actually matters: screens render per-day from the cache, not from this list.
+         * `merge: false` just keeps *this* field's write-time behaviour simple - each response
+         * replaces whatever list was here rather than attempting a positional array merge. What's
+         * stored here barely matters now: any query with a `dates` argument gets its `days` rebuilt
+         * fresh by the `read` policy above regardless of what was last written. The individual `Day`
+         * entities persist independently either way, which is what actually matters.
          */
         days: {
           merge: false,
@@ -72,9 +75,31 @@ export const cache = new InMemoryCache({
          * rooms and people are cached again under each. Because the array changes on every
          * navigation, those slots accumulate as junk nobody reads. The symptom is not an error — it
          * is an app that refetches everything whenever the user changes week.
+         *
+         * `read` rebuilds `days` from `args.dates` on every read, rather than trusting whatever
+         * `days` list the single slot above last had written into it (see `Workspace.days` below -
+         * that field's own key is not args-aware, so left alone it just returns the previous
+         * window's list regardless of what the current query asked for). `dates` is `workspace`'s
+         * own argument, which is why the fix lives here rather than as a `read` on `days` itself -
+         * see the note below for why that was tried first and abandoned.
+         *
+         * Constructing references by date rather than trusting the stored list is what makes
+         * scrolling a date window cache-correct: overlapping days resolve straight from already-
+         * normalized `Day` entities, and a `toReference` for a day nothing has fetched yet simply
+         * has no data behind it - `InMemoryCache` drops that entry from the list rather than
+         * returning it broken or substituting something stale, so the window renders exactly the
+         * days it actually has, not the previous window's days relabelled.
          */
         workspace: {
           keyArgs: false,
+          read(existing: { days?: unknown } | undefined, { args, toReference }) {
+            const dates = args?.dates as string[] | undefined
+            if (!dates) return existing
+            return {
+              ...existing,
+              days: dates.map((date) => toReference({ __typename: 'Day', date })),
+            }
+          },
         },
       },
     },

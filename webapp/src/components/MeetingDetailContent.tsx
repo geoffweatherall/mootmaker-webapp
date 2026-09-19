@@ -52,7 +52,10 @@ export function MeetingDetailContent({
   const [linkCopied, setLinkCopied] = useState(false)
 
   return (
-    <Stack spacing={2} sx={{ p: 3, width: { xs: 'auto', md: 340 }, maxHeight: '80vh', overflowY: 'auto' }}>
+    // Deliberately no fixed width here - the sheet/panel's own wrapper (useMeetingDetailOverlay.tsx)
+    // sizes itself (340px side panel, full-width bottom sheet); the full page's Paper sizes itself
+    // too (MeetingDetailsPage.tsx). This fills whichever it's given.
+    <Stack spacing={2} sx={{ p: 3, maxHeight: '80vh', overflowY: 'auto' }}>
       <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <Typography variant="h6" component="h2">
           {meeting.subject}

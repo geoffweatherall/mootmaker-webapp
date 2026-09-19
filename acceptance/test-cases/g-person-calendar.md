@@ -197,33 +197,35 @@ not be a reachable real-world state for this product at all. Left unautomated pe
 ---
 
 <a id="tc-g65"></a>
-### G.65 — Clicking a meeting row opens its detail panel, linking to Meeting Details
+### G.65 — Clicking a meeting row opens its detail panel, and Share reaches Meeting Details
 
-**Use case:** [use-cases.md#uc-65](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-65) — "Clicking a meeting row opens its detail panel (bottom sheet on narrow viewports, a side panel at ≥900px), which links through to its Meeting Details page."
+**Use case:** [use-cases.md#uc-65](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-65) — "Clicking a meeting row opens its detail panel (bottom sheet on narrow viewports, a side panel at ≥900px); its Share action hands out a link to the standalone Meeting Details page."
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** Signed in as the demo user. A room and one meeting on a date within the visible week.
 
 **Given** a meeting visible on the calendar
-**When** its row is clicked, and then the panel's "View full details" link is clicked
-**Then** the detail panel opens first, showing the subject as its own heading, and only then does `/meetings/<id>` load showing that same subject
+**When** its row is clicked, and then the panel's Share button is clicked
+**Then** the detail panel opens first, showing the subject as its own heading; Share writes the meeting's real `/meetings/<id>` URL to the clipboard (`navigator.share` forced onto its clipboard-fallback branch deterministically, since a real OS share sheet can't be driven by Playwright), and visiting that URL loads `MeetingDetailsPage` showing the same subject
 
 **Steps:**
 1. Sign in; create a room and a meeting on a date within the visible week.
 2. Navigate to own Calendar; click the meeting's row (`getByText(subject, { exact: false })` within its date section).
 3. Assert the detail panel's heading (level 2) equals the subject.
-4. Click "View full details" (rendered as an anchor, so role `link`, despite reading like a button).
+4. Click "Share meeting", read the URL off the clipboard, and visit it directly.
 
 **Assertions:**
 - After step 3: the panel is open, showing the subject as a level-2 heading.
-- After step 4: URL is `/meetings/<id>`; `MeetingDetailsPage`'s (level-1) heading equals the subject.
+- After step 4: the clipboard held a `/meetings/<id>` URL; visiting it shows `MeetingDetailsPage`'s (level-1) heading equal to the subject.
 
 **Out of scope:** the details page's own content (section H); which surface (bottom sheet vs. side panel) renders at which viewport width - covered by the webapp's own mocked-integration suite instead, since it needs no real deployment to verify.
 
 **Notes:** None.
 
-**2026-09-19: redesigned along with the whole page.** Clicking a meeting row used to navigate straight to Meeting Details. The redesign inserts a detail panel first (organiser, attendees, room, time), with its own "View full details" link through to the full page - see `designs/room-availability-and-person-calendar-redesign.md`.
+**2026-09-19: redesigned along with the whole page.** Clicking a meeting row used to navigate straight to Meeting Details. The redesign inserted a detail panel first (organiser, attendees, room, time).
+
+**2026-09-20: the panel's own "View full details" link removed; Share added instead.** `/meetings/:id` is now a deep-link-only route - nothing in the app navigates there directly any more, and the panel's Share action (Web Share API, clipboard-copy fallback) is the only way to reach it from here. The panel itself was also brought into structural parity with the full page (same shared `MeetingDetailContent` component now renders both) - see `../../designs/meeting-detail-consolidation.md` in the hub repo.
 
 ---
 

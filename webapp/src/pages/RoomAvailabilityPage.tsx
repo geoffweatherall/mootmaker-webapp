@@ -6,6 +6,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import {
   Box,
   Button,
+  ButtonBase,
   Chip,
   CircularProgress,
   Collapse,
@@ -24,11 +25,12 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import emptyRooms from '../assets/empty-rooms.svg'
 import { EmptyState } from '../components/EmptyState'
 import { ErrorBanner } from '../components/ErrorBanner'
+import { useMeetingDetailOverlay } from '../components/useMeetingDetailOverlay'
 import { errorMessages } from '../graphql/errorMessages'
 import { useAuth } from '../auth/authContext'
 import { formatLocalTime } from '../graphql/formatDateTime'
 import { DAYS, REFERENCE_DATA } from '../graphql/queries'
-import type { Meeting } from '../graphql/types'
+import type { Meeting, Person } from '../graphql/types'
 import { roomColorAt } from '../theme/roomColor'
 import { dayRelativeLabel } from './dayRelativeLabel'
 import { statusForRoom } from './roomAvailabilityLogic'
@@ -102,6 +104,20 @@ export default function RoomAvailabilityPage() {
   const rooms = useMemo(
     () => [...(roomsData?.workspace.rooms ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
     [roomsData],
+  )
+  const roomIndexById = useMemo(() => new Map(rooms.map((room, index) => [room.id, index])), [rooms])
+  const roomsById = useMemo(
+    () => new Map((roomsData?.workspace.rooms ?? []).map((room) => [room.id, room])),
+    [roomsData],
+  )
+  const peopleById = useMemo(
+    () => new Map<string, Person>((roomsData?.workspace.people ?? []).map((person) => [person.id, person])),
+    [roomsData],
+  )
+  const { open: openMeetingDetail, overlay: meetingDetailOverlay } = useMeetingDetailOverlay(
+    peopleById,
+    roomsById,
+    roomIndexById,
   )
 
   const meetingsByRoom = useMemo(() => {
@@ -244,18 +260,18 @@ export default function RoomAvailabilityPage() {
                         </Typography>
                       ) : (
                         meetings.map((meeting) => (
-                          <Stack
+                          <ButtonBase
                             key={meeting.id}
-                            component={Link}
-                            to={`/meetings/${meeting.id}`}
-                            direction="row"
-                            spacing={1.5}
+                            onClick={() => openMeetingDetail(meeting)}
                             sx={{
+                              display: 'flex',
                               alignItems: 'baseline',
+                              gap: 1.5,
+                              width: '100%',
                               px: 1,
                               py: 0.75,
                               borderRadius: 1,
-                              textDecoration: 'none',
+                              textAlign: 'left',
                               color: 'text.primary',
                               '&:hover': { bgcolor: 'action.hover' },
                             }}
@@ -264,7 +280,7 @@ export default function RoomAvailabilityPage() {
                               {formatLocalTime(meeting.startTime, timeFormat)}–{formatLocalTime(meeting.endTime, timeFormat)}
                             </Typography>
                             <Typography variant="body2">{meeting.subject}</Typography>
-                          </Stack>
+                          </ButtonBase>
                         ))
                       )}
                     </Stack>
@@ -305,6 +321,8 @@ export default function RoomAvailabilityPage() {
           <AddIcon />
         </Fab>
       </Box>
+
+      {meetingDetailOverlay}
     </Stack>
   )
 }

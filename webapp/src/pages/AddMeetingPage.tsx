@@ -19,6 +19,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/authContext'
 import { datePickerFormat, timePickerUsesAmPm } from '../graphql/formatDateTime'
 import { ErrorBanner } from '../components/ErrorBanner'
+import { PersonAvatar } from '../components/PersonAvatar'
 import { SubmitButton } from '../components/SubmitButton'
 import { dayInvalidations } from '../apolloClient'
 import { errorMessages } from '../graphql/errorMessages'
@@ -78,9 +79,14 @@ export default function AddMeetingPage() {
   const { personId, personLoading, dateFormat, timeFormat } = useAuth()
   // RoomAvailabilityPage's "Add Meeting" links pass the date currently being viewed via router
   // state, so the form defaults to that date rather than always today - see defaultDate() above.
-  // Only read once, on mount: this is a one-time initial value, not something that should keep
-  // resetting the field if location.state were to change later on the same mounted page.
-  const viewedDate = (location.state as { date?: string } | null)?.date
+  // Person Calendar's FAB instead passes the person being viewed, pre-filled as an attendee (not
+  // organiser - opening this form from someone's calendar reads as "schedule a meeting with them",
+  // see the design doc's FAB pre-fill decision). Both read once, on mount: one-time initial values,
+  // not something that should keep resetting a field if location.state were to change later on the
+  // same mounted page.
+  const routerState = location.state as { date?: string; attendeeId?: string } | null
+  const viewedDate = routerState?.date
+  const prefilledAttendeeId = routerState?.attendeeId
 
   const {
     data: referenceData,
@@ -92,7 +98,7 @@ export default function AddMeetingPage() {
   const [roomId, setRoomId] = useState('')
   const [organiserId, setOrganiserId] = useState('')
   const [organiserTouched, setOrganiserTouched] = useState(false)
-  const [attendeeIds, setAttendeeIds] = useState<string[]>([])
+  const [attendeeIds, setAttendeeIds] = useState<string[]>(() => (prefilledAttendeeId ? [prefilledAttendeeId] : []))
   const [date, setDate] = useState<Dayjs | null>(() => defaultDate(viewedDate))
   // One computation for both, held in state so a re-render never re-reads the clock - see
   // defaultMeetingTimes for why the start and end must come from the same instant.
@@ -302,6 +308,15 @@ export default function AddMeetingPage() {
               value={people.find((person) => person.id === organiserId) ?? null}
               onChange={(_event, selected) => handleOrganiserChange(selected)}
               autoHighlight
+              renderOption={(props, option) => {
+                const { key, ...optionProps } = props
+                return (
+                  <Box component="li" key={key} {...optionProps} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <PersonAvatar name={option.name} size={24} />
+                    {option.name}
+                  </Box>
+                )
+              }}
               renderInput={(params) => <TextField {...params} label="Organiser" />}
             />
 
@@ -320,7 +335,8 @@ export default function AddMeetingPage() {
                 return (
                   <li key={key} {...optionProps}>
                     <Checkbox checked={selected} />
-                    <ListItemText primary={option.name} />
+                    <PersonAvatar name={option.name} size={24} />
+                    <ListItemText primary={option.name} sx={{ ml: 1 }} />
                   </li>
                 )
               }}

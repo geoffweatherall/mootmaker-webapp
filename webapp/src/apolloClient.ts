@@ -114,6 +114,12 @@ export const cache = new InMemoryCache({
             }
             return { ...existing, days }
           },
+          // Explicit shallow merge, so Apollo knows a write with a narrower selection set (e.g.
+          // ReferenceData's rooms/people, versus PageLoad's fuller set including days/boundaries)
+          // is an intentional partial update rather than potential data loss - see
+          // mootmaker-webapp#67. Without this, every write after the first logs Apollo's own
+          // "Cache data may be lost when replacing the workspace field of a Query object" warning.
+          merge: (existing: object | undefined, incoming: object) => ({ ...existing, ...incoming }),
         },
       },
     },

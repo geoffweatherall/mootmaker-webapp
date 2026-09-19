@@ -33,7 +33,11 @@ function asRoom(room: Room) {
   return { __typename: 'Room' as const, ...room }
 }
 
-function asPerson(person: Person | MyPerson) {
+// Generic (rather than a fixed `Person | MyPerson` parameter) so the return type narrows to
+// whichever one was actually passed in - a fixed union parameter would make every call site's
+// result the full union, which is what broke `UpdateMyPreferencesResult.person` below (typed as
+// exactly `MyPerson`, not `Person | MyPerson`).
+function asPerson<T extends Person | MyPerson>(person: T) {
   return { __typename: 'Person' as const, ...person }
 }
 

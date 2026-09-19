@@ -45,11 +45,14 @@ function day(date: string) {
   }
 }
 
+// Cast at each call site below (`as never`) - same reason as graphql/referenceDataCache.test.ts:
+// the generated PageLoadQuery type omits __typename and treats dateFormat/timeFormat as their
+// real enum unions, neither of which a plain object literal like this infers on its own.
 function pageLoadData(dates: string[]) {
   return {
     workspace: {
       __typename: 'Workspace',
-      me: { __typename: 'Person', id: 'person-1', name: 'Me', dateFormat: 'DMY', timeFormat: '24h' },
+      me: { __typename: 'Person', id: 'person-1', name: 'Me', dateFormat: 'Iso', timeFormat: 'TwentyFourHour' },
       people: [{ __typename: 'Person', id: 'person-1', name: 'Me' }],
       rooms: [{ __typename: 'Room', id: 'room-1', name: 'Room 1', capacity: 4 }],
       boundaries: { __typename: 'Boundaries', earliestRetainedDate: '2026-01-01', latestBookableDate: '2027-01-01' },
@@ -77,7 +80,7 @@ describe('apolloClient cache: workspace.days honours the requested dates (mootma
         return date.toISOString().slice(0, 10)
       }),
     ).flat()
-    cache.writeQuery({ query: PAGE_LOAD, variables: { dates: windowA }, data: pageLoadData(windowA) })
+    cache.writeQuery({ query: PAGE_LOAD, variables: { dates: windowA }, data: pageLoadData(windowA) as never })
 
     // "Next week": the whole window shifts forward by 7 days - 25 of the 30 dates are unchanged.
     const windowB = windowA.map((d) => {
@@ -103,10 +106,10 @@ describe('apolloClient cache: workspace.days honours the requested dates (mootma
   it('is exactly correct once the shifted window has also been fetched', () => {
     const cache = newCache()
     const windowA = ['2026-09-07', '2026-09-08', '2026-09-09', '2026-09-10', '2026-09-11']
-    cache.writeQuery({ query: PAGE_LOAD, variables: { dates: windowA }, data: pageLoadData(windowA) })
+    cache.writeQuery({ query: PAGE_LOAD, variables: { dates: windowA }, data: pageLoadData(windowA) as never })
 
     const windowB = ['2026-09-14', '2026-09-15', '2026-09-16', '2026-09-17', '2026-09-18']
-    cache.writeQuery({ query: PAGE_LOAD, variables: { dates: windowB }, data: pageLoadData(windowB) })
+    cache.writeQuery({ query: PAGE_LOAD, variables: { dates: windowB }, data: pageLoadData(windowB) as never })
 
     expect(readDates(cache, windowB)).toEqual(windowB)
     // The individual Day entities from windowA are still cached independently...

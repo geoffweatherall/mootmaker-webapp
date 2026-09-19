@@ -77,11 +77,33 @@ test('M.92 - a first cold visit shows a full spinner; a same-session revisit sho
   const circularProgress = page.locator('.MuiCircularProgress-root')
   const linearProgress = page.locator('.MuiLinearProgress-root')
 
-  // (a) Submitting the meeting redirects straight to that day's Room Availability - the first
-  // time this session anything has queried *meetings* for this specific day (LIST_MEETINGS is
-  // cache-and-network, so there's no cached data for this day's filter yet, regardless of rooms
-  // already being cached) - so showSpinner's "meetingsLoading && !meetingsData" half is true,
-  // and the full-page CircularProgress shows.
+  // (a) The very first visit this session to this day's Room Availability - via the sidebar link
+  // (in-app, not page.goto: see the (b) comment below for why a hard navigation would defeat the
+  // premise), before anything has created a meeting or otherwise asked about this day. Rooms are
+  // already cache-first-cached from the Settings visit above, but this day's meetings are not -
+  // showSpinner's "meetingsLoading && !meetingsData" half is true, so the full-page CircularProgress
+  // shows.
+  //
+  // Deliberately NOT the day-of-creation redirect below: mootmaker-webapp#66 fixed
+  // Query.workspace's cache read to reconstruct `days` from the requested dates via the
+  // already-normalized `Day` entities, rather than trusting whatever `days` list a previous,
+  // differently-dated response happened to leave behind. One side effect is that createMeeting's
+  // own response (which returns the affected `day`, entity-normalized like any other) now warms
+  // that day's cache immediately - so the redirect straight after creating a meeting is no longer
+  // a genuinely cold visit to this specific day, it is a revisit to a day the mutation itself just
+  // populated. That is a real improvement (no more unnecessary spinner for data already in hand),
+  // but it means this use case's "genuinely cold, nothing cached yet" half needs a visit that
+  // precedes any write to the day it is checking - hence checking the plain sidebar-link visit
+  // here, first.
+  await page.getByRole('link', { name: 'Room Availability' }).click()
+  await page.waitForURL(availabilityUrl)
+  await expect(circularProgress).toBeVisible()
+  await expect(circularProgress).toBeHidden()
+
+  // Now create the meeting. Its own response normalizes this day's `Day` entity with the new
+  // meeting already in it (see the comment above), so the redirect below lands on a day the cache
+  // already fully knows - content shows immediately, with no full-page spinner, which is exactly
+  // the "no flash of empty content" behaviour (b) below re-confirms on a third visit.
   await page.goto('/meetings/add')
   await page.getByLabel('Subject').fill(subject)
   await page.getByRole('combobox', { name: 'Room' }).click()
@@ -89,9 +111,8 @@ test('M.92 - a first cold visit shows a full spinner; a same-session revisit sho
   await page.getByRole('button', { name: 'Save' }).click()
 
   await page.waitForURL(availabilityUrl)
-  await expect(circularProgress).toBeVisible()
-  await expect(circularProgress).toBeHidden()
   await expect(page.getByText(subject)).toBeVisible()
+  await expect(circularProgress).toHaveCount(0)
 
   // (b) Navigating away and back to the exact same day - via real in-app link clicks, not
   // page.goto (a full page.goto would be a hard navigation that resets Apollo's whole in-memory

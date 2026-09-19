@@ -113,12 +113,12 @@ test('M.92 - a first cold visit shows a full spinner; a same-session revisit sho
   // The meeting only renders once its room's card is expanded - RoomAvailabilityPage.tsx's "See
   // <day>'s meetings" Collapse toggle. Not a plain getByText(subject): the card's own status
   // sublabel can independently reference this meeting's subject too (see
-  // roomAvailabilityLogic.ts) - only the meeting row itself has role 'link'.
+  // roomAvailabilityLogic.ts) - only the meeting row itself has role 'button'.
   const roomCard = page
     .getByText(roomName, { exact: true })
     .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
   await roomCard.getByRole('button', { name: /'s meetings/ }).click()
-  await expect(roomCard.getByRole('link', { name: subject, exact: false })).toBeVisible()
+  await expect(roomCard.getByRole('button', { name: subject, exact: false })).toBeVisible()
   await expect(circularProgress).toHaveCount(0)
 
   // (b) Navigating away and back to the exact same day - via real in-app link clicks, not
@@ -138,7 +138,7 @@ test('M.92 - a first cold visit shows a full spinner; a same-session revisit sho
     .getByText(roomName, { exact: true })
     .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
   await roomCardAfterNav.getByRole('button', { name: /'s meetings/ }).click()
-  await expect(roomCardAfterNav.getByRole('link', { name: subject, exact: false })).toBeVisible()
+  await expect(roomCardAfterNav.getByRole('button', { name: subject, exact: false })).toBeVisible()
   await expect(linearProgress).toBeVisible()
   await expect(circularProgress).toHaveCount(0)
   await expect(linearProgress).toBeHidden()

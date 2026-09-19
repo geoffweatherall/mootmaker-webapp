@@ -195,13 +195,14 @@ test('can immediately schedule a meeting as themselves right after signing up', 
   // The meeting only renders once its room's card is expanded (RoomAvailabilityPage.tsx's "See
   // <day>'s meetings" Collapse toggle). Not a plain getByText(subject): the card's own status
   // sublabel can independently reference this meeting's subject too (see
-  // roomAvailabilityLogic.ts) - only the meeting row itself has role 'link'.
+  // roomAvailabilityLogic.ts) - only the meeting row itself has role 'button'.
   const roomCard = page
     .getByText(roomName, { exact: true })
     .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
   await roomCard.getByRole('button', { name: /'s meetings/ }).click()
 
-  // Organiser is this user, not blank - checked on the Meeting Details page reached from here.
-  await roomCard.getByRole('link', { name: subject, exact: false }).click()
+  // Organiser is this user, not blank - checked on the shared detail sheet/panel the row opens in
+  // place (no navigation any more - see designs/meeting-detail-consolidation.md).
+  await roomCard.getByRole('button', { name: subject, exact: false }).click()
   await expect(page.getByText(account.name)).toBeVisible()
 })

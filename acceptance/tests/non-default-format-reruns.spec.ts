@@ -160,31 +160,55 @@ async function addAfternoonMeeting(
     if (roomName !== null) {
       // Not a plain getByText(subject): the card's own status sublabel can independently
       // reference this meeting's subject too (see roomAvailabilityLogic.ts) - only the meeting
-      // row itself has role 'link'.
+      // row itself has role 'button'.
       const roomCard = page
         .getByText(roomName, { exact: true })
         .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
       await roomCard.getByRole('button', { name: /'s meetings/ }).click()
-      await expect(roomCard.getByRole('link', { name: subject, exact: false })).toBeVisible()
+      await expect(roomCard.getByRole('button', { name: subject, exact: false })).toBeVisible()
       return roomCard
     }
   }
   throw new Error(`Could not find a free room for ${subject} across ${rooms} room(s)`)
 }
 
-function detailRow(page: Page, label: string) {
-  return page.getByText(label, { exact: true }).locator('xpath=following-sibling::*[1]')
+/**
+ * Locates the meeting detail sheet/full-page's date or time value by its own shape, not by a
+ * label - unlike the old full-page DetailRow layout, MeetingDetailContent (see designs/
+ * meeting-detail-consolidation.md) renders the date and time as plain, unlabelled lines, matching
+ * the sheet/panel it's shared with.
+ */
+function detailRow(page: Page, kind: 'Date' | 'Time') {
+  return kind === 'Date'
+    ? page.getByText(/^\d{2}\/\d{2}\/\d{4}$/)
+    : page.getByText(/^\d{2}:\d{2}(?: [AP]M)?–\d{2}:\d{2}(?: [AP]M)?$/)
 }
 
-test("H.68 under British + AM/PM: Meeting Details renders both rows in the viewer's own format", async ({ page }) => {
+test("H.68 under British + AM/PM: Meeting Details renders both rows in the viewer's own format", async ({
+  page,
+  context,
+}) => {
+  // Forces MeetingDetailContent's Share button down its clipboard-fallback branch
+  // deterministically - see designs/meeting-detail-consolidation.md's Testing impacts.
+  await page.addInitScript(() => {
+    Object.defineProperty(window.navigator, 'share', { value: undefined, configurable: true })
+  })
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+
   await signInAsNonDefaultAccount(page)
   const subject = `Rerun details ${Date.now()}`
   const date = weekdayDaysAhead(14)
   const roomCard = await addAfternoonMeeting(page, subject, date)
 
-  await roomCard.getByRole('link', { name: subject, exact: false }).click()
-  await expect(page).toHaveURL(/\/meetings\/[^/]+$/)
+  // Opens the shared detail sheet/panel in place, not a navigation - see designs/
+  // meeting-detail-consolidation.md. Reach Meeting Details itself via Share, the same way a real
+  // user now would.
+  await roomCard.getByRole('button', { name: subject, exact: false }).click()
+  await page.getByRole('button', { name: 'Share meeting' }).click()
+  const meetingUrl = await page.evaluate(() => navigator.clipboard.readText())
+  expect(meetingUrl).toMatch(/\/meetings\/[^/]+$/)
 
+  await page.goto(meetingUrl)
   await expect(detailRow(page, 'Date')).toHaveText(expectedBritishDate(date.year, date.month, date.day))
   await expect(detailRow(page, 'Time')).toContainText(expectedAmPmTime(14, 30))
   await expect(detailRow(page, 'Time')).toContainText(expectedAmPmTime(15, 30))
@@ -232,9 +256,9 @@ test("E.26 under British + AM/PM: Room Availability renders a meeting's time ran
 
   // addAfternoonMeeting lands on the availability page for the meeting's own day, with its room's
   // card already expanded. Same reasoning as room-availability.spec.ts's E.32: only the meeting
-  // row itself has role 'link', so this can't accidentally match the card's own status sublabel
+  // row itself has role 'button', so this can't accidentally match the card's own status sublabel
   // even where it independently references the same subject.
   const roomCard = await addAfternoonMeeting(page, subject, date)
-  const meetingLink = roomCard.getByRole('link', { name: subject, exact: false })
+  const meetingLink = roomCard.getByRole('button', { name: subject, exact: false })
   await expect(meetingLink).toContainText(`${expectedAmPmTime(14, 30)}\u2013${expectedAmPmTime(15, 30)}`)
 })

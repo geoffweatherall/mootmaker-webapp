@@ -103,19 +103,35 @@ async function createMeetingAndOpenDetails(page: Page, { subject, roomName, atte
   // The meeting only renders once its room's card is expanded (RoomAvailabilityPage.tsx's "See
   // <day>'s meetings" Collapse toggle). Not a plain getByText(subject): the card's own status
   // sublabel can independently reference this meeting's subject too (see
-  // roomAvailabilityLogic.ts) - only the meeting row itself has role 'link'.
+  // roomAvailabilityLogic.ts) - only the meeting row itself has role 'button'.
   const roomCard = page
     .getByText(roomName, { exact: true })
     .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
   await roomCard.getByRole('button', { name: /'s meetings/ }).click()
-  await roomCard.getByRole('link', { name: subject, exact: false }).click()
-  await expect(page).toHaveURL(/\/meetings\/.+/)
-  const match = page.url().match(/\/meetings\/([^/?#]+)/)
-  if (!match) throw new Error(`Could not extract a meeting id from URL ${page.url()}`)
+  // Opens the shared detail sheet/panel in place, not a navigation - see designs/
+  // meeting-detail-consolidation.md. Reads the real id off Share instead of a navigated-to URL.
+  await roomCard.getByRole('button', { name: subject, exact: false }).click()
+  await page.getByRole('button', { name: 'Share meeting' }).click()
+  const url = await page.evaluate(() => navigator.clipboard.readText())
+  const match = url.match(/\/meetings\/([^/?#]+)/)
+  if (!match) throw new Error(`Could not extract a meeting id from the shared URL: ${url}`)
+  await page.getByRole('button', { name: 'Close' }).click()
   return match[1]
 }
 
 test.describe('K. Settings - People (admin only)', () => {
+  // The cases that call createMeetingAndOpenDetails read a real meeting id off its Share button -
+  // see that function's own comment. Forces the clipboard-fallback branch deterministically rather
+  // than depending on this browser's navigator.share support - see designs/
+  // meeting-detail-consolidation.md's Testing impacts. Harmless for the other cases here, which
+  // don't create meetings.
+  test.beforeEach(async ({ page, context }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(window.navigator, 'share', { value: undefined, configurable: true })
+    })
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  })
+
   test('K.84 - standard user does not see the People section', async ({ page }) => {
     await signIn(page, requireEnv('E2E_USER_EMAIL'), requireEnv('E2E_USER_PASSWORD'))
 

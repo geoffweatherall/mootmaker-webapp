@@ -321,8 +321,8 @@ test('add a meeting with all required fields succeeds and it appears on the room
   // Not a plain getByText(subject): if this meeting is currently in progress under the real
   // clock, the card's own status sublabel is the bare subject with no other text (see
   // roomAvailabilityLogic.ts) - a second, exact duplicate elsewhere on the card. Only the meeting
-  // row itself has role 'link'.
-  await expect(card.getByRole('link', { name: subject, exact: false })).toBeVisible()
+  // row itself has role 'button'.
+  await expect(card.getByRole('button', { name: subject, exact: false })).toBeVisible()
 })
 
 test('organiser defaults to the signed-in user\'s own Person without any interaction', async ({ page }) => {
@@ -602,12 +602,12 @@ test('an overlapping time slot in the same room is rejected with TimeRangeUnavai
   await expect(page).toHaveURL(/\/rooms\/.+\/availability/)
   // Not a plain getByText(subject1): the card's own status sublabel can also reference this
   // meeting's subject (see roomAvailabilityLogic.ts) - only the meeting row itself, visible once
-  // the card is expanded, has role 'link'.
+  // the card is expanded, has role 'button'.
   const card = page
     .getByText(roomName, { exact: true })
     .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
   await card.getByRole('button', { name: /'s meetings/ }).click()
-  await expect(card.getByRole('link', { name: subject1, exact: false })).toBeVisible()
+  await expect(card.getByRole('button', { name: subject1, exact: false })).toBeVisible()
 
   // Second meeting: 10:30-11:30, same room - genuinely overlapping (contrast with E.34's legal
   // touching case), not just touching.
@@ -851,9 +851,9 @@ test('double-clicking Save does not double-submit - exactly one meeting is creat
   await card.getByRole('button', { name: /'s meetings/ }).click()
   // The real, reliable assertion this use case cares about (see F.56's catalog Notes). Not
   // getByText: the card's own status sublabel can independently reference this meeting's subject
-  // too (see roomAvailabilityLogic.ts) - only the meeting row itself has role 'link', and exactly
+  // too (see roomAvailabilityLogic.ts) - only the meeting row itself has role 'button', and exactly
   // one existing is exactly the double-submit guard this case is checking.
-  await expect(card.getByRole('link', { name: subject, exact: false })).toHaveCount(1)
+  await expect(card.getByRole('button', { name: subject, exact: false })).toHaveCount(1)
 })
 
 test('at mobile width the Save/Cancel actions stack vertically instead of a cramped row', async ({ page }) => {

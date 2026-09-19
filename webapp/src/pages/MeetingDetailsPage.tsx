@@ -1,17 +1,20 @@
 import { useQuery } from '@apollo/client/react'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { Box, Button, CircularProgress, Divider, Paper, Stack, Typography } from '@mui/material'
+import type { ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ErrorBanner } from '../components/ErrorBanner'
+import { PersonAvatar } from '../components/PersonAvatar'
 import { errorMessages } from '../graphql/errorMessages'
 import { useAuth } from '../auth/authContext'
 import { formatLocalDate, formatLocalTime } from '../graphql/formatDateTime'
 import { MEETING_BY_ID } from '../graphql/queries'
+import type { Person } from '../graphql/types'
 import { useState } from 'react'
 
 interface DetailRowProps {
   label: string
-  value: string
+  value: ReactNode
 }
 
 function DetailRow({ label, value }: DetailRowProps) {
@@ -20,7 +23,19 @@ function DetailRow({ label, value }: DetailRowProps) {
       <Typography variant="body2" color="text.secondary" sx={{ width: 140, flexShrink: 0 }}>
         {label}
       </Typography>
-      <Typography variant="body1">{value}</Typography>
+      <Typography component="div" variant="body1">
+        {value}
+      </Typography>
+    </Stack>
+  )
+}
+
+/** A person's avatar next to their name - used for both the Organiser and Attendees rows below. */
+function PersonRow({ person }: { person: Person }) {
+  return (
+    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+      <PersonAvatar name={person.name} size={24} />
+      <Typography variant="body1">{person.name}</Typography>
     </Stack>
   )
 }
@@ -72,10 +87,22 @@ export default function MeetingDetailsPage() {
             <Divider />
             <Stack spacing={1.5}>
               <DetailRow label="Room" value={`${meeting.room.name} (capacity ${meeting.room.capacity})`} />
-              <DetailRow label="Organiser" value={meeting.organiser.name} />
+              <DetailRow label="Organiser" value={<PersonRow person={meeting.organiser} />} />
               <DetailRow
                 label="Attendees"
-                value={meeting.attendees.map((attendee) => attendee.name).join(', ') || 'None'}
+                value={
+                  meeting.attendees.length === 0 ? (
+                    <Typography variant="body1" color="text.secondary">
+                      None
+                    </Typography>
+                  ) : (
+                    <Stack spacing={1}>
+                      {meeting.attendees.map((attendee) => (
+                        <PersonRow key={attendee.id} person={attendee} />
+                      ))}
+                    </Stack>
+                  )
+                }
               />
               <DetailRow label="Date" value={formatLocalDate(meeting.startTime, dateFormat)} />
               <DetailRow

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { InMemoryCache } from '@apollo/client'
-import { PAGE_LOAD } from './graphql/queries'
+import { DAYS, PAGE_LOAD } from './graphql/queries'
 
 // Mirrors the real typePolicies from apolloClient.ts, built inline rather than imported - that
 // module reads `window.__MOOTMAKER_CONFIG__` at import time, so it needs a browser environment.
@@ -14,10 +14,15 @@ function newCache(): InMemoryCache {
         fields: {
           workspace: {
             keyArgs: false,
-            read(existing: { days?: unknown } | undefined, { args, toReference }) {
+            read(existing: { days?: unknown } | undefined, { args, toReference, canRead }) {
               const dates = args?.dates as string[] | undefined
               if (!dates) return existing
-              return { ...existing, days: dates.map((date) => toReference({ __typename: 'Day', date })) }
+              const days = dates.map((date) => toReference({ __typename: 'Day', date }))
+              if (!days.some((day) => canRead(day))) {
+                const { days: _staleDays, ...rest } = existing ?? {}
+                return rest
+              }
+              return { ...existing, days }
             },
           },
         },
@@ -115,5 +120,29 @@ describe('apolloClient cache: workspace.days honours the requested dates (mootma
     // The individual Day entities from windowA are still cached independently...
     expect(readDates(cache, windowA)).toEqual(windowA)
     // ...even though workspace.days itself (a single, keyArgs:false slot) was last written for windowB.
+  })
+
+  it('does not read a genuinely fresh date as complete-and-empty (RoomAvailabilityPage, DAYS only)', () => {
+    const cache = newCache()
+
+    // Nothing has ever been written to this cache - the DAYS query selects nothing but `days`
+    // (see graphql/queries.ts), unlike PAGE_LOAD, so there is no other field (rooms/people/
+    // boundaries) to independently signal that this is a genuine first visit. Dropping every
+    // requested date's unresolvable reference would otherwise leave `days: []` - a complete,
+    // valid-looking answer indistinguishable from a day that was actually fetched and is
+    // genuinely empty, silently defeating RoomAvailabilityPage's showSpinner check.
+    const fresh = cache.readQuery({ query: DAYS, variables: { dates: ['2026-11-01'] } })
+    expect(fresh).toBeNull()
+
+    // Once that date really is known, it reads back correctly.
+    cache.writeQuery({
+      query: DAYS,
+      variables: { dates: ['2026-11-01'] },
+      data: { workspace: { __typename: 'Workspace', days: [day('2026-11-01')] } } as never,
+    })
+    const known = cache.readQuery({ query: DAYS, variables: { dates: ['2026-11-01'] } }) as {
+      workspace: { days: { date: string }[] }
+    } | null
+    expect(known?.workspace.days.map((d) => d.date)).toEqual(['2026-11-01'])
   })
 })

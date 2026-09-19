@@ -89,16 +89,30 @@ export const cache = new InMemoryCache({
          * has no data behind it - `InMemoryCache` drops that entry from the list rather than
          * returning it broken or substituting something stale, so the window renders exactly the
          * days it actually has, not the previous window's days relabelled.
+         *
+         * The one case that needs handling explicitly: when NONE of the requested dates are
+         * cached yet, dropping every entry leaves `days: []` - a *complete*, valid-looking answer
+         * indistinguishable from a real response for days that truly hold nothing. That is exactly
+         * the ambiguity `Day`'s own keyed identity exists to avoid (see its comment above), and for
+         * a query that selects nothing but `days` (RoomAvailabilityPage's), there is no other field
+         * to signal otherwise - a genuinely first, uncached visit would silently read as "already
+         * complete, nothing to show" instead of triggering the network fetch a real cold load needs.
+         * So: omit `days` entirely (not `[]`) when nothing requested is actually known yet, which
+         * reads as a missing field rather than a real empty one. Once at least one requested date
+         * is known, return the constructed list as normal - a partial overlap is real information
+         * worth rendering immediately, not something to hide behind an all-or-nothing check.
          */
         workspace: {
           keyArgs: false,
-          read(existing: { days?: unknown } | undefined, { args, toReference }) {
+          read(existing: { days?: unknown } | undefined, { args, toReference, canRead }) {
             const dates = args?.dates as string[] | undefined
             if (!dates) return existing
-            return {
-              ...existing,
-              days: dates.map((date) => toReference({ __typename: 'Day', date })),
+            const days = dates.map((date) => toReference({ __typename: 'Day', date }))
+            if (!days.some((day) => canRead(day))) {
+              const { days: _staleDays, ...rest } = existing ?? {}
+              return rest
             }
+            return { ...existing, days }
           },
         },
       },

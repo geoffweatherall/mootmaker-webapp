@@ -30,6 +30,8 @@ import { formatLocalTime } from '../graphql/formatDateTime'
 import { DAYS, REFERENCE_DATA } from '../graphql/queries'
 import type { Meeting } from '../graphql/types'
 import { roomColorAt } from '../theme/roomColor'
+import { dayRelativeLabel } from './dayRelativeLabel'
+import { statusForRoom } from './roomAvailabilityLogic'
 
 const DATE_PARAM_FORMAT = 'YYYY-MM-DD'
 const DATE_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/
@@ -39,49 +41,6 @@ function parseDateParam(value: string | undefined): Dayjs | null {
   if (!value || !DATE_PARAM_PATTERN.test(value)) return null
   const parsed = dayjs(value)
   return parsed.isValid() ? parsed : null
-}
-
-function minutesSinceMidnight(isoLocalDateTime: string): number {
-  const [, time] = isoLocalDateTime.split('T')
-  const [hours, minutes] = time.split(':').map(Number)
-  return hours * 60 + minutes
-}
-
-interface RoomStatus {
-  label: string
-  free: boolean
-  subLabel: string
-}
-
-// The card's headline status and caption. Only "today" has a "now" to be busy/free relative to -
-// a future day gets a plain summary instead of a live pill, since "busy until 14:00" makes no
-// sense for a day that hasn't started yet.
-function statusForRoom(meetings: Meeting[], isToday: boolean, now: Dayjs, dayLabel: string, timeFormat: Parameters<typeof formatLocalTime>[1]): RoomStatus {
-  if (isToday) {
-    const nowMinutes = now.hour() * 60 + now.minute()
-    const busy = meetings.find((m) => {
-      const start = minutesSinceMidnight(m.startTime)
-      const end = minutesSinceMidnight(m.endTime)
-      return start <= nowMinutes && nowMinutes < end
-    })
-    if (busy) {
-      return { label: `Busy until ${formatLocalTime(busy.endTime, timeFormat)}`, free: false, subLabel: busy.subject }
-    }
-    const next = meetings.find((m) => minutesSinceMidnight(m.startTime) > nowMinutes)
-    return {
-      label: 'Free now',
-      free: true,
-      subLabel: next ? `Next: ${next.subject} at ${formatLocalTime(next.startTime, timeFormat)}` : 'No more meetings today',
-    }
-  }
-  if (meetings.length === 0) {
-    return { label: 'Free all day', free: true, subLabel: 'No meetings booked yet.' }
-  }
-  return {
-    label: `${meetings.length} ${meetings.length === 1 ? 'meeting' : 'meetings'}`,
-    free: false,
-    subLabel: `First: ${meetings[0].subject} at ${formatLocalTime(meetings[0].startTime, timeFormat)}`,
-  }
 }
 
 export default function RoomAvailabilityPage() {
@@ -170,13 +129,13 @@ export default function RoomAvailabilityPage() {
   const bannerMessages = [...errorMessages(roomsError), ...errorMessages(meetingsError)]
 
   const now = dayjs()
-  const isToday = selectedDate.isSame(now, 'day')
-  const isTomorrow = selectedDate.isSame(now.add(1, 'day'), 'day')
   // "today"/"tomorrow" for the two near days (Google Calendar/Fantastical convention), the plain
   // weekday name beyond that - avoids "in 4 days" while still reading naturally in "See Friday's
   // meetings". See designs/room-availability-and-person-calendar-redesign.md's "Day-relative
   // framing" decision.
-  const dayLabel = isToday ? 'today' : isTomorrow ? 'tomorrow' : selectedDate.format('dddd')
+  const relative = dayRelativeLabel(selectedDate, now)
+  const isToday = relative === 'today'
+  const dayLabel = relative ?? selectedDate.format('dddd')
 
   return (
     <Stack spacing={3}>
@@ -234,7 +193,7 @@ export default function RoomAvailabilityPage() {
             // identity: the room name is always shown as text alongside it too.
             const roomColor = roomColorAt(roomIndex, theme.palette.mode)
             const meetings = meetingsByRoom.get(room.id) ?? []
-            const status = statusForRoom(meetings, isToday, now, dayLabel, timeFormat)
+            const status = statusForRoom(meetings, isToday, now, timeFormat)
             const expanded = expandedRoomIds.has(room.id)
 
             return (

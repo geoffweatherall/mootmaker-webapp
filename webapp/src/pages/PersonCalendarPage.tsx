@@ -33,6 +33,7 @@ import { formatLocalTime } from '../graphql/formatDateTime'
 import { PAGE_LOAD, REFERENCE_DATA } from '../graphql/queries'
 import type { Meeting, Person } from '../graphql/types'
 import { roomColorAt } from '../theme/roomColor'
+import { dayRelativeLabel } from './dayRelativeLabel'
 
 const WORK_DAYS_PER_WEEK = 5
 const DATE_KEY_FORMAT = 'YYYY-MM-DD'
@@ -234,15 +235,14 @@ export default function PersonCalendarPage() {
   const showSpinner = (peopleLoading && !peopleData) || (meetingsLoading && !meetingsData)
   const bannerMessages = [...errorMessages(peopleError), ...errorMessages(meetingsError)]
 
-  const todayKey = dayjs().format(DATE_KEY_FORMAT)
-  const tomorrowKey = dayjs().add(1, 'day').format(DATE_KEY_FORMAT)
+  const now = dayjs()
 
-  // "Today"/"Tomorrow" for the two near days, the plain weekday name beyond that - see the design
-  // doc's day-relative framing decision (kept consistent with Room Availability's cards).
+  // "Today"/"Tomorrow" for the two near days, the plain weekday name beyond that - the same
+  // dayRelativeLabel Room Availability's cards use, just capitalised for a heading here.
   function dayLabelFor(date: Dayjs): { text: string; isToday: boolean } {
-    const key = date.format(DATE_KEY_FORMAT)
-    if (key === todayKey) return { text: 'Today', isToday: true }
-    if (key === tomorrowKey) return { text: 'Tomorrow', isToday: false }
+    const relative = dayRelativeLabel(date, now)
+    if (relative === 'today') return { text: 'Today', isToday: true }
+    if (relative === 'tomorrow') return { text: 'Tomorrow', isToday: false }
     return { text: date.format('dddd'), isToday: false }
   }
 

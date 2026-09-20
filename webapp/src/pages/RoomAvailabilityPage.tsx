@@ -266,6 +266,12 @@ export default function RoomAvailabilityPage() {
                             sx={{
                               display: 'flex',
                               alignItems: 'baseline',
+                              // ButtonBase's root defaults to justifyContent: 'center' (mimicking
+                              // a native <button>); textAlign only affects text within a block, not
+                              // how a flex container positions its children, so without this the
+                              // row centers as a group instead of sitting flush left
+                              // (mootmaker-webapp#84).
+                              justifyContent: 'flex-start',
                               gap: 1.5,
                               width: '100%',
                               px: 1,

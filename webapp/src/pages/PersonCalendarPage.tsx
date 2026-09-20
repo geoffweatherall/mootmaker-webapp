@@ -183,7 +183,11 @@ export default function PersonCalendarPage() {
         <Typography variant="h4" component="h1">
           Calendar
         </Typography>
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+        {/* flexWrap so a narrow screen drops "This week" to its own line as a whole button,
+            rather than the row running out of space and the Button's own label splitting
+            mid-word (mootmaker-webapp#76). whiteSpace: 'nowrap' on the Button is belt-and-braces
+            for the same reason. */}
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
           <IconButton
             onClick={() => setFirstMonday((current) => current.subtract(7, 'day'))}
             aria-label="Previous week"
@@ -201,7 +205,12 @@ export default function PersonCalendarPage() {
           >
             <ChevronRightIcon />
           </IconButton>
-          <Button size="small" disabled={isShowingThisWeek} onClick={() => setFirstMonday(thisWeek)}>
+          <Button
+            size="small"
+            disabled={isShowingThisWeek}
+            onClick={() => setFirstMonday(thisWeek)}
+            sx={{ whiteSpace: 'nowrap' }}
+          >
             This week
           </Button>
         </Stack>

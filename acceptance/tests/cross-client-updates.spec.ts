@@ -164,6 +164,12 @@ test('a booking made by another client appears without a refresh', async ({ brow
     const roomCard = page
       .getByText(room, { exact: true })
       .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
+    // Status Chip before the booking - a future day (bookableDate) with no meetings yet reads
+    // "Free all day" (statusForRoom's future-day branch). Asserted here, before expanding, so the
+    // later post-broadcast assertion is a genuine before/after comparison of the same element
+    // (mootmaker-webapp#92 - previously only the meeting row's own appearance was checked, not
+    // whether the Chip driven by the same data actually updates too).
+    await expect(roomCard.getByText('Free all day', { exact: true })).toBeVisible()
     await roomCard.getByRole('button', { name: /'s meetings/ }).click()
     await expect(page.getByText(subject)).toHaveCount(0)
 
@@ -174,6 +180,49 @@ test('a booking made by another client appears without a refresh', async ({ brow
     // card's own status sublabel can independently reference this meeting's subject too (see
     // roomAvailabilityLogic.ts) - only the meeting row itself has role 'button'.
     await expect(roomCard.getByRole('button', { name: subject, exact: false })).toBeVisible({ timeout: 30_000 })
+    // The Chip updates from the same broadcast/refetch, not just the meeting row (mootmaker-webapp#92).
+    await expect(roomCard.getByText('1 meeting', { exact: true })).toBeVisible()
+  } finally {
+    await observer.close()
+  }
+})
+
+test('a booking made by another client updates the collapsed meeting count, not just the expanded row', async ({
+  browser,
+}) => {
+  // mootmaker-webapp#93: the test above pre-expands the card, so the collapsed toggle label -
+  // "See <day>'s meetings (N)" - is never on screen when the broadcast lands. This test leaves it
+  // collapsed throughout, proving that count updates live too, with no click at all.
+  const id = uniqueId()
+  const date = bookableDate(22)
+  const room = `Cross Client Count Room ${id}`
+  const organiser = `Cross Client Count Organiser ${id}`
+  const subject = `Cross client count booking ${id}`
+
+  const observer = await browser.newContext()
+  try {
+    const page = await observer.newPage()
+    await signInAsDemo(page)
+    await createRoom(page, room, 4)
+    await createPerson(page, organiser)
+    const token = await getIdToken(page)
+
+    await page.goto(`/rooms/${date}/availability`)
+    await expect(page.getByText(room)).toBeVisible()
+    const roomCard = page
+      .getByText(room, { exact: true })
+      .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
+    // Collapsed, deliberately never clicked - the toggle's own label carries the count. Not a
+    // literal "See <day>'s meetings" string: dayLabel is "Today"/"Tomorrow" only for the two near
+    // days (dayRelativeLabel), the plain weekday name otherwise - bookableDate(22) lands on
+    // whichever weekday that turns out to be, so match the count only.
+    await expect(roomCard.getByRole('button', { name: /'s meetings \(0\)/ })).toBeVisible()
+
+    await bookViaApi(page, token, { roomName: room, organiserName: organiser, subject, date })
+
+    await expect(roomCard.getByRole('button', { name: /'s meetings \(1\)/ })).toBeVisible({
+      timeout: 30_000,
+    })
   } finally {
     await observer.close()
   }

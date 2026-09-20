@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { formatDateParam, pinnedWeekday } from './support/pinnedDates'
 
 /**
  * The cross-client guarantee: a booking made by one client appears on another's screen without a
@@ -371,5 +372,45 @@ test('the tab that made the booking does not lose it to its own broadcast', asyn
     }
   } finally {
     await context.close()
+  }
+})
+
+test('a booking made by another client appears on Person Calendar without a refresh', async ({ browser }) => {
+  // mootmaker-webapp#96: every test above only ever exercised Room Availability.
+  // /persons/:id/calendar uses the same subscription/cache-eviction mechanism, but had no
+  // dedicated proof of its own - this project has a real history of shared plumbing quietly
+  // diverging per page (see MeetingDetailContent's own "PARITY INVARIANT" comment: field order,
+  // room colour, and avatar alignment had each independently drifted between two call sites
+  // before that was consolidated).
+  const id = uniqueId()
+  const room = `Cross Client Calendar Room ${id}`
+  const subject = `Cross client calendar booking ${id}`
+  // Pinned to a midweek day, within the calendar's default Monday-Friday visible window - unlike
+  // Room Availability's tests, which navigate to an arbitrary future date directly, Person
+  // Calendar always shows "this week" by default, so the booking must land inside it.
+  const wednesday = pinnedWeekday('Wednesday')
+  const date = formatDateParam(wednesday)
+
+  const observer = await browser.newContext()
+  try {
+    const page = await observer.newPage()
+    await page.clock.setFixedTime(wednesday)
+    await signInAsDemo(page)
+    await createRoom(page, room, 4)
+    const token = await getIdToken(page)
+
+    await page.getByRole('link', { name: 'Calendar', exact: true }).click()
+    await expect(page).toHaveURL(/\/persons\/[^/]+\/calendar$/)
+    await expect(page.getByText(subject)).toHaveCount(0)
+
+    // Demo Strater is the signed-in demo user's own name - booking as themselves means no extra
+    // Person/selector switch is needed to see it on their own default calendar view.
+    await bookViaApi(page, token, { roomName: room, organiserName: 'Demo Strater', subject, date })
+
+    // No reload, no navigation, no user action: the only thing that can make this appear is the
+    // broadcast evicting the day and the refetch refilling it.
+    await expect(page.getByRole('button', { name: subject, exact: false })).toBeVisible({ timeout: 30_000 })
+  } finally {
+    await observer.close()
   }
 })

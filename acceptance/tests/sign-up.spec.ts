@@ -202,10 +202,11 @@ test('can immediately schedule a meeting as themselves right after signing up', 
   await roomCard.getByRole('button', { name: /'s meetings/ }).click()
 
   // Organiser is this user, not blank - checked on the shared detail sheet/panel the row opens in
-  // place (no navigation any more - see designs/meeting-detail-consolidation.md). exact: true,
-  // pre-existing requirement even before that change: MeetingDetailContent's organiser row is
-  // "<strong>{name}</strong> · Organiser" in one paragraph, so a non-exact match resolves
-  // ambiguously to both the <strong> and its parent (whose own text also contains the name).
+  // place (no navigation any more - see designs/meeting-detail-consolidation.md).
+  // MeetingDetailContent's organiser row renders "<strong>{name}</strong> · Organiser" in one
+  // paragraph; matching that full text (not just the bare name) scopes the assertion to that row
+  // specifically. A bare-name match is ambiguous whenever the signed-up user schedules themselves:
+  // they then also appear, unadorned, in the attendee list below (mootmaker-webapp#81).
   await roomCard.getByRole('button', { name: subject, exact: false }).click()
-  await expect(page.getByText(account.name, { exact: true })).toBeVisible()
+  await expect(page.getByText(`${account.name} · Organiser`, { exact: true })).toBeVisible()
 })

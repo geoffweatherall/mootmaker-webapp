@@ -228,6 +228,48 @@ test('a booking made by another client updates the collapsed meeting count, not 
   }
 })
 
+test('a booking made by another client adds a segment to the timeline bar, live', async ({ browser }) => {
+  // mootmaker-webapp#94/#75: the busy/free timeline bar is always rendered (not gated behind the
+  // expand toggle), so this needs no click at all either.
+  const id = uniqueId()
+  const date = bookableDate(23)
+  const room = `Cross Client Bar Room ${id}`
+  const organiser = `Cross Client Bar Organiser ${id}`
+  const subject = `Cross client bar booking ${id}`
+
+  const observer = await browser.newContext()
+  try {
+    const page = await observer.newPage()
+    await signInAsDemo(page)
+    await createRoom(page, room, 4)
+    await createPerson(page, organiser)
+    const token = await getIdToken(page)
+
+    await page.goto(`/rooms/${date}/availability`)
+    await expect(page.getByText(room)).toBeVisible()
+    const roomCard = page
+      .getByText(room, { exact: true })
+      .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
+
+    // The bar itself is deliberately aria-hidden (RoomAvailabilityPage.tsx - it's a purely visual
+    // summary of information already available as text, so it carries no accessible role of its
+    // own to query by, unlike the rest of this app's UI). Located structurally instead: it's the
+    // element immediately before the "...'s meetings" toggle button in the DOM. Each meeting
+    // renders exactly one child segment inside it.
+    const bar = roomCard.getByRole('button', { name: /'s meetings/ }).locator('xpath=preceding-sibling::*[1]')
+    const segmentsBefore = await bar.locator('> div').count()
+    expect(segmentsBefore).toBe(0)
+
+    await bookViaApi(page, token, { roomName: room, organiserName: organiser, subject, date })
+
+    await expect(async () => {
+      expect(await bar.locator('> div').count()).toBe(1)
+    }).toPass({ timeout: 30_000 })
+  } finally {
+    await observer.close()
+  }
+})
+
 test('a booking on a day being viewed does not disturb another day', async ({ browser }) => {
   // Row 3a of the cross-client table, and the row most likely to be mistaken for a defect later:
   // an invalidation names ONE date, so a client viewing a different date must be untouched.

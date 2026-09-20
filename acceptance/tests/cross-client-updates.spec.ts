@@ -414,3 +414,56 @@ test('a booking made by another client appears on Person Calendar without a refr
     await observer.close()
   }
 })
+
+test('an open meeting detail sheet survives an unrelated background refetch', async ({ browser }) => {
+  // mootmaker-webapp#98: useMeetingDetailOverlay's openMeeting is a snapshot captured into local
+  // useState at click time, decoupled from the live query - this guards that decoupling doesn't
+  // have a surprising failure mode under concurrent background activity: an unrelated day/meeting
+  // invalidated elsewhere, refetching every active query (including the one behind this open
+  // sheet), while the sheet is open.
+  const id = uniqueId()
+  const date = bookableDate(24)
+  const otherDate = bookableDate(25)
+  const room = `Cross Client Sheet Room ${id}`
+  const otherRoom = `Cross Client Sheet Other Room ${id}`
+  const organiser = `Cross Client Sheet Organiser ${id}`
+  const subject = `Cross client sheet booking ${id}`
+  const otherSubject = `Cross client sheet unrelated booking ${id}`
+
+  const observer = await browser.newContext()
+  try {
+    const page = await observer.newPage()
+    await signInAsDemo(page)
+    await createRoom(page, room, 4)
+    await createRoom(page, otherRoom, 4)
+    await createPerson(page, organiser)
+    const token = await getIdToken(page)
+
+    // The meeting whose sheet stays open throughout.
+    await bookViaApi(page, token, { roomName: room, organiserName: organiser, subject, date })
+
+    await page.goto(`/rooms/${date}/availability`)
+    const roomCard = page
+      .getByText(room, { exact: true })
+      .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
+    await roomCard.getByRole('button', { name: /'s meetings/ }).click()
+    await roomCard.getByRole('button', { name: subject, exact: false }).click()
+    await expect(page.getByRole('button', { name: 'Close' })).toBeVisible()
+    await expect(page.getByText(subject).first()).toBeVisible()
+
+    // An unrelated broadcast - a different room, a different day - while the sheet stays open.
+    await bookViaApi(page, token, {
+      roomName: otherRoom,
+      organiserName: organiser,
+      subject: otherSubject,
+      date: otherDate,
+    })
+    await page.waitForTimeout(5_000)
+
+    // Still open, still correct - not blanked, not force-closed, not showing the wrong meeting.
+    await expect(page.getByRole('button', { name: 'Close' })).toBeVisible()
+    await expect(page.getByText(subject).first()).toBeVisible()
+  } finally {
+    await observer.close()
+  }
+})

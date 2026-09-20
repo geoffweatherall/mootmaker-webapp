@@ -1,6 +1,6 @@
 import dayjs from 'dayjs'
 import { describe, expect, it } from 'vitest'
-import { minutesSinceMidnight, statusForRoom, type StatusMeeting } from './roomAvailabilityLogic'
+import { minutesSinceMidnight, segmentsForRoom, statusForRoom, type StatusMeeting } from './roomAvailabilityLogic'
 
 describe('minutesSinceMidnight', () => {
   it('reads the wall-clock hour and minute out of an ISO-8601 local date-time', () => {
@@ -67,5 +67,37 @@ describe('statusForRoom', () => {
     const meetings: StatusMeeting[] = [{ subject: 'Retro', startTime: '2026-09-25T14:00:00', endTime: '2026-09-25T15:00:00' }]
     const status = statusForRoom(meetings, false, now, 'TwentyFourHour')
     expect(status.label).toBe('1 meeting')
+  })
+})
+
+describe('segmentsForRoom', () => {
+  it('positions and sizes a segment as a percentage of the full 00:00-24:00 day', () => {
+    const meetings: StatusMeeting[] = [{ subject: 'Standup', startTime: '2026-09-21T06:00:00', endTime: '2026-09-21T12:00:00' }]
+    expect(segmentsForRoom(meetings)).toEqual([{ left: 25, width: 25 }])
+  })
+
+  it('returns one segment per meeting, in the same order', () => {
+    const meetings: StatusMeeting[] = [
+      { subject: 'Standup', startTime: '2026-09-21T09:00:00', endTime: '2026-09-21T09:30:00' },
+      { subject: 'Retro', startTime: '2026-09-21T14:00:00', endTime: '2026-09-21T15:00:00' },
+    ]
+    expect(segmentsForRoom(meetings)).toHaveLength(2)
+  })
+
+  it('gives a very short meeting a minimum visible width rather than letting it vanish', () => {
+    const meetings: StatusMeeting[] = [{ subject: 'Quick check-in', startTime: '2026-09-21T09:00:00', endTime: '2026-09-21T09:05:00' }]
+    expect(segmentsForRoom(meetings)[0].width).toBe(1.5)
+  })
+
+  it('does not clip or clamp a meeting outside a business-hours window - this app has none', () => {
+    const meetings: StatusMeeting[] = [{ subject: 'Late call', startTime: '2026-09-21T22:00:00', endTime: '2026-09-21T23:00:00' }]
+    const [segment] = segmentsForRoom(meetings)
+    // 22:00 = 1320 of 1440 minutes = 91.666...%
+    expect(segment.left).toBeCloseTo((22 * 60 / (24 * 60)) * 100)
+    expect(segment.width).toBeCloseTo((60 / (24 * 60)) * 100)
+  })
+
+  it('returns an empty array for a room with no meetings', () => {
+    expect(segmentsForRoom([])).toEqual([])
   })
 })

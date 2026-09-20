@@ -33,7 +33,7 @@ import { DAYS, REFERENCE_DATA } from '../graphql/queries'
 import type { Meeting, Person } from '../graphql/types'
 import { roomColorAt } from '../theme/roomColor'
 import { dayRelativeLabel } from './dayRelativeLabel'
-import { statusForRoom } from './roomAvailabilityLogic'
+import { segmentsForRoom, statusForRoom } from './roomAvailabilityLogic'
 
 const DATE_PARAM_FORMAT = 'YYYY-MM-DD'
 const DATE_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/
@@ -210,6 +210,7 @@ export default function RoomAvailabilityPage() {
             const roomColor = roomColorAt(roomIndex, theme.palette.mode)
             const meetings = meetingsByRoom.get(room.id) ?? []
             const status = statusForRoom(meetings, isToday, now, timeFormat)
+            const segments = segmentsForRoom(meetings)
             const expanded = expandedRoomIds.has(room.id)
 
             return (
@@ -239,6 +240,37 @@ export default function RoomAvailabilityPage() {
                       {status.subLabel}
                     </Typography>
                   </Stack>
+
+                  {/* Scan-at-a-glance busy/free timeline across the whole day - purely a visual
+                      summary of information already available as text (the status chip/subLabel
+                      above, and the meeting list below), so it carries no unique information a
+                      screen reader user would otherwise miss - aria-hidden accordingly. See
+                      mootmaker-webapp#75 and the prototype's own version:
+                      https://claude.ai/artifact/1Z3gT9MmFGRzRq5jpvS4Xr */}
+                  <Box
+                    aria-hidden="true"
+                    sx={{
+                      position: 'relative',
+                      height: 8,
+                      borderRadius: 1,
+                      bgcolor: `${roomColor}1f`,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {meetings.map((meeting, index) => (
+                      <Box
+                        key={meeting.id}
+                        sx={{
+                          position: 'absolute',
+                          top: 0,
+                          bottom: 0,
+                          left: `${segments[index].left}%`,
+                          width: `${segments[index].width}%`,
+                          bgcolor: roomColor,
+                        }}
+                      />
+                    ))}
+                  </Box>
 
                   <Button
                     onClick={() => toggleExpanded(room.id)}

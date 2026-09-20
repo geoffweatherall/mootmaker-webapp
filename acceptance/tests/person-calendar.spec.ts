@@ -174,13 +174,18 @@ test("G.60 - switching the Person selector to someone else's calendar works for 
 })
 
 test('G.61 - the weekly agenda shows exactly Monday-Friday, five day sections', async ({ page }) => {
+  // Pinned to a midweek day: "Next week" must land somewhere no day is "Today"/"Tomorrow" -
+  // dayLabelFor() substitutes those for the plain weekday name when a day is that close (see
+  // PersonCalendarPage.tsx). Without pinning, a suite run on a Saturday or Sunday sees next week's
+  // Monday only 1-2 days out, which is legitimately still "Tomorrow" - a real prior failure, not a
+  // flake (mootmaker-webapp#80).
+  await page.clock.setFixedTime(pinnedWeekday('Wednesday'))
   await signInAsDemo(page)
   await goToOwnCalendar(page)
 
-  // Move off the default (current) week so none of the five days is "Today"/"Tomorrow" -
-  // dayLabelFor() substitutes those for the plain weekday name when a day is that close (see
-  // PersonCalendarPage.tsx), and the default view always includes today by definition. Next week's
-  // Monday-Friday are all safely beyond that, so this asserts the plain weekday-name case.
+  // Move off the default (current) week so none of the five days is "Today"/"Tomorrow" - next
+  // week's Monday-Friday are all safely beyond that from this pinned Wednesday, so this asserts the
+  // plain weekday-name case.
   await page.getByRole('button', { name: 'Next week' }).click()
 
   // The weekday headings are the only subtitle1 (h6) text on this page - each day section's own

@@ -101,6 +101,12 @@ declare global {
       // Held open by layout-stability.spec.ts to observe the window where Rooms has not yet
       // arrived but People has - see AdminSections in SettingsPage.tsx.
       listRoomsGate?: Promise<void>
+      // Checked in src/auth/cognito.mock.ts's currentUserClaims, not here - this call never goes
+      // through MSW, so it isn't one of this file's own handlers. Declared here anyway so there is
+      // one place naming every gate this test suite has. Held open by layout-stability.spec.ts to
+      // observe the window where whether there's even a session at all hasn't resolved yet -
+      // mootmaker-webapp#111.
+      sessionGate?: Promise<void>
     }
   }
 }

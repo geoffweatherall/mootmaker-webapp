@@ -7,6 +7,7 @@ import {
   ButtonBase,
   Card,
   CircularProgress,
+  LinearProgress,
   Paper,
   Stack,
   Typography,
@@ -125,14 +126,20 @@ interface AgendaListProps {
   roomIndexById: Map<string, number>
   /** Null for a signed-in account with no linked Person - see the degraded-path branch below. Every card still renders; none of them has a status badge to show. */
   personId: string | null
-  loading: boolean
+  /** No data at all yet - not even a stale cached copy. The only state that blocks rendering. */
+  unknown: boolean
+  /** Have data (possibly stale) but a `cache-and-network` revalidation is still in flight - see the
+   * shared LinearProgress this drives in HomePage's own return. A day showing zero meetings here
+   * is not yet trustworthy while this is true, so the empty state below is suppressed for it - per
+   * mootmaker-webapp#111, don't say "No meetings" with more confidence than the data actually has. */
+  refreshing: boolean
   /** Opens the shared meeting-detail sheet/panel in place - see useMeetingDetailOverlay.tsx. Not a
    * navigation: nothing in this app links to /meetings/:id any more, see
    * designs/meeting-detail-consolidation.md. */
   onMeetingClick: (meeting: Meeting) => void
 }
 
-function AgendaList({ title, meetings, loading, roomsById, roomIndexById, personId, onMeetingClick }: AgendaListProps) {
+function AgendaList({ title, meetings, unknown, refreshing, roomsById, roomIndexById, personId, onMeetingClick }: AgendaListProps) {
   const { timeFormat } = useAuth()
   const theme = useTheme()
   const [expanded, setExpanded] = useState(false)
@@ -144,12 +151,16 @@ function AgendaList({ title, meetings, loading, roomsById, roomIndexById, person
       <Typography variant="h6" component="h2" sx={{ mb: 1 }}>
         {title}
       </Typography>
-      {loading ? (
+      {unknown ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
           <CircularProgress size={24} />
         </Box>
       ) : meetings.length === 0 ? (
-        <EmptyState message="No meetings." illustration={emptyMeetings} />
+        // refreshing: a revalidation is still in flight, so "zero" isn't settled yet - the shared
+        // bar above already says so, and this stays blank rather than asserting "No meetings."
+        refreshing ? null : (
+          <EmptyState message="No meetings." illustration={emptyMeetings} />
+        )
       ) : (
         <Stack spacing={1}>
           {visible.map((meeting) => {
@@ -200,7 +211,7 @@ function AgendaList({ title, meetings, loading, roomsById, roomIndexById, person
 
 export default function HomePage() {
   const navigate = useNavigate()
-  const { email, personId, personLoading } = useAuth()
+  const { email, personId, personLoading, initialising } = useAuth()
 
   // Today through the end of tomorrow, for the signed-in person - the API filters server-side so
   // The landing route, so it loads through the composite entry point: rooms, people and the three
@@ -283,7 +294,28 @@ export default function HomePage() {
     return entries.sort((a, b) => a.meeting.startTime.localeCompare(b.meeting.startTime))
   }, [data, personId, peopleById, roomsById])
 
-  const agendaLoading = personLoading || (meetingsLoading && !data)
+  // Three states, not one boolean - see mootmaker-webapp#111. `data` is undefined only until the
+  // first complete result (from cache or network) arrives; `cache-and-network` never hands back a
+  // partial one, but it does hand back a stale-and-complete one immediately when the cache already
+  // has it, with a network revalidation still running behind it - that's `agendaRefreshing`, not
+  // `agendaUnknown`, and the two need different treatment: unknown blocks rendering entirely,
+  // refreshing shows what we have (a slim bar signals more is coming) without asserting the current
+  // "zero" is final.
+  const hasAgendaData = data !== undefined
+  const agendaUnknown = personLoading || (meetingsLoading && !hasAgendaData)
+  const agendaRefreshing = meetingsLoading && hasAgendaData
+
+  // Whether there is even a session to check hasn't resolved yet - not the same as confirmed
+  // signed-out, which is what the `!email` branch below actually means. Rendering that branch here
+  // would show an already-signed-in visitor the whole marketing/sign-in page for a moment before
+  // flipping to their real dashboard. A progress indicator, not a guess either way.
+  if (initialising) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+        <CircularProgress />
+      </Box>
+    )
+  }
 
   if (!email) {
     // Not secrets - this is a demo system, so the whole point is that these are shown here for
@@ -436,7 +468,13 @@ export default function HomePage() {
         </Stack>
       </Paper>
 
-      {personId && !agendaLoading && (
+      {/* One shared indicator for the whole dashboard below, matching PersonCalendarPage/
+          RoomAvailabilityPage's convention (README.md's "Progress indicators") rather than a bar
+          per section - Needs-response and both agenda panels come from the one PAGE_LOAD query, so
+          three separate bars would just say the same thing three times. */}
+      <Box sx={{ height: 4 }}>{agendaRefreshing && <LinearProgress />}</Box>
+
+      {personId && !agendaUnknown && (
         <Stack spacing={1.5}>
           <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline' }}>
             <Typography variant="h6" component="h2">
@@ -459,11 +497,15 @@ export default function HomePage() {
             )}
           </Stack>
           {needsResponse.length === 0 ? (
-            <Paper sx={{ p: 2, textAlign: 'center' }}>
-              <Typography variant="body2" color="text.secondary">
-                Nothing waiting on a response — you're all caught up.
-              </Typography>
-            </Paper>
+            // refreshing: not settled yet, so "you're all caught up" isn't known to be true - say
+            // nothing rather than assert it (see AgendaList's identical treatment below).
+            agendaRefreshing ? null : (
+              <Paper sx={{ p: 2, textAlign: 'center' }}>
+                <Typography variant="body2" color="text.secondary">
+                  Nothing waiting on a response — you're all caught up.
+                </Typography>
+              </Paper>
+            )
           ) : (
             <Stack spacing={1.5}>
               {needsResponse.map(({ meeting, organiserName, roomName }) => (
@@ -485,7 +527,8 @@ export default function HomePage() {
         <AgendaList
           title="Today"
           meetings={agendaFor(today)}
-          loading={agendaLoading}
+          unknown={agendaUnknown}
+          refreshing={agendaRefreshing}
           roomsById={roomsById}
           roomIndexById={roomIndexById}
           personId={personId}
@@ -494,7 +537,8 @@ export default function HomePage() {
         <AgendaList
           title="Tomorrow"
           meetings={agendaFor(tomorrow)}
-          loading={agendaLoading}
+          unknown={agendaUnknown}
+          refreshing={agendaRefreshing}
           roomsById={roomsById}
           roomIndexById={roomIndexById}
           personId={personId}

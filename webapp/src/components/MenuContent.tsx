@@ -115,7 +115,17 @@ export function MenuContent({ onNavigate }: MenuContentProps) {
           </>
         )}
 
-        {email ? (
+        {initialising ? (
+          // Whether there's a session at all hasn't resolved yet - showing Sign in/Sign up here
+          // would say "you are not signed in" before that's actually known, same fault as the
+          // Calendar item above but for the pair that says so most directly.
+          <ListItemButton disabled>
+            <ListItemIcon>
+              <CircularProgress size={20} />
+            </ListItemIcon>
+            <ListItemText primary="Checking session…" />
+          </ListItemButton>
+        ) : email ? (
           <ListItemButton onClick={handleSignOut}>
             <ListItemIcon>
               <LogoutRoundedIcon />

@@ -105,12 +105,24 @@ export async function currentUserClass(): Promise<string | null> {
 
 /** Mirrors cognito.ts's currentUserClaims - the mock reads from one session too, so the module's
  * shape stays identical. There is no race to avoid here; this exists so AuthProvider has the same
- * surface under mocks as it does for real. */
+ * surface under mocks as it does for real.
+ *
+ * Unlike the mocked GraphQL operations (src/testSupport/mocks/handlers.ts), this resolves near-
+ * instantly with no gate of its own by default - a real getSession() call is genuinely
+ * network-bound (mootmaker-webapp#111's "not signed in" flash is exactly that window), but nothing
+ * here was, until layout-stability.spec.ts needed to hold it open deterministically. Gated through
+ * the same window.__mockControls convention as the MSW gates, via tests/support/mockControls.ts's
+ * gateSessionQuery - checked here rather than in a GraphQL handler because this call never goes
+ * through MSW at all.
+ */
 export async function currentUserClaims(): Promise<{
   email: string | null
   name: string | null
   userClass: string | null
 }> {
+  if (window.__mockControls?.sessionGate) {
+    await window.__mockControls.sessionGate
+  }
   const session = readSession()
   const user = session ? findUser(session.email) : null
   return {

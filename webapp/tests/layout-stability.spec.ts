@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { ADMIN_USER, DEMO_USER } from '../src/auth/cognito.mock'
-import { gateListRoomsQuery, gateMyPersonQuery } from './support/mockControls'
+import { gateListRoomsQuery, gateMyPersonQuery, gateMyPersonQueryNow, gateSessionQuery } from './support/mockControls'
 
 /**
  * Settings' "Your name" and "Date and time format" sections each explain themselves when the
@@ -137,5 +137,109 @@ test.describe('Settings admin sections while the rooms list is still loading', (
     const box = await addPerson.boundingBox()
     await expect(page.getByRole('heading', { name: 'Rooms', level: 2 })).toBeVisible()
     expect(await addPerson.boundingBox()).toEqual(box)
+  })
+})
+
+/**
+ * mootmaker-webapp#111: the home page (and, while investigating, the nav sidebar) guessed
+ * "signed out" - and, separately, "no meetings" - before those were actually known, rather than
+ * showing a progress indicator for the window where they weren't. Three windows, each covering a
+ * state this app now must not guess through: whether there's a session at all, whether there's any
+ * agenda data yet, and whether a `cache-and-network` revalidation might still correct data already
+ * on screen.
+ */
+test.describe('Home page and nav sidebar while the session itself is still unknown', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
+  test('does not flash the signed-out view (or guess signed-in) for an already-signed-in session', async ({
+    page,
+  }) => {
+    // Establish a real (mocked) signed-in session first, same as any other test - this reload is
+    // what stands in for "opening a fresh tab with an existing session", the case that used to flash.
+    await page.goto('/')
+    await page.getByLabel('Email').fill(DEMO_USER.email)
+    await page.getByLabel('Password').fill(DEMO_USER.password)
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
+
+    const releaseSession = await gateSessionQuery(page)
+    await page.reload()
+
+    // Whether there's a session hasn't resolved yet - neither the signed-out marketing page nor
+    // the signed-in dashboard is known to be correct, so neither should render. Just a progress
+    // indicator, per the nav sidebar too (MenuContent's "Checking session…", AccountBox's spinner
+    // row) - both visible here since the sidebar is part of Layout, not HomePage itself.
+    await expect(page.getByRole('progressbar').first()).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Try it now — no account needed', level: 2 })).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: 'Needs your response' })).toHaveCount(0)
+    await expect(page.getByRole('link', { name: 'Sign in', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Sign out' })).toHaveCount(0)
+    await expect(page.getByText('Checking session…')).toBeVisible()
+
+    await releaseSession()
+
+    // Resolves to the real signed-in dashboard, never having shown the marketing page.
+    await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Try it now — no account needed', level: 2 })).toHaveCount(0)
+  })
+})
+
+test.describe('Home page agenda while PageLoad data is still unknown or refreshing', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
+  test('shows a spinner, not "No meetings", while first-load agenda data is still unknown', async ({ page }) => {
+    const releaseMyPerson = await gateMyPersonQuery(page)
+
+    await page.goto('/')
+    await page.getByLabel('Email').fill(DEMO_USER.email)
+    await page.getByLabel('Password').fill(DEMO_USER.password)
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
+
+    // Signed in, but PageLoad (gated via the same myPersonGate the Session operation uses) hasn't
+    // resolved - there is no data at all yet, so Today/Tomorrow must show they don't know rather
+    // than claim there's nothing.
+    await expect(page.getByRole('heading', { name: 'Today', level: 2 })).toBeVisible()
+    await expect(page.getByText('No meetings.')).toHaveCount(0)
+    await expect(page.getByRole('progressbar').first()).toBeVisible()
+
+    await releaseMyPerson()
+
+    await expect(page.getByText('No meetings.').first()).toBeVisible()
+  })
+
+  test('does not claim "No meetings" while revalidating stale cached data in the background', async ({ page }) => {
+    await page.goto('/')
+    await page.getByLabel('Email').fill(DEMO_USER.email)
+    await page.getByLabel('Password').fill(DEMO_USER.password)
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
+
+    // Settle once first - the fixture starts with no meetings, so this also confirms the genuinely-
+    // settled empty state still renders correctly (the case this fix must not break).
+    await expect(page.getByText('No meetings.').first()).toBeVisible()
+
+    // Gate the *next* PageLoad fetch, then trigger it by navigating away and back: the query
+    // unmounts and remounts, and `cache-and-network` serves the stale-but-complete cached result
+    // (still zero meetings) immediately while this gated network revalidation runs behind it.
+    // page.addInitScript-based gates (gateMyPersonQuery) only take effect on a future navigation
+    // load, not an in-page SPA remount - gateMyPersonQueryNow arms the same gate via page.evaluate
+    // against the already-loaded page instead, for exactly this case.
+    const releasePageLoad = await gateMyPersonQueryNow(page)
+    await page.getByRole('link', { name: 'About' }).click()
+    await expect(page.getByRole('heading', { name: 'About', level: 1 })).toBeVisible()
+    await page.getByRole('link', { name: 'Home' }).click()
+
+    // Stale-and-complete cached data (zero meetings) is on screen, but a revalidation is still in
+    // flight - the shared bar says so, and the empty state must not assert "No meetings" with more
+    // confidence than that until it actually knows.
+    await expect(page.getByRole('heading', { name: 'Today', level: 2 })).toBeVisible()
+    await expect(page.getByText('No meetings.')).toHaveCount(0)
+    await expect(page.getByRole('progressbar')).toBeVisible()
+
+    await releasePageLoad()
+
+    // Settled again - the empty state is trustworthy once more.
+    await expect(page.getByText('No meetings.').first()).toBeVisible()
   })
 })

@@ -172,6 +172,36 @@ export const SESSION = graphql(`
   }
 `)
 
+/**
+ * A live binding into just a meeting's attendee statuses, keyed by id - read with `useFragment`
+ * (see useMeetingDetailOverlay.tsx), not fetched directly.
+ *
+ * Deliberately narrow: `id` and `attendees { person { id } status }` only, matching exactly what
+ * every meetings query already selects (PAGE_LOAD/DAYS's day-embedded shape, not just
+ * MEETING_BY_ID's fuller one) - so this fragment reads as "complete" from the cache regardless of
+ * which query populated the entity. A wider fragment (room/organiser names, attendee names) would
+ * usually read incomplete for a meeting opened from a list rather than a deep link, since those
+ * fields are only ever fetched by MEETING_BY_ID.
+ *
+ * Exists because the detail sheet/panel's `meeting` prop is a snapshot captured once into
+ * useMeetingDetailOverlay.tsx's local state, not itself reactive - correct for fields that never
+ * change after creation (subject, times, room, organiser), wrong for attendee status, which
+ * changes underneath an already-open sheet whenever anyone (including another client) responds.
+ * `useFragment` is Apollo's purpose-built tool for exactly this: a live view of one normalised
+ * entity, independent of which query is currently mounted.
+ */
+export const MEETING_ATTENDEES_FRAGMENT = graphql(`
+  fragment MeetingAttendees on Meeting {
+    id
+    attendees {
+      person {
+        id
+      }
+      status
+    }
+  }
+`)
+
 export const SUGGEST_ROOM = graphql(`
   query SuggestRoom($startTime: String!, $endTime: String!, $requiredCapacity: Int!) {
     suggestRoom(startTime: $startTime, endTime: $endTime, requiredCapacity: $requiredCapacity) {

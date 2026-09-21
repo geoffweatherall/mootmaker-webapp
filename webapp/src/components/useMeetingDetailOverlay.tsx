@@ -1,5 +1,7 @@
+import { useFragment } from '@apollo/client/react'
 import { Box, Drawer, useMediaQuery, useTheme } from '@mui/material'
 import { useState } from 'react'
+import { MEETING_ATTENDEES_FRAGMENT } from '../graphql/queries'
 import type { Meeting, MeetingDetails, Person, Room } from '../graphql/types'
 import { roomColorAt } from '../theme/roomColor'
 import { MeetingDetailContent } from './MeetingDetailContent'
@@ -57,7 +59,31 @@ export function useMeetingDetailOverlay(
     setOpenMeeting(null)
   }
 
-  const resolved = openMeeting ? resolveMeetingDetails(openMeeting, peopleById, roomsById) : null
+  // A live binding to just this meeting's attendee statuses, independent of the frozen
+  // openMeeting snapshot below - see MEETING_ATTENDEES_FRAGMENT's own doc comment for why this is
+  // what actually makes another client's response change reach an already-open sheet (proved by
+  // acceptance/tests/attendee-response-status.spec.ts's cross-client case).
+  const { data: liveAttendees, complete: attendeesComplete } = useFragment({
+    fragment: MEETING_ATTENDEES_FRAGMENT,
+    from: openMeeting ? { __typename: 'Meeting' as const, id: openMeeting.id } : null,
+  })
+
+  const resolved = openMeeting
+    ? {
+        ...resolveMeetingDetails(openMeeting, peopleById, roomsById),
+        // Falls back to the snapshot's own attendees (still correct, just not live) on the rare
+        // chance the fragment reads incomplete - e.g. the instant right after open(), before this
+        // hook's first re-render.
+        ...(attendeesComplete && liveAttendees
+          ? {
+              attendees: liveAttendees.attendees.map((attendee) => ({
+                person: { id: attendee.person.id, name: peopleById.get(attendee.person.id)?.name ?? '' },
+                status: attendee.status,
+              })),
+            }
+          : {}),
+      }
+    : null
   const roomColor = openMeeting
     ? roomColorAt(roomIndexById.get(openMeeting.room.id) ?? 0, theme.palette.mode)
     : ''

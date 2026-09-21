@@ -4,7 +4,7 @@ import { Box, IconButton, Stack, Typography } from '@mui/material'
 import { useState } from 'react'
 import { useAuth } from '../auth/authContext'
 import { formatLocalDate, formatLocalTime } from '../graphql/formatDateTime'
-import type { AttendeeStatus, MeetingDetails } from '../graphql/types'
+import type { MeetingDetails } from '../graphql/types'
 import { AttendeeStatusBadge } from './AttendeeStatusBadge'
 import { AttendeeStatusControl } from './AttendeeStatusControl'
 import { PersonAvatar } from './PersonAvatar'
@@ -60,14 +60,6 @@ export function MeetingDetailContent({
 }) {
   const { timeFormat, dateFormat, personId } = useAuth()
   const [linkCopied, setLinkCopied] = useState(false)
-
-  // Overrides just the caller's own status once respondToMeeting succeeds, rather than the whole
-  // attendee list - `meeting` is a snapshot passed down from useMeetingDetailOverlay.tsx's local
-  // state, decoupled from live Apollo query data (see that hook's own note), so nothing else makes
-  // this control reflect a change it just made. useMeetingDetailOverlay.tsx keys this component by
-  // meeting id, so a fresh instance (and a null override) is guaranteed whenever a different
-  // meeting is shown, including switching directly from one open meeting to another.
-  const [myStatusOverride, setMyStatusOverride] = useState<AttendeeStatus | null>(null)
 
   const myAttendee = meeting.attendees.find((attendee) => attendee.person.id === personId)
 
@@ -161,13 +153,7 @@ export function MeetingDetailContent({
         {/* Only when the caller is actually an attendee - the organiser has nothing to set (see
             AttendeeStatusControl.tsx), and someone viewing a shared link they have no part in gets
             no control either. */}
-        {myAttendee && (
-          <AttendeeStatusControl
-            meetingId={meeting.id}
-            status={myStatusOverride ?? myAttendee.status}
-            onChanged={setMyStatusOverride}
-          />
-        )}
+        {myAttendee && <AttendeeStatusControl meetingId={meeting.id} status={myAttendee.status} />}
       </Stack>
 
       <SuccessToast message={linkCopied ? 'Link copied to clipboard.' : null} onClose={() => setLinkCopied(false)} />

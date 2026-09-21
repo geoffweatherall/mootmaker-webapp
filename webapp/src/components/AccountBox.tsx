@@ -1,4 +1,4 @@
-import { Divider, IconButton, Stack, Tooltip, Typography } from '@mui/material'
+import { CircularProgress, Divider, IconButton, Stack, Tooltip, Typography } from '@mui/material'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/authContext'
 import { SettingsIcon as SettingsRoundedIcon } from '../icons'
@@ -15,8 +15,21 @@ interface AccountBoxProps {
  * while signed out rather than duplicating them.
  */
 export function AccountBox({ onNavigate }: AccountBoxProps) {
-  const { email, displayName } = useAuth()
+  const { email, displayName, initialising } = useAuth()
 
+  // Whether there's a session at all is still unknown - distinct from confirmed-signed-out, which
+  // is the only case this row should actually disappear for. Rendering nothing here would be a
+  // guess in the signed-in direction just as much as rendering the signed-in row would be.
+  if (initialising) {
+    return (
+      <>
+        <Divider />
+        <Stack direction="row" sx={{ p: 2, justifyContent: 'center' }}>
+          <CircularProgress size={20} />
+        </Stack>
+      </>
+    )
+  }
   if (!email) {
     return null
   }

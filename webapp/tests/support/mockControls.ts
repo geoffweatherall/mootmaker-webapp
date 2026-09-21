@@ -40,3 +40,44 @@ export async function gateListRoomsQuery(page: Page): Promise<() => Promise<void
   return () =>
     page.evaluate(() => (window as unknown as { __releaseListRoomsGate: () => void }).__releaseListRoomsGate())
 }
+
+/**
+ * Holds `cognito.mock.ts`'s currentUserClaims() open - not a GraphQL operation, so unlike the gates
+ * above it isn't checked in a handler, it's checked directly in the mock (see that file). Makes the
+ * window where whether there's even a session at all is still unknown - AuthProvider's
+ * `initialising` - observable deterministically, the same way the other gates do for their own
+ * calls. See mootmaker-webapp#111.
+ */
+export async function gateSessionQuery(page: Page): Promise<() => Promise<void>> {
+  await page.addInitScript(() => {
+    window.__mockControls = {
+      ...window.__mockControls,
+      sessionGate: new Promise<void>((resolve) => {
+        ;(window as unknown as { __releaseSessionGate: () => void }).__releaseSessionGate = resolve
+      }),
+    }
+  })
+  return () =>
+    page.evaluate(() => (window as unknown as { __releaseSessionGate: () => void }).__releaseSessionGate())
+}
+
+/**
+ * As gateMyPersonQuery, but armed mid-test via page.evaluate against an already-loaded page,
+ * instead of page.addInitScript before the first navigation. addInitScript only takes effect on a
+ * future navigation/reload; it cannot gate a fetch an already-mounted SPA is about to make (e.g. a
+ * `cache-and-network` revalidation triggered by remounting a query via client-side navigation, with
+ * no new document load for addInitScript to attach to). Use this to observe that second, in-page
+ * fetch specifically - see mootmaker-webapp#111's "refreshing with stale data" case.
+ */
+export async function gateMyPersonQueryNow(page: Page): Promise<() => Promise<void>> {
+  await page.evaluate(() => {
+    window.__mockControls = {
+      ...window.__mockControls,
+      myPersonGate: new Promise<void>((resolve) => {
+        ;(window as unknown as { __releaseMyPersonGate: () => void }).__releaseMyPersonGate = resolve
+      }),
+    }
+  })
+  return () =>
+    page.evaluate(() => (window as unknown as { __releaseMyPersonGate: () => void }).__releaseMyPersonGate())
+}

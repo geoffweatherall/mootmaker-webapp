@@ -27,6 +27,7 @@ type Documents = {
     "\n  query ReferenceData {\n    workspace {\n      rooms {\n        id\n        name\n        capacity\n      }\n      people {\n        id\n        name\n      }\n    }\n  }\n": typeof types.ReferenceDataDocument,
     "\n  query MeetingById($id: ID!) {\n    meeting(id: $id) {\n      id\n      subject\n      startTime\n      endTime\n      room {\n        id\n        name\n        capacity\n      }\n      organiser {\n        id\n        name\n      }\n      attendees {\n        person {\n          id\n          name\n        }\n        status\n      }\n    }\n  }\n": typeof types.MeetingByIdDocument,
     "\n  query Session {\n    workspace {\n      me {\n        id\n        name\n        dateFormat\n        timeFormat\n      }\n    }\n  }\n": typeof types.SessionDocument,
+    "\n  fragment MeetingAttendees on Meeting {\n    id\n    attendees {\n      person {\n        id\n      }\n      status\n    }\n  }\n": typeof types.MeetingAttendeesFragmentDoc,
     "\n  query SuggestRoom($startTime: String!, $endTime: String!, $requiredCapacity: Int!) {\n    suggestRoom(startTime: $startTime, endTime: $endTime, requiredCapacity: $requiredCapacity) {\n      id\n      name\n      capacity\n    }\n  }\n": typeof types.SuggestRoomDocument,
 };
 const documents: Documents = {
@@ -43,6 +44,7 @@ const documents: Documents = {
     "\n  query ReferenceData {\n    workspace {\n      rooms {\n        id\n        name\n        capacity\n      }\n      people {\n        id\n        name\n      }\n    }\n  }\n": types.ReferenceDataDocument,
     "\n  query MeetingById($id: ID!) {\n    meeting(id: $id) {\n      id\n      subject\n      startTime\n      endTime\n      room {\n        id\n        name\n        capacity\n      }\n      organiser {\n        id\n        name\n      }\n      attendees {\n        person {\n          id\n          name\n        }\n        status\n      }\n    }\n  }\n": types.MeetingByIdDocument,
     "\n  query Session {\n    workspace {\n      me {\n        id\n        name\n        dateFormat\n        timeFormat\n      }\n    }\n  }\n": types.SessionDocument,
+    "\n  fragment MeetingAttendees on Meeting {\n    id\n    attendees {\n      person {\n        id\n      }\n      status\n    }\n  }\n": types.MeetingAttendeesFragmentDoc,
     "\n  query SuggestRoom($startTime: String!, $endTime: String!, $requiredCapacity: Int!) {\n    suggestRoom(startTime: $startTime, endTime: $endTime, requiredCapacity: $requiredCapacity) {\n      id\n      name\n      capacity\n    }\n  }\n": types.SuggestRoomDocument,
 };
 
@@ -112,6 +114,10 @@ export function graphql(source: "\n  query MeetingById($id: ID!) {\n    meeting(
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  query Session {\n    workspace {\n      me {\n        id\n        name\n        dateFormat\n        timeFormat\n      }\n    }\n  }\n"): (typeof documents)["\n  query Session {\n    workspace {\n      me {\n        id\n        name\n        dateFormat\n        timeFormat\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  fragment MeetingAttendees on Meeting {\n    id\n    attendees {\n      person {\n        id\n      }\n      status\n    }\n  }\n"): (typeof documents)["\n  fragment MeetingAttendees on Meeting {\n    id\n    attendees {\n      person {\n        id\n      }\n      status\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

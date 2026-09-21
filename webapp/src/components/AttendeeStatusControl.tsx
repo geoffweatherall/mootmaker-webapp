@@ -14,17 +14,16 @@ import { RESPOND_TO_MEETING_ERROR_MESSAGES } from '../graphql/validationMessages
  * Deliberately does not select `day` on the mutation response the way `createMeeting` does -
  * `respondToMeeting`'s schema has no `day` field. Selecting the whole `meeting` (see
  * graphql/mutations.ts) is what lets the response overwrite the normalised `Meeting:<id>` cache
- * entity in place, same effect by a different route.
+ * entity in place, same effect by a different route - which is also what makes the `status` prop
+ * below reflect a just-confirmed change with no local state of its own: useMeetingDetailOverlay.tsx
+ * reads this meeting's attendees live via `useFragment`, so the fresh prop arrives on its own.
  */
 export function AttendeeStatusControl({
   meetingId,
   status,
-  onChanged,
 }: {
   meetingId: string
   status: AttendeeStatus
-  /** Called with the freshly-confirmed status once the mutation succeeds - see MeetingDetailContent.tsx's own local-override note on why this exists rather than trusting the surrounding snapshot to refresh itself. */
-  onChanged: (status: AttendeeStatus) => void
 }) {
   const [respondToMeeting, { loading, error: transportError }] = useMutation<{
     respondToMeeting: RespondToMeetingResult
@@ -36,9 +35,7 @@ export function AttendeeStatusControl({
     setFieldErrors([])
     const result = await respondToMeeting({ variables: { meetingId, status: next } })
     const payload = result.data?.respondToMeeting
-    if (payload?.meeting) {
-      onChanged(next)
-    } else if (payload?.errors.length) {
+    if (!payload?.meeting && payload?.errors.length) {
       setFieldErrors(payload.errors.map((code) => RESPOND_TO_MEETING_ERROR_MESSAGES[code]))
     }
   }

@@ -153,3 +153,36 @@ See [README.md](README.md) for the entry format and test-data conventions.
 **Out of scope:** navigating from `RoomAvailabilityPage`'s own "Add Meeting" button (E.37 covers that, with the currently-viewed date instead of today's).
 
 **Notes:** Pinning the clock is what makes "today's date" a checkable, non-flaky assertion instead of a moving target.
+
+---
+
+<a id="tc-d107"></a>
+### D.107 — "Needs your response" section, quick-respond, and status badges on Today/Tomorrow
+
+**Use case:** [use-cases.md#uc-107](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-107) — "A 'Needs your response' section lists, soonest-first, every upcoming meeting where the signed-in person is an attendee (not organiser) with status still No response... responding clears it from the list live. The Today/Tomorrow agenda lists are cards showing the viewer's own response status..."
+**Status:** ✅ Automated — [`tests/attendee-response-status.spec.ts`](../tests/attendee-response-status.spec.ts), new 2026-09-21 — see `../../designs/attendee-response-status.md` in the hub repo.
+**Android:** not yet automated
+
+**Preconditions:** Signed in as the demo user, with a room and a second Person (created via Settings, as organiser) already present. A meeting created via the real `createMeeting` API with the demo user as an attendee (not organiser), on the pinned "today".
+
+**Given** a signed-in user who is an attendee (not organiser) of an upcoming meeting they have not yet responded to
+**When** they view the home page
+**Then** the meeting appears as a card in "Needs your response", and clicking one of its Going/Maybe/Not going buttons both removes it from that section and updates its status badge on the Today card - live, with no reload
+
+**Steps:**
+1. Sign in as the demo user; create a room and (via Settings) a second Person as organiser.
+2. Create a meeting via the API with the demo user as the sole attendee, on the pinned today.
+3. Navigate to `/`; assert the meeting's card is present under "Needs your response".
+4. Click that card's "Going" button.
+5. Assert the card is gone from "Needs your response".
+6. Assert the Today agenda card for the same meeting now shows a "Going" status badge.
+7. Read the meeting back over the API directly, confirming the write reached the server.
+
+**Assertions:**
+- Step 3: the card shows the meeting's subject, time, room, and organiser name.
+- Step 5/6: both update with no page reload.
+- Step 7: `attendees[demoPersonId].status` is `Going`.
+
+**Out of scope:** the exact three-day window boundary (today/tomorrow/day-after) and the "Show N more" expander threshold - covered at the unit/mocked-integration layer (`HomePage.tsx`'s own tests), not re-proven against a real deployment here.
+
+**Notes:** This is the Home-page half of the design; H.108 covers the meeting-detail-sheet half of the same feature.

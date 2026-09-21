@@ -209,3 +209,30 @@ H.72 would need to return.
 **Notes:** This is the acceptance-layer half of the unsafe-Back fix - it proves `RequireAuth`,
 Cognito's hosted sign-in, and AppSync are correctly wired together end-to-end for a cold link, which
 a mocked test cannot stand in for. See H.72's removal note above for the full picture.
+
+---
+
+<a id="tc-h108"></a>
+### H.108 — Attendee status badges, "You", and a working self-response control
+
+**Use case:** [use-cases.md#uc-108](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-108) — "Every non-organiser attendee shows their own Going/Not going/Maybe/No response status; the signed-in caller's own row shows 'You' instead, next to a self-only three-way control that sets their response and persists across a close/reopen. The organiser has no status control."
+**Status:** ✅ Automated — [`tests/attendee-response-status.spec.ts`](../tests/attendee-response-status.spec.ts), new 2026-09-21 — see `../../designs/attendee-response-status.md` in the hub repo.
+**Android:** not yet automated
+
+**Preconditions:** Same setup as D.107 - a meeting with the demo user as an attendee, created via the API.
+
+**Given** a meeting-detail sheet open for a meeting the signed-in caller attends
+**When** they view their own attendee row and use the response control
+**Then** their row shows "You" (not a status badge), a "Your response" control is present and shows their current status, and changing it persists - still correct after closing and reopening the sheet
+
+**Steps:**
+1. From D.107's setup, respond "Going" via the Home page's quick-respond button.
+2. Open the meeting's detail sheet.
+3. Assert the "Your response" control (`role=group`, accessible name "Your response") is visible and its "Going" button is pressed.
+
+**Assertions:**
+- The control's pressed button matches the status actually stored server-side (read back over the API in D.107's own test, shared with this one).
+
+**Out of scope:** the organiser's own row (never shows a badge or a control - implicit Going, not exercised as a negative assertion here since it's structural: the organiser is never in `attendees` at all, see the API schema).
+
+**Notes:** This is the meeting-detail half of the design; D.107 covers the Home-page half. Both are proven in one spec file since the same real meeting is used for both halves of the flow.

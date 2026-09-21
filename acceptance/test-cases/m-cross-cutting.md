@@ -233,3 +233,84 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 **Notes:** This is the one case in the catalog that specifically needs **two independent browser contexts**, not just one page navigating around — the whole point is proving cache behaviour *across* sessions, which a single context's own always-fresh state can't demonstrate on its own.
 
 **2026-08-27 update:** re-verified live and passing in every run today (3 for 3), including before M.94/M.97's own test fixes landed - confirming this case's earlier failure in the full-suite run was unrelated flakiness, not a real regression from the SES/Cognito change or the room-availability fixes. No test or product change was needed.
+
+---
+
+<a id="tc-m109"></a>
+### M.109 — Two attendees of the same meeting responding at once both land
+
+**Use case:** [use-cases.md#uc-109](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-109) — "Two different attendees of the same meeting responding to it at the same moment both land - neither overwrites the other, even under a real DynamoDB optimistic-lock conflict."
+**Status:** ✅ Automated — [`tests/attendee-response-status.spec.ts`](../tests/attendee-response-status.spec.ts), new 2026-09-21 — see `../../designs/attendee-response-status.md` in the hub repo.
+**Android:** not yet automated
+
+**Preconditions:** Three real identities in three separate browser contexts: the demo user and two freshly-created, admin-confirmed accounts (`support/cognitoAdmin.ts`'s `createConfirmedTestAccount`, bypassing the email-code UI). One organises; the demo user and the other fresh account are both attendees of one meeting, created via the API.
+
+**Given** two different real attendees of the same meeting
+**When** both call `respondToMeeting` for that meeting at the same moment (`Promise.all`, not sequential)
+**Then** both responses land - the day item's optimistic-lock retry (`DayRepository.mutate`) means the second writer re-reads and re-applies against the first's already-committed change rather than losing it
+
+**Steps:**
+1. Sign in as the demo user and two fresh accounts, each in its own browser context (a shared context would share localStorage and silently replace an earlier sign-in).
+2. Create a meeting via the API: fresh account 1 organises, the demo user and fresh account 2 attend.
+3. Fire `respondToMeeting` from the demo user (`Going`) and fresh account 2 (`Maybe`) together via `Promise.all`.
+4. Read the meeting back over the API.
+
+**Assertions:**
+- Both mutation calls return no errors.
+- The re-read shows the demo user's status as `Going` AND fresh account 2's status as `Maybe` - neither missing, neither holding the other's value.
+
+**Notes:** This is the real-infrastructure counterpart to `RespondToMeetingHandlerTest`'s `FakeDynamoDbClient`-based concurrency tests in `mootmaker-api` - those pin the handler's own retry *logic*; this is what actually proves a genuine DynamoDB `ConditionalCheckFailedException` gets hit and retried, not just reasoned about.
+
+---
+
+<a id="tc-m110"></a>
+### M.110 — One person responding to two different meetings sharing a day both land
+
+**Use case:** [use-cases.md#uc-110](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-110) — "One person responding to two different meetings that happen to fall on the same calendar day - and so share the same DynamoDB day item - at the same moment: both responses land."
+**Status:** ✅ Automated — [`tests/attendee-response-status.spec.ts`](../tests/attendee-response-status.spec.ts), new 2026-09-21 — see `../../designs/attendee-response-status.md` in the hub repo.
+**Android:** not yet automated
+
+**Preconditions:** Signed in as the demo user, with two rooms and one other Person (organiser) already present. Two meetings on the same pinned day (different rooms/times), both via the API, with the demo user as the sole attendee of each.
+
+**Given** one person attending two different meetings on the same calendar day
+**When** they respond to both at the same moment (`Promise.all`)
+**Then** both responses land - even though these look independent from the API surface, storage is one DynamoDB item per *day*, not per meeting, so both writes contend on the exact same optimistic lock and this is the concurrency shape most likely to produce a real conflict in practice
+
+**Steps:**
+1. Sign in as the demo user; create two rooms and one organiser Person.
+2. Create two meetings via the API on the same day, different rooms/times, demo user attending both.
+3. Fire `respondToMeeting` for both meetings together via `Promise.all` (`Going` / `NotGoing`).
+4. Read both meetings back over the API.
+
+**Assertions:**
+- Both mutation calls return no errors.
+- Meeting A shows `Going`, meeting B shows `NotGoing` - neither lost to the other's write.
+
+**Notes:** Companion to M.109 - see `designs/attendee-response-status.md`'s Technical considerations for why this specific shape (same person, same day, different meetings) was called out as the sharper of the two cases.
+
+---
+
+<a id="tc-m111"></a>
+### M.111 — A response made by another client is reflected live
+
+**Use case:** [use-cases.md#uc-111](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-111) — "A response made by another client (e.g. a different attendee, or the same person in another tab) is reflected on an already-open meeting detail sheet without a refresh."
+**Status:** ✅ Automated — [`tests/attendee-response-status.spec.ts`](../tests/attendee-response-status.spec.ts), new 2026-09-21 — see `../../designs/attendee-response-status.md` in the hub repo.
+**Android:** not yet automated
+
+**Preconditions:** Two browser contexts: the demo user (observer, organiser) and one fresh account (the meeting's sole attendee). A meeting created via the API, on the pinned "today".
+
+**Given** the observer has the meeting's detail sheet open, showing the attendee's status badge as "No response"
+**When** the attendee calls `respondToMeeting` from their own, separate session
+**Then** the observer's already-open sheet updates to show "Going" with no reload or navigation - the same `daysInvalidated` broadcast/refetch `createMeeting` already relies on, now proven for `respondToMeeting` too
+
+**Steps:**
+1. Sign in as the demo user (observer) and a fresh account (attendee), each in its own context.
+2. Observer creates a meeting via the API with the fresh account as the sole attendee.
+3. Observer opens the meeting's detail sheet; asserts the attendee's badge reads "No response".
+4. The attendee calls `respondToMeeting('Going')` directly over the API - not through the observer's browser.
+5. Observer's page, untouched, is asserted again.
+
+**Assertions:**
+- Step 5: the badge updates to "Going" within 30s, with no `page.reload()` or navigation performed on the observer's page at any point after step 3.
+
+**Notes:** `RespondToMeetingHandler` publishes `daysInvalidated` server-side on success, same as `createMeeting` - this proves the client side of that same wiring (`useDaysInvalidated.ts`) also covers a status change, not just a new booking.

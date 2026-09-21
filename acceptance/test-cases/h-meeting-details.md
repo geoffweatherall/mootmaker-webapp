@@ -33,7 +33,7 @@ OS share sheet can't be driven by Playwright) rather than a navigated-to URL. Se
 **Assertions:**
 - Subject heading matches.
 - Room name visible (no capacity shown any more - `MeetingDetailContent` never showed it, and the full page now renders the same shared component - see 2026-09-20 update below).
-- The element with exact text "Demo Strater" has a parent containing "Organiser".
+- "Demo Strater" is shown in the row directly below the "Organiser" caption.
 - The attendee's name is visible.
 - Date/Time: see H.71 for the exact format assertions.
 
@@ -41,7 +41,9 @@ OS share sheet can't be driven by Playwright) rather than a navigated-to URL. Se
 
 **Notes:** None.
 
-**2026-09-20: room capacity no longer shown; organiser/attendee assertions no longer scoped by a "Room"/"Organiser"/"Attendees" DetailRow label.** The full page renders the same shared `MeetingDetailContent` the bottom-sheet/side-panel already used, which never showed capacity and labels the organiser only via an inline "· Organiser" suffix next to their name, not a separate row.
+**2026-09-20: room capacity no longer shown; organiser/attendee assertions no longer scoped by a "Room"/"Organiser"/"Attendees" DetailRow label.** The full page renders the same shared `MeetingDetailContent` the bottom-sheet/side-panel already used, which never showed capacity.
+
+**2026-09-21: organiser row restyled to match the attendee rows (mootmaker-webapp#73).** The organiser's name is now plain text, identical in style to each attendee row, under its own "Organiser" caption (matching the "Attendees · N" caption above the attendee list) - no more bold name with an inline "· Organiser" suffix. If the organiser is the signed-in caller, their row shows "You" the same way their own attendee row would - but never an `AttendeeStatusBadge`, since the organiser's status is an implicit, never-stored "Going" (see `designs/attendee-response-status.md`) with no value to show a badge for.
 
 ---
 
@@ -63,7 +65,7 @@ OS share sheet can't be driven by Playwright) rather than a navigated-to URL. Se
 2. Open the meeting's row, click Share, read its real URL off the clipboard, and visit it.
 
 **Assertions:**
-- The element with exact text "Organiser Person" has a parent containing "Organiser".
+- "Organiser Person" is shown in the row directly below the "Organiser" caption.
 - "Demo Strater" is visible (as an attendee).
 - Page loads with no access error (proving attendee-only access works, distinct from organiser access).
 

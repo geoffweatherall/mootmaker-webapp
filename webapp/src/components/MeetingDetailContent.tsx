@@ -104,15 +104,30 @@ export function MeetingDetailContent({
       </Typography>
 
       <Stack spacing={1.5} sx={{ pt: 1.5, borderTop: 1, borderColor: 'divider' }}>
+        {/* Organiser row now styled identically to an attendee row below - same avatar size,
+            same plain-text name, same "You" treatment when it's the signed-in caller - under its
+            own caption matching "Attendees · N", instead of the old bold name + inline "·
+            Organiser" suffix that read as a visually distinct treatment (mootmaker-webapp#73). No
+            AttendeeStatusBadge here: the organiser's status is an implicit, never-stored "Going"
+            (see designs/attendee-response-status.md) - there is no status value to show a badge
+            for, and adding one would invent status semantics the design deliberately doesn't have. */}
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em' }}
+        >
+          Organiser
+        </Typography>
         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
           <PersonAvatar name={meeting.organiser.name} size={26} />
-          <Typography variant="body2">
-            <strong>{meeting.organiser.name}</strong>
-            <Typography component="span" variant="body2" color="text.secondary">
-              {' '}
-              · Organiser
-            </Typography>
+          <Typography variant="body2" sx={{ flexGrow: 1 }}>
+            {meeting.organiser.name}
           </Typography>
+          {personId != null && meeting.organiser.id === personId && (
+            <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>
+              You
+            </Typography>
+          )}
         </Stack>
         <Typography
           variant="caption"

@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test'
+import { expect, type Locator, type Page, test } from '@playwright/test'
 import { formatDateParam, pinnedWeekday } from './support/pinnedDates'
 
 // mootmaker/docs/reference/use-cases.md, section H (Meeting Details), cases 68-71, 73-74. All sign
@@ -155,6 +155,17 @@ async function createMeetingViaForm(page: Page, options: MeetingFormOptions): Pr
   return { id: match[1], url }
 }
 
+/**
+ * Confirms `name` is shown as the organiser specifically, not merely present somewhere on the
+ * page. MeetingDetailContent's organiser row now renders identically to an attendee row (plain
+ * name, no "· Organiser" suffix - see mootmaker-webapp#73), so a bare-name match can't
+ * disambiguate on its own; scoping to the "Organiser" caption's own row does.
+ */
+async function expectOrganiserIs(scope: Page | Locator, name: string): Promise<void> {
+  const organiserRow = scope.getByText('Organiser', { exact: true }).locator('xpath=following-sibling::*[1]')
+  await expect(organiserRow.getByText(name, { exact: true })).toBeVisible()
+}
+
 test.describe('H. Meeting Details', () => {
   test('H.68: viewing details of a meeting you organise shows every field correctly', async ({ page }) => {
     const runId = `${Date.now()}-${Math.floor(Math.random() * 10_000)}`
@@ -184,7 +195,7 @@ test.describe('H. Meeting Details', () => {
     // Scoped to <main> - the sidebar also shows the signed-in user's own name ("Demo Strater"),
     // which is the organiser here too, so an unscoped query is ambiguous between the two.
     const main = page.getByRole('main')
-    await expect(main.getByText('Demo Strater', { exact: true }).locator('..')).toContainText('Organiser')
+    await expectOrganiserIs(main, 'Demo Strater')
     await expect(main.getByText(attendeeName, { exact: true })).toBeVisible()
   })
 
@@ -218,7 +229,7 @@ test.describe('H. Meeting Details', () => {
     // Scoped to <main> - the sidebar also shows the signed-in user's own name ("Demo Strater"),
     // which is an attendee here too, so an unscoped query is ambiguous between the two.
     const main = page.getByRole('main')
-    await expect(main.getByText(organiserName, { exact: true }).locator('..')).toContainText('Organiser')
+    await expectOrganiserIs(main, organiserName)
     await expect(main.getByText('Demo Strater', { exact: true })).toBeVisible()
   })
 
@@ -252,7 +263,7 @@ test.describe('H. Meeting Details', () => {
     // current, unrestricted behaviour (see this case's Notes in h-meeting-details.md; this test
     // does not decide whether that *should* be the case).
     await expect(page.getByRole('heading', { name: subject })).toBeVisible()
-    await expect(page.getByText(thirdPartyA, { exact: true }).locator('..')).toContainText('Organiser')
+    await expectOrganiserIs(page, thirdPartyA)
     await expect(page.getByText(thirdPartyB, { exact: true })).toBeVisible()
   })
 

@@ -4,7 +4,9 @@ import { Box, IconButton, Stack, Typography } from '@mui/material'
 import { useState } from 'react'
 import { useAuth } from '../auth/authContext'
 import { formatLocalDate, formatLocalTime } from '../graphql/formatDateTime'
-import type { MeetingDetails } from '../graphql/types'
+import type { AttendeeStatus, MeetingDetails } from '../graphql/types'
+import { AttendeeStatusBadge } from './AttendeeStatusBadge'
+import { AttendeeStatusControl } from './AttendeeStatusControl'
 import { PersonAvatar } from './PersonAvatar'
 import { SuccessToast } from './SuccessToast'
 
@@ -56,8 +58,18 @@ export function MeetingDetailContent({
    * both - only the semantic level differs. */
   headingComponent?: 'h1' | 'h2'
 }) {
-  const { timeFormat, dateFormat } = useAuth()
+  const { timeFormat, dateFormat, personId } = useAuth()
   const [linkCopied, setLinkCopied] = useState(false)
+
+  // Overrides just the caller's own status once respondToMeeting succeeds, rather than the whole
+  // attendee list - `meeting` is a snapshot passed down from useMeetingDetailOverlay.tsx's local
+  // state, decoupled from live Apollo query data (see that hook's own note), so nothing else makes
+  // this control reflect a change it just made. useMeetingDetailOverlay.tsx keys this component by
+  // meeting id, so a fresh instance (and a null override) is guaranteed whenever a different
+  // meeting is shown, including switching directly from one open meeting to another.
+  const [myStatusOverride, setMyStatusOverride] = useState<AttendeeStatus | null>(null)
+
+  const myAttendee = meeting.attendees.find((attendee) => attendee.person.id === personId)
 
   return (
     // Deliberately no fixed width here - the sheet/panel's own wrapper (useMeetingDetailOverlay.tsx)
@@ -122,12 +134,39 @@ export function MeetingDetailContent({
             No attendees.
           </Typography>
         ) : (
-          meeting.attendees.map((attendee) => (
-            <Stack key={attendee.id} direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-              <PersonAvatar name={attendee.name} size={26} />
-              <Typography variant="body2">{attendee.name}</Typography>
-            </Stack>
-          ))
+          meeting.attendees.map((attendee) => {
+            const isMe = personId != null && attendee.person.id === personId
+            return (
+              <Stack
+                key={attendee.person.id}
+                direction="row"
+                spacing={1.5}
+                sx={{ alignItems: 'center' }}
+              >
+                <PersonAvatar name={attendee.person.name} size={26} />
+                <Typography variant="body2" sx={{ flexGrow: 1 }}>
+                  {attendee.person.name}
+                </Typography>
+                {isMe ? (
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                    You
+                  </Typography>
+                ) : (
+                  <AttendeeStatusBadge status={attendee.status} />
+                )}
+              </Stack>
+            )
+          })
+        )}
+        {/* Only when the caller is actually an attendee - the organiser has nothing to set (see
+            AttendeeStatusControl.tsx), and someone viewing a shared link they have no part in gets
+            no control either. */}
+        {myAttendee && (
+          <AttendeeStatusControl
+            meetingId={meeting.id}
+            status={myStatusOverride ?? myAttendee.status}
+            onChanged={setMyStatusOverride}
+          />
         )}
       </Stack>
 

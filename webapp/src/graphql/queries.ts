@@ -49,7 +49,10 @@ export const PAGE_LOAD = graphql(`
             id
           }
           attendees {
-            id
+            person {
+              id
+            }
+            status
           }
         }
       }
@@ -82,7 +85,10 @@ export const DAYS = graphql(`
             id
           }
           attendees {
-            id
+            person {
+              id
+            }
+            status
           }
         }
       }
@@ -136,8 +142,11 @@ export const MEETING_BY_ID = graphql(`
         name
       }
       attendees {
-        id
-        name
+        person {
+          id
+          name
+        }
+        status
       }
     }
   }

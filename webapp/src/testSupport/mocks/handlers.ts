@@ -8,17 +8,19 @@
 // graphql/queries.ts and graphql/mutations.ts declare (e.g. `query ListRooms { ... }`).
 import { http, HttpResponse, type HttpHandler } from 'msw'
 import type {
+  AttendeeStatus,
   CreateMeetingResult,
   DateFormat,
   MeetingDetails,
   MeetingError,
   MyPerson,
   Person,
+  RespondToMeetingResult,
   Room,
   TimeFormat,
   UpdateMyPreferencesResult,
 } from '../../graphql/types'
-import { createMeetingFixture, linkedPersonByEmail, meetings, people, rooms } from './fixtures'
+import { createMeetingFixture, linkedPersonByEmail, meetings, people, rooms, saveMeetings } from './fixtures'
 
 /**
  * Apollo's `InMemoryCache` normalises an entity only when its response carries `__typename` -
@@ -51,11 +53,16 @@ function asMeetingDetails(meeting: MeetingDetails) {
     endTime: meeting.endTime,
     room: asRoom(meeting.room),
     organiser: asPerson(meeting.organiser),
-    attendees: meeting.attendees.map(asPerson),
+    attendees: meeting.attendees.map((attendee) => ({
+      __typename: 'Attendee' as const,
+      person: asPerson(attendee.person),
+      status: attendee.status,
+    })),
   }
 }
 
-/** The narrow, ids-only shape every day-embedded meeting selects - see daysFor below. */
+/** The narrow, ids-only shape every day-embedded meeting selects - see daysFor below. Status is
+ * not an id lookup, so it's carried in full even here, matching the real API's MeetingResponse. */
 function asMeetingSummary(meeting: MeetingDetails) {
   return {
     __typename: 'Meeting' as const,
@@ -65,7 +72,11 @@ function asMeetingSummary(meeting: MeetingDetails) {
     endTime: meeting.endTime,
     room: { __typename: 'Room' as const, id: meeting.room.id },
     organiser: { __typename: 'Person' as const, id: meeting.organiser.id },
-    attendees: meeting.attendees.map((attendee) => ({ __typename: 'Person' as const, id: attendee.id })),
+    attendees: meeting.attendees.map((attendee) => ({
+      __typename: 'Attendee' as const,
+      person: { __typename: 'Person' as const, id: attendee.person.id },
+      status: attendee.status,
+    })),
   }
 }
 
@@ -275,7 +286,13 @@ export const handlers: HttpHandler[] = [
         }
         const room = rooms.find((candidate) => candidate.id === input.roomId)!
         const organiser = people.find((person) => person.id === input.organiserId)!
-        const attendees = people.filter((person) => input.attendeeIds.includes(person.id))
+        // Every attendee starts NoResponse, same as the real API's createMeeting default - the
+        // webapp never sends MeetingInput.attendeeStatuses (that override exists only for
+        // mootmaker-demo-data, see mootmaker-api's own doc comment on it), so the mock doesn't
+        // need to honour one either.
+        const attendees = people
+          .filter((person) => input.attendeeIds.includes(person.id))
+          .map((person) => ({ person, status: 'NoResponse' as AttendeeStatus }))
         const meeting = createMeetingFixture({
           subject: input.subject,
           room,
@@ -292,6 +309,32 @@ export const handlers: HttpHandler[] = [
           errors: [],
         }
         return HttpResponse.json({ data: { createMeeting: { __typename: 'CreateMeetingResult', ...result } } })
+      }
+
+      case 'RespondToMeeting': {
+        const { meetingId, status } = variables as { meetingId: string; status: AttendeeStatus }
+        const email = emailFromAuthHeader(request)
+        const caller = (email && linkedPersonByEmail[email]) ?? null
+        if (!caller) {
+          const result: RespondToMeetingResult = { meeting: null, errors: ['NoLinkedPerson'] }
+          return HttpResponse.json({ data: { respondToMeeting: { __typename: 'RespondToMeetingResult', ...result } } })
+        }
+        const meeting = meetings.find((candidate) => candidate.id === meetingId)
+        if (!meeting) {
+          const result: RespondToMeetingResult = { meeting: null, errors: ['MeetingNotFound'] }
+          return HttpResponse.json({ data: { respondToMeeting: { __typename: 'RespondToMeetingResult', ...result } } })
+        }
+        const attendee = meeting.attendees.find((candidate) => candidate.person.id === caller.id)
+        if (!attendee) {
+          const result: RespondToMeetingResult = { meeting: null, errors: ['NotAnAttendee'] }
+          return HttpResponse.json({ data: { respondToMeeting: { __typename: 'RespondToMeetingResult', ...result } } })
+        }
+        // Mutates the fixture in place, same as UpdateMyPreferences below, so a later read (a
+        // fresh Days/PageLoad fetch, or this same meeting reopened) reflects it.
+        attendee.status = status
+        saveMeetings(meetings)
+        const result: RespondToMeetingResult = { meeting: asMeetingDetails(meeting), errors: [] }
+        return HttpResponse.json({ data: { respondToMeeting: { __typename: 'RespondToMeetingResult', ...result } } })
       }
 
       case 'UpdateMyPreferences': {

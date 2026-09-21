@@ -54,7 +54,10 @@ function loadMeetings(): Meeting[] {
   }
 }
 
-function saveMeetings(value: Meeting[]): void {
+/** Exported so a mutation handler that mutates a fixture in place (e.g. RespondToMeeting) can
+ * persist it the same way createMeetingFixture does, without re-deriving nextMeetingId or
+ * duplicating the storage key. */
+export function saveMeetings(value: Meeting[]): void {
   sessionStorage.setItem(MEETINGS_STORAGE_KEY, JSON.stringify(value))
 }
 

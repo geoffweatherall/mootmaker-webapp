@@ -1,32 +1,35 @@
-import { useQuery } from '@apollo/client/react'
+import { useMutation, useQuery } from '@apollo/client/react'
 import AddIcon from '@mui/icons-material/Add'
 import {
   Alert,
   Box,
   Button,
+  ButtonBase,
+  Card,
   CircularProgress,
-  List,
-  ListItemButton,
-  ListItemText,
   Paper,
   Stack,
   Typography,
+  useTheme,
 } from '@mui/material'
 import dayjs from 'dayjs'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/authContext'
 import { runtimeConfig } from '../config'
 import emptyMeetings from '../assets/empty-meetings.svg'
 import homeHero from '../assets/home-hero.svg'
 import homeSignedIn from '../assets/home-signed-in.svg'
+import { AttendeeStatusBadge } from '../components/AttendeeStatusBadge'
 import { EmptyState } from '../components/EmptyState'
 import { CalendarIcon } from '../icons'
 import { SignInForm } from '../components/SignInForm'
 import { useMeetingDetailOverlay } from '../components/useMeetingDetailOverlay'
 import { formatLocalTime } from '../graphql/formatDateTime'
+import { RESPOND_TO_MEETING } from '../graphql/mutations'
 import { PAGE_LOAD } from '../graphql/queries'
-import type { Meeting, Person, Room } from '../graphql/types'
+import type { Attendee, AttendeeStatus, Meeting, Person, RespondToMeetingResult, Room } from '../graphql/types'
+import { roomColorAt } from '../theme/roomColor'
 
 const SIGN_UP_STEPS = [
   'Enter your name, email address, and password.',
@@ -36,11 +39,92 @@ const SIGN_UP_STEPS = [
 
 const DATE_KEY_FORMAT = 'YYYY-MM-DD'
 
+/** Today/Tomorrow cards beyond this many are hidden behind "Show N more" - see the prototype. */
+const AGENDA_VISIBLE_COUNT = 3
+
+/**
+ * Fires a response directly from the card - Going/Maybe/Not going, same three choices as
+ * AttendeeStatusControl.tsx's detail-sheet control, but as one-shot buttons rather than a toggle
+ * group: every card this appears on is, by construction, still at NoResponse (see
+ * needsResponse below), so there is no "currently selected" state to show.
+ */
+function QuickRespondButtons({ meetingId }: { meetingId: string }) {
+  const [respondToMeeting, { loading }] = useMutation<{ respondToMeeting: RespondToMeetingResult }>(
+    RESPOND_TO_MEETING,
+  )
+
+  function respond(status: AttendeeStatus) {
+    void respondToMeeting({ variables: { meetingId, status } })
+  }
+
+  return (
+    <Stack direction="row" spacing={1}>
+      <Button size="small" variant="outlined" color="success" disabled={loading} onClick={() => respond('Going')} sx={{ flex: 1 }}>
+        Going
+      </Button>
+      <Button size="small" variant="outlined" color="warning" disabled={loading} onClick={() => respond('Maybe')} sx={{ flex: 1 }}>
+        Maybe
+      </Button>
+      <Button
+        size="small"
+        variant="outlined"
+        color="error"
+        disabled={loading}
+        onClick={() => respond('NotGoing')}
+        sx={{ flex: 1 }}
+      >
+        Not going
+      </Button>
+    </Stack>
+  )
+}
+
+/** "Today" / "Tomorrow" / a weekday name - whichever of the fetched window's three days this is. */
+function dayLabel(dateKey: string, today: string, tomorrow: string): string {
+  if (dateKey === today) return 'Today'
+  if (dateKey === tomorrow) return 'Tomorrow'
+  return dayjs(dateKey).format('dddd')
+}
+
+interface NeedsResponseEntry {
+  meeting: Meeting
+  organiserName: string
+  roomName: string
+}
+
+function NeedsResponseCard({ meeting, organiserName, roomName, today, tomorrow }: NeedsResponseEntry & { today: string; tomorrow: string }) {
+  const { timeFormat } = useAuth()
+  const whenLabel = `${dayLabel(meeting.startTime.slice(0, 10), today, tomorrow)}, ${formatLocalTime(meeting.startTime, timeFormat)}–${formatLocalTime(meeting.endTime, timeFormat)}`
+
+  return (
+    // component="section" + aria-label gives this an implicit "region" role with an accessible
+    // name - lets a test (or assistive tech) find one card among several by the meeting's own
+    // subject, without reaching for a test id (see CLAUDE.md's "locate by role and accessible
+    // name" convention).
+    <Card component="section" aria-label={meeting.subject} variant="outlined" sx={{ borderLeft: 3, borderLeftColor: 'warning.main', p: 2 }}>
+      <Stack spacing={1.25}>
+        <Box>
+          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+            {meeting.subject}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {whenLabel} · {roomName} · organised by {organiserName}
+          </Typography>
+        </Box>
+        <QuickRespondButtons meetingId={meeting.id} />
+      </Stack>
+    </Card>
+  )
+}
+
 interface AgendaListProps {
   title: string
   meetings: Meeting[]
   /** Room names are resolved by the page from the same response, not carried on each meeting. */
   roomsById: Map<string, Room>
+  roomIndexById: Map<string, number>
+  /** Null for a signed-in account with no linked Person - see the degraded-path branch below. Every card still renders; none of them has a status badge to show. */
+  personId: string | null
   loading: boolean
   /** Opens the shared meeting-detail sheet/panel in place - see useMeetingDetailOverlay.tsx. Not a
    * navigation: nothing in this app links to /meetings/:id any more, see
@@ -48,8 +132,12 @@ interface AgendaListProps {
   onMeetingClick: (meeting: Meeting) => void
 }
 
-function AgendaList({ title, meetings, loading, roomsById, onMeetingClick }: AgendaListProps) {
+function AgendaList({ title, meetings, loading, roomsById, roomIndexById, personId, onMeetingClick }: AgendaListProps) {
   const { timeFormat } = useAuth()
+  const theme = useTheme()
+  const [expanded, setExpanded] = useState(false)
+  const visible = expanded ? meetings : meetings.slice(0, AGENDA_VISIBLE_COUNT)
+  const hasMore = meetings.length > AGENDA_VISIBLE_COUNT
 
   return (
     <Paper sx={{ p: 2, flex: 1 }}>
@@ -63,16 +151,48 @@ function AgendaList({ title, meetings, loading, roomsById, onMeetingClick }: Age
       ) : meetings.length === 0 ? (
         <EmptyState message="No meetings." illustration={emptyMeetings} />
       ) : (
-        <List disablePadding>
-          {meetings.map((meeting) => (
-            <ListItemButton key={meeting.id} onClick={() => onMeetingClick(meeting)} sx={{ borderRadius: 1 }}>
-              <ListItemText
-                primary={meeting.subject}
-                secondary={`${formatLocalTime(meeting.startTime, timeFormat)}–${formatLocalTime(meeting.endTime, timeFormat)} · ${roomsById.get(meeting.room.id)?.name ?? ""}`}
-              />
-            </ListItemButton>
-          ))}
-        </List>
+        <Stack spacing={1}>
+          {visible.map((meeting) => {
+            const roomColor = roomColorAt(roomIndexById.get(meeting.room.id) ?? 0, theme.palette.mode)
+            const myAttendee: Attendee | undefined = meeting.attendees.find(
+              (attendee) => attendee.person.id === personId,
+            )
+            return (
+              <ButtonBase
+                key={meeting.id}
+                onClick={() => onMeetingClick(meeting)}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.5,
+                  width: '100%',
+                  textAlign: 'left',
+                  borderRadius: 2,
+                  p: 1.25,
+                  bgcolor: 'action.hover',
+                  '&:hover': { bgcolor: 'action.selected' },
+                }}
+              >
+                <Box sx={{ width: 9, height: 9, borderRadius: '50%', bgcolor: roomColor, flexShrink: 0 }} />
+                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
+                    {meeting.subject}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" noWrap>
+                    {formatLocalTime(meeting.startTime, timeFormat)}–{formatLocalTime(meeting.endTime, timeFormat)} ·{' '}
+                    {roomsById.get(meeting.room.id)?.name ?? ''}
+                  </Typography>
+                </Box>
+                {myAttendee && <AttendeeStatusBadge status={myAttendee.status} size={22} />}
+              </ButtonBase>
+            )
+          })}
+          {hasMore && (
+            <Button size="small" onClick={() => setExpanded((current) => !current)} sx={{ alignSelf: 'flex-start' }}>
+              {expanded ? 'Show fewer' : `Show ${meetings.length - AGENDA_VISIBLE_COUNT} more`}
+            </Button>
+          )}
+        </Stack>
       )}
     </Paper>
   )
@@ -135,10 +255,33 @@ export default function HomePage() {
         (meeting) =>
           !personId ||
           meeting.organiser.id === personId ||
-          meeting.attendees.some((attendee) => attendee.id === personId),
+          meeting.attendees.some((attendee) => attendee.person.id === personId),
       )
       .sort((a, b) => a.startTime.localeCompare(b.startTime))
   }
+
+  // Every meeting across the fetched window (today + the next two days) where the signed-in
+  // person is an ATTENDEE - never the organiser, who is implicitly Going with nothing to set (see
+  // designs/attendee-response-status.md) - and hasn't responded yet. Soonest-first, per Geoff's
+  // own call on the design doc's "Open questions": the most actionable ordering, respond to
+  // what's coming up soonest.
+  const needsResponse: NeedsResponseEntry[] = useMemo(() => {
+    if (!personId) return []
+    const entries: NeedsResponseEntry[] = []
+    for (const day of data?.workspace.days ?? []) {
+      for (const meeting of day.meetings) {
+        if (meeting.organiser.id === personId) continue
+        const mine = meeting.attendees.find((attendee) => attendee.person.id === personId)
+        if (mine?.status !== 'NoResponse') continue
+        entries.push({
+          meeting,
+          organiserName: peopleById.get(meeting.organiser.id)?.name ?? '',
+          roomName: roomsById.get(meeting.room.id)?.name ?? '',
+        })
+      }
+    }
+    return entries.sort((a, b) => a.meeting.startTime.localeCompare(b.meeting.startTime))
+  }, [data, personId, peopleById, roomsById])
 
   const agendaLoading = personLoading || (meetingsLoading && !data)
 
@@ -293,12 +436,59 @@ export default function HomePage() {
         </Stack>
       </Paper>
 
+      {personId && !agendaLoading && (
+        <Stack spacing={1.5}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline' }}>
+            <Typography variant="h6" component="h2">
+              Needs your response
+            </Typography>
+            {needsResponse.length > 0 && (
+              <Typography
+                variant="caption"
+                sx={{
+                  fontWeight: 700,
+                  color: 'text.secondary',
+                  bgcolor: 'action.hover',
+                  borderRadius: 1,
+                  px: 1,
+                  py: 0.25,
+                }}
+              >
+                {needsResponse.length}
+              </Typography>
+            )}
+          </Stack>
+          {needsResponse.length === 0 ? (
+            <Paper sx={{ p: 2, textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                Nothing waiting on a response — you're all caught up.
+              </Typography>
+            </Paper>
+          ) : (
+            <Stack spacing={1.5}>
+              {needsResponse.map(({ meeting, organiserName, roomName }) => (
+                <NeedsResponseCard
+                  key={meeting.id}
+                  meeting={meeting}
+                  organiserName={organiserName}
+                  roomName={roomName}
+                  today={today}
+                  tomorrow={tomorrow}
+                />
+              ))}
+            </Stack>
+          )}
+        </Stack>
+      )}
+
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3}>
         <AgendaList
           title="Today"
           meetings={agendaFor(today)}
           loading={agendaLoading}
           roomsById={roomsById}
+          roomIndexById={roomIndexById}
+          personId={personId}
           onMeetingClick={openMeetingDetail}
         />
         <AgendaList
@@ -306,6 +496,8 @@ export default function HomePage() {
           meetings={agendaFor(tomorrow)}
           loading={agendaLoading}
           roomsById={roomsById}
+          roomIndexById={roomIndexById}
+          personId={personId}
           onMeetingClick={openMeetingDetail}
         />
       </Stack>

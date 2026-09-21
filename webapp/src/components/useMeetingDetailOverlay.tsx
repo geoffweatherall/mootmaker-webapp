@@ -24,8 +24,8 @@ export function resolveMeetingDetails(
     room: { id: meeting.room.id, name: room?.name ?? '', capacity: room?.capacity ?? 0 },
     organiser: { id: meeting.organiser.id, name: peopleById.get(meeting.organiser.id)?.name ?? '' },
     attendees: meeting.attendees.map((attendee) => ({
-      id: attendee.id,
-      name: peopleById.get(attendee.id)?.name ?? '',
+      person: { id: attendee.person.id, name: peopleById.get(attendee.person.id)?.name ?? '' },
+      status: attendee.status,
     })),
   }
 }
@@ -83,7 +83,7 @@ export function useMeetingDetailOverlay(
           zIndex: (t) => t.zIndex.drawer,
         }}
       >
-        <MeetingDetailContent meeting={resolved} roomColor={roomColor} onClose={close} />
+        <MeetingDetailContent key={resolved.id} meeting={resolved} roomColor={roomColor} onClose={close} />
       </Box>
     )
   ) : (
@@ -93,7 +93,9 @@ export function useMeetingDetailOverlay(
       onClose={close}
       slotProps={{ paper: { sx: { borderTopLeftRadius: 16, borderTopRightRadius: 16 } } }}
     >
-      {resolved && <MeetingDetailContent meeting={resolved} roomColor={roomColor} onClose={close} />}
+      {resolved && (
+        <MeetingDetailContent key={resolved.id} meeting={resolved} roomColor={roomColor} onClose={close} />
+      )}
     </Drawer>
   )
 

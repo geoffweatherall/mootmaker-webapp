@@ -44,7 +44,9 @@ function day(date: string) {
         endTime: `${date}T10:00:00`,
         room: { __typename: 'Room', id: 'room-1' },
         organiser: { __typename: 'Person', id: 'person-1' },
-        attendees: [{ __typename: 'Person', id: 'person-1' }],
+        attendees: [
+          { __typename: 'Attendee', person: { __typename: 'Person', id: 'person-1' }, status: 'NoResponse' },
+        ],
       },
     ],
   }

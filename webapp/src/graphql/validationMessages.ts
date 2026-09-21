@@ -14,6 +14,7 @@ import type {
   MeetingError,
   PersonError,
   PreferencesError,
+  RespondToMeetingError,
   RoomError,
 } from './generated/graphql'
 
@@ -57,4 +58,10 @@ export const MEETING_ERROR_MESSAGES: Record<MeetingError, string> = {
   SubjectTooLong: 'The subject is too long. Emoji and accented characters take up more of the limit than plain letters.',
   OutsideBookableRange: 'That date is outside the range meetings can be booked in.',
   TooManyMeetingsInOneCall: 'Too many meetings were sent in a single request.',
+}
+
+export const RESPOND_TO_MEETING_ERROR_MESSAGES: Record<RespondToMeetingError, string> = {
+  NoLinkedPerson: "Your account isn't linked to a person yet, so a response can't be recorded.",
+  MeetingNotFound: 'This meeting no longer exists - it may have been deleted.',
+  NotAnAttendee: "You aren't an attendee of this meeting, so there's nothing to respond to.",
 }

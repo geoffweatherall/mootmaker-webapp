@@ -137,7 +137,8 @@ export default function PersonCalendarPage() {
       .flatMap((day) => day.meetings)
       .filter(
         (meeting) =>
-          meeting.organiser.id === personId || meeting.attendees.some((attendee) => attendee.id === personId),
+          meeting.organiser.id === personId ||
+          meeting.attendees.some((attendee) => attendee.person.id === personId),
       )
     for (const meeting of forPerson) {
       const dateKey = meeting.startTime.slice(0, 10)

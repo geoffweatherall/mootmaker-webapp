@@ -128,8 +128,11 @@ export const CREATE_MEETING = graphql(`
           name
         }
         attendees {
-          id
-          name
+          person {
+            id
+            name
+          }
+          status
         }
       }
       day {
@@ -146,8 +149,50 @@ export const CREATE_MEETING = graphql(`
             id
           }
           attendees {
-            id
+            person {
+              id
+            }
+            status
           }
+        }
+      }
+      errors
+    }
+  }
+`)
+
+/**
+ * Self-only - meetingId plus the caller's own new status, no other argument. Selects the whole
+ * updated `meeting`, names included, so the response overwrites the normalised `Meeting:<id>`
+ * cache entity wherever it's referenced (this page's own attendee list, and any other cached Day
+ * that embeds the same meeting) - the same "the response IS the new state" reasoning CREATE_MEETING
+ * above already relies on, so no `update` function or refetch is needed here either. Other
+ * clients/tabs learn about the change via daysInvalidated (see realtime/useDaysInvalidated.ts) -
+ * RespondToMeetingHandler publishes it server-side on success, same as createMeeting.
+ */
+export const RESPOND_TO_MEETING = graphql(`
+  mutation RespondToMeeting($meetingId: ID!, $status: AttendeeStatus!) {
+    respondToMeeting(meetingId: $meetingId, status: $status) {
+      meeting {
+        id
+        subject
+        startTime
+        endTime
+        room {
+          id
+          name
+          capacity
+        }
+        organiser {
+          id
+          name
+        }
+        attendees {
+          person {
+            id
+            name
+          }
+          status
         }
       }
       errors

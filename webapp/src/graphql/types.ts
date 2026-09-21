@@ -18,6 +18,7 @@ import type {
   DaysQuery,
   MeetingByIdQuery,
   PageLoadQuery,
+  RespondToMeetingMutation,
   UpdateMyPreferencesMutation,
   UpdatePersonMutation,
   UpdateRoomMutation,
@@ -44,10 +45,15 @@ export type Boundaries = PageLoadQuery['workspace']['boundaries']
 export type Day = DaysQuery['workspace']['days'][number]
 
 /**
- * A meeting as it appears inside a day: room, organiser and attendees are ids only, because names
- * are resolved from the cached rooms and people rather than fetched per meeting.
+ * A meeting as it appears inside a day: room, organiser and attendee *person* are ids only, because
+ * names are resolved from the cached rooms and people rather than fetched per meeting. Each
+ * attendee's `status` is not an id lookup - it lives directly on the meeting, so it's always
+ * selected in full even here.
  */
 export type Meeting = Day['meetings'][number]
+
+/** One attendee inside a {@link Meeting} or {@link MeetingDetails} - a Person paired with their own response status. */
+export type Attendee = Meeting['attendees'][number]
 
 /**
  * A meeting on its own, with names resolved. Distinct from {@link Meeting} on purpose: a details
@@ -63,14 +69,17 @@ export type UpdatePersonResult = UpdatePersonMutation['updatePerson']
 export type UpdateMyPreferencesResult = UpdateMyPreferencesMutation['updateMyPreferences']
 export type CreateMeetingResult = CreateMeetingMutation['createMeeting']
 export type CreatePersonResult = import('./generated/graphql').CreatePersonMutation['createPerson']
+export type RespondToMeetingResult = RespondToMeetingMutation['respondToMeeting']
 
 // Input and error types come straight from the schema - they have no selection set, so there is no
 // app-specific shape to derive.
 export type {
+  AttendeeStatus,
   DateFormat,
   MeetingError,
   PersonError,
   PreferencesError,
+  RespondToMeetingError,
   RoomError,
   TimeFormat,
 } from './generated/graphql'

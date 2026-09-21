@@ -88,23 +88,23 @@ jobs:
       # workflow" - so a bare checkout would clone mootmaker-release, which has no webapp/ at all.
       # See mootmaker#40. `ref` falls back to github.ref so standalone dispatch at a tag still
       # works unchanged.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: geoffweatherall/mootmaker-webapp
           ref: ${{ inputs.ref || github.ref }}
           path: mootmaker-webapp
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: geoffweatherall/mootmaker-api
           path: mootmaker-api
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: geoffweatherall/mootmaker-ephemeral-envs
           path: mootmaker-ephemeral-envs
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: geoffweatherall/mootmaker-email-testing
           path: mootmaker-email-testing
@@ -131,7 +131,7 @@ jobs:
 
       # Java is needed only because mootmaker-api is deployed below as a dependency of the
       # environment under test.
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '25'
@@ -153,12 +153,12 @@ jobs:
       # deploy.sh, undeploy.sh and acceptance/run.sh all shell out to terraform; the runner does
       # not have it preinstalled. Without this, every deploy and teardown fails with "terraform:
       # command not found" - and a failed teardown is how an ephemeral environment gets stranded.
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_wrapper: false
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: arn:aws:iam::431071856068:role/mootmaker-release-github-actions-deploy
           aws-region: us-east-1
@@ -191,7 +191,7 @@ jobs:
       # attempt so re-runs do not collide.
       - name: Upload acceptance diagnostics
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: webapp-acceptance-diagnostics-${{ inputs.version }}-${{ github.run_attempt }}
           path: mootmaker-webapp/acceptance/test-output
@@ -219,7 +219,7 @@ jobs:
       # env-config.js is deliberately NOT included: deploy.sh writes it per environment after the
       # build, so shipping the ephemeral environment's copy would point production at a torn-down
       # API. Excluding it is what makes the bundle promotable.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: ${{ steps.artifact.outputs.name }}
           path: |

@@ -42,7 +42,7 @@ concurrency:
 jobs:
   pr-checks:
     name: pr-checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Every check lives in webapp/, which has its own package.json and lockfile. The root
     # package.json holds the acceptance/ and e2e/ suites, which are deliberately not run here.
     defaults:

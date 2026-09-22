@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test'
+import type { MeetingDetails } from '../../src/graphql/types'
 
 /**
  * Holds the mocked "MyPerson" GraphQL operation open until the returned function is called, so the
@@ -80,4 +81,18 @@ export async function gateMyPersonQueryNow(page: Page): Promise<() => Promise<vo
   })
   return () =>
     page.evaluate(() => (window as unknown as { __releaseMyPersonGate: () => void }).__releaseMyPersonGate())
+}
+
+/**
+ * Seeds a meeting directly into the mock's `meetings` fixture (see
+ * src/testSupport/mocks/browser.ts's seedMeeting wiring), for a test that needs one on a specific
+ * date the Add Meeting form isn't a convenient way to reach - e.g. several days beyond the
+ * initial window a "Search further ahead" test wants to extend into. Bypasses createMeeting's
+ * validation entirely (no clash/capacity/alignment checks), matching how directly manipulating a
+ * fixture is expected to work elsewhere in this test suite (see fixtures.ts's own doc comments).
+ */
+export async function seedMeeting(page: Page, meeting: Omit<MeetingDetails, 'id'>): Promise<void> {
+  await page.evaluate((toSeed) => {
+    window.__mockControls?.seedMeeting?.(toSeed)
+  }, meeting)
 }

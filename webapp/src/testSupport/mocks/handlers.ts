@@ -107,6 +107,11 @@ declare global {
       // observe the window where whether there's even a session at all hasn't resolved yet -
       // mootmaker-webapp#111.
       sessionGate?: Promise<void>
+      // Wired up in browser.ts, not checked by any handler here - lets a test seed a meeting on an
+      // arbitrary date directly via page.evaluate (see tests/support/mockControls.ts's
+      // seedMeeting), for a "Search further ahead" test that needs a meeting several days beyond
+      // what driving the real Add Meeting form would conveniently reach.
+      seedMeeting?: typeof createMeetingFixture
     }
   }
 }

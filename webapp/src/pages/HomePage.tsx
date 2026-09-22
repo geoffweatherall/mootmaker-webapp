@@ -578,7 +578,8 @@ export default function HomePage() {
                                 {meeting.subject}
                               </Typography>
                               <Typography variant="caption" color="text.secondary" noWrap>
-                                {formatLocalTime(meeting.startTime, timeFormat)}–{formatLocalTime(meeting.endTime, timeFormat)}
+                                {formatLocalTime(meeting.startTime, timeFormat)}–{formatLocalTime(meeting.endTime, timeFormat)} ·{' '}
+                                {roomsById.get(meeting.room.id)?.name ?? ''}
                               </Typography>
                             </Box>
                             {myAttendee && <AttendeeStatusBadge status={myAttendee.status} size={22} />}

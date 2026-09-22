@@ -197,15 +197,19 @@ test.describe('Home page agenda while PageLoad data is still unknown or refreshi
     await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
 
     // Signed in, but PageLoad (gated via the same myPersonGate the Session operation uses) hasn't
-    // resolved - there is no data at all yet, so Today/Tomorrow must show they don't know rather
-    // than claim there's nothing.
-    await expect(page.getByRole('heading', { name: 'Today', level: 2 })).toBeVisible()
-    await expect(page.getByText('No meetings.')).toHaveCount(0)
+    // resolved - there is no data at all yet, so the merged agenda must show it doesn't know
+    // rather than claim there's nothing (the fixture has zero Today/Tomorrow meetings, so once
+    // settled this renders the whole-agenda empty state, not a per-day heading - see HomePage.tsx).
+    await expect(page.getByText('No meetings today or tomorrow.')).toHaveCount(0)
     await expect(page.getByRole('progressbar').first()).toBeVisible()
 
     await releaseMyPerson()
 
-    await expect(page.getByText('No meetings.').first()).toBeVisible()
+    // A plain <p> locator, not getByText: EmptyState's icon carries the same message as its own
+    // (invisible, decorative) SVG <title> - see components/EmptyState.tsx's titleAccess - which
+    // getByText also matches on text content regardless of visibility, so it can't tell the two
+    // apart. The <p> tag scopes this to the actually-rendered message.
+    await expect(page.locator('p', { hasText: 'No meetings today or tomorrow.' })).toBeVisible()
   })
 
   test('does not claim "No meetings" while revalidating stale cached data in the background', async ({ page }) => {
@@ -217,7 +221,7 @@ test.describe('Home page agenda while PageLoad data is still unknown or refreshi
 
     // Settle once first - the fixture starts with no meetings, so this also confirms the genuinely-
     // settled empty state still renders correctly (the case this fix must not break).
-    await expect(page.getByText('No meetings.').first()).toBeVisible()
+    await expect(page.locator('p', { hasText: 'No meetings today or tomorrow.' })).toBeVisible()
 
     // Gate the *next* PageLoad fetch, then trigger it by navigating away and back: the query
     // unmounts and remounts, and `cache-and-network` serves the stale-but-complete cached result
@@ -232,14 +236,14 @@ test.describe('Home page agenda while PageLoad data is still unknown or refreshi
 
     // Stale-and-complete cached data (zero meetings) is on screen, but a revalidation is still in
     // flight - the shared bar says so, and the empty state must not assert "No meetings" with more
-    // confidence than that until it actually knows.
-    await expect(page.getByRole('heading', { name: 'Today', level: 2 })).toBeVisible()
-    await expect(page.getByText('No meetings.')).toHaveCount(0)
+    // confidence than that until it actually knows (so it renders nothing here, not the settled
+    // empty-state message - see HomePage.tsx's `agendaRefreshing ? null : <EmptyState .../>`).
+    await expect(page.getByText('No meetings today or tomorrow.')).toHaveCount(0)
     await expect(page.getByRole('progressbar')).toBeVisible()
 
     await releasePageLoad()
 
     // Settled again - the empty state is trustworthy once more.
-    await expect(page.getByText('No meetings.').first()).toBeVisible()
+    await expect(page.locator('p', { hasText: 'No meetings today or tomorrow.' })).toBeVisible()
   })
 })

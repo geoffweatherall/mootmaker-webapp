@@ -71,12 +71,13 @@ describe('statusForRoom', () => {
 })
 
 describe('segmentsForRoom', () => {
-  it('positions and sizes a segment as a percentage of the full 00:00-24:00 day', () => {
-    const meetings: StatusMeeting[] = [{ subject: 'Standup', startTime: '2026-09-21T06:00:00', endTime: '2026-09-21T12:00:00' }]
-    expect(segmentsForRoom(meetings)).toEqual([{ left: 25, width: 25 }])
+  it('positions and sizes a segment as a percentage of the visible 08:00-18:00 window', () => {
+    const meetings: StatusMeeting[] = [{ subject: 'Standup', startTime: '2026-09-21T10:00:00', endTime: '2026-09-21T13:00:00' }]
+    // 10:00 is 2h into the 10h window (20%); the meeting is 3h long (30%).
+    expect(segmentsForRoom(meetings)).toEqual([{ left: 20, width: 30 }])
   })
 
-  it('returns one segment per meeting, in the same order', () => {
+  it('returns one entry per meeting, in the same order', () => {
     const meetings: StatusMeeting[] = [
       { subject: 'Standup', startTime: '2026-09-21T09:00:00', endTime: '2026-09-21T09:30:00' },
       { subject: 'Retro', startTime: '2026-09-21T14:00:00', endTime: '2026-09-21T15:00:00' },
@@ -86,15 +87,35 @@ describe('segmentsForRoom', () => {
 
   it('gives a very short meeting a minimum visible width rather than letting it vanish', () => {
     const meetings: StatusMeeting[] = [{ subject: 'Quick check-in', startTime: '2026-09-21T09:00:00', endTime: '2026-09-21T09:05:00' }]
-    expect(segmentsForRoom(meetings)[0].width).toBe(1.5)
+    expect(segmentsForRoom(meetings)[0]?.width).toBe(1.5)
   })
 
-  it('does not clip or clamp a meeting outside a business-hours window - this app has none', () => {
-    const meetings: StatusMeeting[] = [{ subject: 'Late call', startTime: '2026-09-21T22:00:00', endTime: '2026-09-21T23:00:00' }]
+  it('clips a meeting that starts before the window to the visible left edge', () => {
+    // mootmaker-webapp#114: 06:00-09:00 shows as in use 08:00-09:00.
+    const meetings: StatusMeeting[] = [{ subject: 'Early call', startTime: '2026-09-21T06:00:00', endTime: '2026-09-21T09:00:00' }]
     const [segment] = segmentsForRoom(meetings)
-    // 22:00 = 1320 of 1440 minutes = 91.666...%
-    expect(segment.left).toBeCloseTo((22 * 60 / (24 * 60)) * 100)
-    expect(segment.width).toBeCloseTo((60 / (24 * 60)) * 100)
+    expect(segment).toEqual({ left: 0, width: 10 })
+  })
+
+  it('clips a meeting that ends after the window to the visible right edge', () => {
+    const meetings: StatusMeeting[] = [{ subject: 'Long call', startTime: '2026-09-21T17:00:00', endTime: '2026-09-21T20:00:00' }]
+    const [segment] = segmentsForRoom(meetings)
+    expect(segment).toEqual({ left: 90, width: 10 })
+  })
+
+  it('drops a meeting entirely outside the window rather than misrepresenting its position', () => {
+    const meetings: StatusMeeting[] = [{ subject: 'Late call', startTime: '2026-09-21T22:00:00', endTime: '2026-09-21T23:00:00' }]
+    expect(segmentsForRoom(meetings)).toEqual([null])
+  })
+
+  it('keeps dropped meetings index-aligned with kept ones rather than filtering them out', () => {
+    const meetings: StatusMeeting[] = [
+      { subject: 'Late call', startTime: '2026-09-21T22:00:00', endTime: '2026-09-21T23:00:00' },
+      { subject: 'Standup', startTime: '2026-09-21T09:00:00', endTime: '2026-09-21T09:30:00' },
+    ]
+    const segments = segmentsForRoom(meetings)
+    expect(segments[0]).toBeNull()
+    expect(segments[1]).not.toBeNull()
   })
 
   it('returns an empty array for a room with no meetings', () => {

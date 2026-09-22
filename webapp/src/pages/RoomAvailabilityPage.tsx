@@ -241,11 +241,12 @@ export default function RoomAvailabilityPage() {
                     </Typography>
                   </Stack>
 
-                  {/* Scan-at-a-glance busy/free timeline across the whole day - purely a visual
-                      summary of information already available as text (the status chip/subLabel
-                      above, and the meeting list below), so it carries no unique information a
-                      screen reader user would otherwise miss - aria-hidden accordingly. See
-                      mootmaker-webapp#75 and the prototype's own version:
+                  {/* Scan-at-a-glance busy/free timeline across the 08:00-18:00 window (see
+                      roomAvailabilityLogic.ts and mootmaker-webapp#114) - purely a visual summary
+                      of information already available as text (the status chip/subLabel above, and
+                      the meeting list below), so it carries no unique information a screen reader
+                      user would otherwise miss - aria-hidden accordingly. See mootmaker-webapp#75
+                      and the prototype's own version:
                       https://claude.ai/artifact/1Z3gT9MmFGRzRq5jpvS4Xr */}
                   <Box
                     aria-hidden="true"
@@ -257,19 +258,25 @@ export default function RoomAvailabilityPage() {
                       overflow: 'hidden',
                     }}
                   >
-                    {meetings.map((meeting, index) => (
-                      <Box
-                        key={meeting.id}
-                        sx={{
-                          position: 'absolute',
-                          top: 0,
-                          bottom: 0,
-                          left: `${segments[index].left}%`,
-                          width: `${segments[index].width}%`,
-                          bgcolor: roomColor,
-                        }}
-                      />
-                    ))}
+                    {meetings.map((meeting, index) => {
+                      const segment = segments[index]
+                      if (!segment) {
+                        return null
+                      }
+                      return (
+                        <Box
+                          key={meeting.id}
+                          sx={{
+                            position: 'absolute',
+                            top: 0,
+                            bottom: 0,
+                            left: `${segment.left}%`,
+                            width: `${segment.width}%`,
+                            bgcolor: roomColor,
+                          }}
+                        />
+                      )
+                    })}
                   </Box>
 
                   <Button

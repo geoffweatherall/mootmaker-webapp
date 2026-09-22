@@ -1,9 +1,8 @@
-import { Box, Link as MuiLink, Paper, Stack, TextField, Typography } from '@mui/material'
+import { Link as MuiLink, Paper, Stack, TextField, Typography } from '@mui/material'
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/authContext'
 import { confirmForgotPassword, forgotPassword } from '../auth/cognito'
-import forgotPasswordHero from '../assets/forgot-password-hero.svg'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { SubmitButton } from '../components/SubmitButton'
 
@@ -52,17 +51,14 @@ export default function ForgotPasswordPage() {
 
   return (
     <Stack spacing={3}>
-      <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-        <Box component="img" src={forgotPasswordHero} alt="" sx={{ width: 120, flexShrink: 0 }} />
-        <Typography variant="h4" component="h1">
-          Reset Password
-        </Typography>
-      </Stack>
+      <Typography variant="h4" component="h1">
+        Reset Password
+      </Typography>
 
       <ErrorBanner messages={error ? [error] : []} onDismiss={() => setError(null)} />
 
       {step === 'request' ? (
-        <Paper sx={{ p: 3 }}>
+        <Paper sx={{ p: 3, maxWidth: 480 }}>
           <Stack component="form" spacing={3} onSubmit={handleRequestSubmit}>
             <Typography>
               Enter your email address and we will send you a verification code to reset your
@@ -92,7 +88,7 @@ export default function ForgotPasswordPage() {
           </Stack>
         </Paper>
       ) : (
-        <Paper sx={{ p: 3 }}>
+        <Paper sx={{ p: 3, maxWidth: 480 }}>
           <Stack component="form" spacing={3} onSubmit={handleResetSubmit}>
             <Typography>
               We sent a verification code to <strong>{email.trim()}</strong>. Enter it below with

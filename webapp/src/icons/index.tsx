@@ -155,3 +155,14 @@ export const EmptyStateIcon = createSvgIcon(
   </>,
   'MootmakerEmptyState',
 )
+
+// A circled checkmark for the "you're caught up" empty state (Needs-your-response, see
+// pages/HomePage.tsx and components/EmptyState.tsx's `tone="success"`) - the one generalized
+// empty state that means something was resolved, not that nothing exists yet.
+export const CheckCircleIcon = createSvgIcon(
+  <>
+    <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
+    <path d="M7.5 12.5 L10.3 15.3 L16.5 9" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+  </>,
+  'MootmakerCheckCircle',
+)

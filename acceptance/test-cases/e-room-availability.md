@@ -35,6 +35,8 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **2026-09-19: redesigned along with the whole page.** The old fixed-hour timeline grid, and its "Showing business hours (08:00–17:00)." caption, were replaced by room-status cards with no fixed hour range - see `designs/room-availability-and-person-calendar-redesign.md`. Meetings outside 08:00-17:00 are no longer hidden; a card's status simply reflects whatever meetings exist that day.
 
+**2026-09-23: the busy/free timeline bar (not the status label or expanded list) was narrowed to an 08:00-18:00 visible window** - a meeting straddling the edge is clipped to it, and one entirely outside is not rendered in the bar. See mootmaker-webapp#114. The card's status and expanded meeting list are unaffected and still reflect every meeting regardless of time.
+
 ---
 
 <a id="tc-e27"></a>

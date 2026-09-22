@@ -11,6 +11,14 @@ test.describe('Room Availability - timeline bar', () => {
     const room = rooms[0]
     const subject = `Timeline bar test ${Date.now()}`
 
+    // AddMeetingPage defaults the start time to the next 15-minute boundary from "now" - fine most
+    // of the time, but the timeline bar only renders meetings inside its 08:00-18:00 window
+    // (mootmaker-webapp#114), so this test would flake whenever it happened to run outside that
+    // window. Pinning just Date.now()/new Date() (not the timers - setFixedTime keeps those running
+    // normally, unlike clock.install()) to a known time safely inside the window, as
+    // meeting-details.spec.ts already does for business hours generally, makes that deterministic.
+    await page.clock.setFixedTime(new Date('2026-08-19T10:00:00'))
+
     await page.goto('/meetings/add')
     await expect(page.getByRole('heading', { name: 'Add Meeting' })).toBeVisible()
     await page.getByLabel('Subject').fill(subject)

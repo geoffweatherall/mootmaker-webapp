@@ -7,32 +7,47 @@ export function minutesSinceMidnight(isoLocalDateTime: string): number {
   return hours * 60 + minutes
 }
 
-const MINUTES_PER_DAY = 24 * 60
 /** A short meeting still needs to read as a visible mark, not vanish at its true proportional
  * width - matches the prototype's own minimum. */
 const MIN_SEGMENT_WIDTH_PERCENT = 1.5
 
+/** The timeline bar's visible window. Originally the bar spanned the full 00:00-24:00 day - see
+ * mootmaker-webapp#114 for why that was reversed: at the new demo-data generator's density, the
+ * 00:00-08:00 and 18:00-24:00 stretches were empty dead space diluting the part of the bar that
+ * carries information, and out-of-hours meetings are rare and low-contention enough that clipping
+ * them is an acceptable trade (Geoff, 2026-09-22). A meeting that straddles an edge is clipped to
+ * it rather than dropped; one entirely outside the window is dropped (see segmentsForRoom below). */
+const WINDOW_START_MINUTES = 8 * 60
+const WINDOW_END_MINUTES = 18 * 60
+const WINDOW_MINUTES = WINDOW_END_MINUTES - WINDOW_START_MINUTES
+
 export interface TimelineSegment {
-  /** Percent from the left edge of the day. */
+  /** Percent from the left edge of the visible window. */
   left: number
   /** Percent width. */
   width: number
 }
 
 /**
- * One segment per meeting for the room's busy/free timeline bar, each positioned and sized as a
- * percentage of the full 00:00-24:00 day. Spans the whole day, not a business-hours window like
- * the original prototype (https://claude.ai/artifact/1Z3gT9MmFGRzRq5jpvS4Xr) assumed - this app
- * doesn't constrain meeting times to business hours (see RoomAvailabilityPage.tsx's own note on
- * that), so clamping to 08:00-17:00 would clip or misrepresent a meeting outside it.
+ * One entry per meeting for the room's busy/free timeline bar, each positioned and sized as a
+ * percentage of the visible 08:00-18:00 window. A meeting that starts before the window or ends
+ * after it is clipped to the visible edge rather than misrepresented at its true proportional
+ * position; a meeting entirely outside the window has no visible segment and its entry is `null` -
+ * callers must keep this aligned by index with `meetings`, not filter it, so a meeting's position
+ * in the returned array still matches its position in the input.
  */
-export function segmentsForRoom(meetings: StatusMeeting[]): TimelineSegment[] {
+export function segmentsForRoom(meetings: StatusMeeting[]): Array<TimelineSegment | null> {
   return meetings.map((meeting) => {
     const start = minutesSinceMidnight(meeting.startTime)
     const end = minutesSinceMidnight(meeting.endTime)
+    if (end <= WINDOW_START_MINUTES || start >= WINDOW_END_MINUTES) {
+      return null
+    }
+    const clippedStart = Math.max(start, WINDOW_START_MINUTES)
+    const clippedEnd = Math.min(end, WINDOW_END_MINUTES)
     return {
-      left: (start / MINUTES_PER_DAY) * 100,
-      width: Math.max(((end - start) / MINUTES_PER_DAY) * 100, MIN_SEGMENT_WIDTH_PERCENT),
+      left: ((clippedStart - WINDOW_START_MINUTES) / WINDOW_MINUTES) * 100,
+      width: Math.max(((clippedEnd - clippedStart) / WINDOW_MINUTES) * 100, MIN_SEGMENT_WIDTH_PERCENT),
     }
   })
 }

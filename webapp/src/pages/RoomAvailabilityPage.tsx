@@ -22,7 +22,6 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import emptyRooms from '../assets/empty-rooms.svg'
 import { EmptyState } from '../components/EmptyState'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { useMeetingDetailOverlay } from '../components/useMeetingDetailOverlay'
@@ -31,6 +30,7 @@ import { useAuth } from '../auth/authContext'
 import { formatLocalTime } from '../graphql/formatDateTime'
 import { DAYS, REFERENCE_DATA } from '../graphql/queries'
 import type { Meeting, Person } from '../graphql/types'
+import { AvailabilityIcon } from '../icons'
 import { roomColorAt } from '../theme/roomColor'
 import { dayRelativeLabel } from './dayRelativeLabel'
 import { segmentsForRoom, statusForRoom } from './roomAvailabilityLogic'
@@ -192,7 +192,7 @@ export default function RoomAvailabilityPage() {
           <CircularProgress />
         </Box>
       ) : rooms.length === 0 ? (
-        !roomsError && <EmptyState message="No rooms exist yet." illustration={emptyRooms} />
+        !roomsError && <EmptyState message="No rooms exist yet." icon={AvailabilityIcon} />
       ) : (
         <Box
           sx={{

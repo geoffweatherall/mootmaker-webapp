@@ -29,7 +29,6 @@ import {
   MEETING_ERROR_MESSAGES,
 } from '../graphql/validationMessages'
 import type { CreateMeetingResult, Person, Room } from '../graphql/types'
-import addMeetingHero from '../assets/add-meeting-hero.svg'
 import { SparkleIcon } from '../icons'
 import {
   advanceSuggestion,
@@ -277,16 +276,13 @@ export default function AddMeetingPage() {
 
   return (
     <Stack spacing={3}>
-      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-        <Box component="img" src={addMeetingHero} alt="" sx={{ width: 56, flexShrink: 0 }} />
-        <Typography variant="h4" component="h1">
-          Add Meeting
-        </Typography>
-      </Stack>
+      <Typography variant="h4" component="h1">
+        Add Meeting
+      </Typography>
 
       <ErrorBanner messages={bannerMessages} onDismiss={dismissBanner} />
 
-      <Paper sx={{ p: 3 }}>
+      <Paper sx={{ p: 3, maxWidth: 560 }}>
         {loadingReferenceData ? (
           <Stack sx={{ alignItems: 'center', py: 4 }}>
             <CircularProgress />

@@ -131,11 +131,15 @@ async function addMeeting(page: Page, fixture: MeetingFixture): Promise<void> {
   await expect(page).toHaveURL(/\/rooms\/.+\/availability/)
 }
 
-// HomePage's Today/Tomorrow AgendaList panels, each a Paper with its own <h2> title - scoped this
-// way (rather than a page-wide query) so a panel's rows/empty-state can be asserted without
-// ambiguity between the two panels.
+// The merged agenda's per-day section - a Box containing both the day's own heading row (Today/
+// Tomorrow, as an <h2>) and its rows, as siblings - scoped this way (rather than a page-wide
+// query) so a day's rows can be asserted without ambiguity against the other day. Two levels up
+// from the heading: one to its own header row Stack, one more to the day-section Box that also
+// holds the rows Stack alongside it - see HomePage.tsx's day-section markup. Previously walked up
+// just one level to each day's own Paper, from when Today/Tomorrow were two separate panels
+// rather than sections sharing one merged list - see designs/home-and-misc-pages-redesign.md.
 function agendaPanel(page: Page, title: 'Today' | 'Tomorrow') {
-  return page.getByRole('heading', { name: title, level: 2 }).locator('xpath=..')
+  return page.getByRole('heading', { name: title, level: 2 }).locator('xpath=../..')
 }
 
 // The signed-in Home page has its own "Calendar" call-to-action button, and the sidebar nav has a
@@ -291,11 +295,15 @@ test('D.23 - no meetings today or tomorrow shows the empty state, not a bare emp
 
   await page.goto('/')
 
-  for (const title of ['Today', 'Tomorrow'] as const) {
-    const panel = agendaPanel(page, title)
-    await expect(panel.getByText('No meetings.')).toBeVisible()
-    await expect(panel.locator('img')).toBeVisible()
-  }
+  // The merged agenda shows ONE whole-agenda empty state when both Today and Tomorrow have
+  // nothing, not a per-day heading/empty-state pair any more (see HomePage.tsx's `bothDaysEmpty`
+  // branch) - so this no longer loops over agendaPanel() the way it did with two separate panels.
+  await expect(page.getByRole('heading', { name: 'Today', level: 2 })).toHaveCount(0)
+  await expect(page.getByRole('img', { name: 'No meetings today or tomorrow.' })).toBeVisible()
+  // A plain <p> locator, not getByText: EmptyState's icon carries the same message as its own
+  // (decorative) SVG <title> - see components/EmptyState.tsx's titleAccess - which getByText also
+  // matches regardless of visibility.
+  await expect(page.locator('p', { hasText: 'No meetings today or tomorrow.' })).toBeVisible()
 })
 
 test('D.24 - no linked Person shows a degraded Home page: the account-not-set-up error replaces Calendar/agenda, but Room availability today and Add Meeting still work with a blank Organiser', async ({
@@ -352,4 +360,116 @@ test('D.25 - "Room availability today" and "Add Meeting" deep-link to the pinned
   // known gap), so this is exercising AddMeetingPage's own defaultDate() fallback to today, not a
   // passed-through value.
   await expect(page.getByRole('group', { name: 'Date' }).locator('input')).toHaveValue(todayParam)
+})
+
+async function getIdToken(page: Page): Promise<string> {
+  const token = await page.evaluate(() => {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && key.endsWith('.idToken')) return localStorage.getItem(key)
+    }
+    return null
+  })
+  if (!token) {
+    throw new Error('Could not find a Cognito idToken in localStorage - is the browser actually signed in?')
+  }
+  return token
+}
+
+async function graphqlQuery<T>(page: Page, token: string, query: string): Promise<T> {
+  const response = await page.request.post(requireEnv('GRAPHQL_API_URL'), {
+    headers: { Authorization: token, 'Content-Type': 'application/json' },
+    data: { query },
+  })
+  const body = (await response.json()) as { data?: T; errors?: { message: string }[] }
+  if (body.errors?.length) {
+    throw new Error(`GraphQL request failed: ${JSON.stringify(body.errors)}`)
+  }
+  return body.data as T
+}
+
+/** The signed-in demo user's own display name, needed to pick them by name in the Attendees
+ * Autocomplete below - there is no DEMO_USER_NAME env var, so this reads it the same way the
+ * signed-in session itself does. */
+async function demoUserName(page: Page): Promise<string> {
+  const token = await getIdToken(page)
+  const result = await graphqlQuery<{ workspace: { me: { name: string } | null } }>(
+    page,
+    token,
+    `query { workspace { me { name } } }`,
+  )
+  if (!result.workspace.me) {
+    throw new Error('Signed-in demo account has no linked Person')
+  }
+  return result.workspace.me.name
+}
+
+async function createPerson(page: Page, name: string): Promise<void> {
+  await page.goto('/settings')
+  await page.getByRole('button', { name: 'Add person' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('Name').fill(name)
+  await dialog.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByText(name)).toBeVisible()
+}
+
+test('D.112 - "Search further ahead" finds a real meeting booked beyond the initial window', async ({ page }) => {
+  const runId = uniqueId()
+  const roomName = `Search Further Ahead Room ${runId}`
+  const organiserName = `Search Further Ahead Organiser ${runId}`
+  const subject = `D112 search further ahead ${runId}`
+
+  // A Tuesday, far from every other pinned date this suite uses - see D.22's own note on why that
+  // matters (an unrelated fixture meeting landing on the same date this test navigates through).
+  const pinnedToday = pinnedFutureWeekday('Tuesday', { hour: 9 })
+  await page.clock.setFixedTime(pinnedToday)
+  await signInAsDemo(page)
+  await createRoom(page, roomName, 4)
+
+  // Add Meeting defaults the Organiser to the signed-in user (Demo User) - explicitly picking a
+  // different organiser first, then adding Demo User as an Attendee, is what makes Demo User an
+  // unresponded ATTENDEE instead (matching webapp/tests/attendee-response-status.spec.ts's own
+  // mocked-layer equivalent of this same mechanic).
+  await createPerson(page, organiserName)
+  const attendeeName = await demoUserName(page)
+
+  // 6 days out: past the initial 3-day window (offsets 0-2) and past the first "Search further
+  // ahead" click's own new window (offsets 3-5), so reaching it exercises a click that finds
+  // nothing before the click that does - see designs/home-and-misc-pages-redesign.md's Testing
+  // impacts on why this isn't also duplicated as a separate "finds nothing" acceptance case.
+  const meetingDate = new Date(pinnedToday)
+  meetingDate.setDate(meetingDate.getDate() + 6)
+
+  await page.goto('/meetings/add')
+  await expect(page.getByRole('heading', { name: 'Add Meeting' })).toBeVisible()
+  await page.getByLabel('Subject').fill(subject)
+
+  await page.getByRole('combobox', { name: 'Organiser' }).click()
+  await page.getByRole('option', { name: organiserName, exact: true }).click()
+
+  await page.getByRole('combobox', { name: 'Attendees' }).click()
+  await page.getByRole('option', { name: attendeeName, exact: true }).click()
+  await page.keyboard.press('Escape')
+
+  await page.getByRole('combobox', { name: 'Room' }).click()
+  await page.getByRole('option', { name: roomName, exact: false }).click()
+  await setDate(page, { year: meetingDate.getFullYear(), month: meetingDate.getMonth() + 1, day: meetingDate.getDate() })
+  await fillTime(page, 'Start time', '1000')
+  await fillTime(page, 'End time', '1030')
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page).toHaveURL(/\/rooms\/.+\/availability/)
+
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Needs your response' })).toBeVisible()
+  await expect(page.getByRole('region', { name: subject, exact: true })).toHaveCount(0)
+
+  const searchButton = page.getByRole('button', { name: 'Search further ahead' })
+  const card = page.getByRole('region', { name: subject, exact: true })
+  // Bounded rather than an unconditional loop - if the meeting is never found, this fails loudly
+  // with a clear assertion instead of hanging.
+  for (let attempt = 0; attempt < 5 && (await card.count()) === 0; attempt++) {
+    await searchButton.click()
+  }
+  await expect(card).toBeVisible({ timeout: 15_000 })
+  await expect(card.getByText(organiserName, { exact: false })).toBeVisible()
 })

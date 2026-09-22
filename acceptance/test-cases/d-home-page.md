@@ -51,7 +51,8 @@ See [README.md](README.md) for the entry format and test-data conventions.
 2. Create three meetings via `/meetings/add`: two today at deliberately non-chronological creation order (e.g. create the 14:00 one before the 10:00 one) with distinct subjects, one tomorrow.
 3. Pin the clock (`page.clock.setFixedTime`) to a fixed business-hours time on the test's "today" throughout, so "today"/"tomorrow" are unambiguous and meetings land inside the visible business-hours window.
 4. Navigate to `/`.
-5. Within the "Today" `AgendaList`, read the two meeting rows in DOM order.
+5. Within the "Today" day section (the merged agenda's own Today/Tomorrow sections - see
+   `HomePage.tsx`), read the two meeting rows in DOM order.
 6. Click the first "Today" row.
 
 **Assertions:**
@@ -78,14 +79,15 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Given** a signed-in user with a linked Person and no meetings today or tomorrow
 **When** they view the home page
-**Then** both "Today" and "Tomorrow" show the `EmptyState` component ("No meetings.", with its illustration), not an empty list with no explanation
+**Then** the merged agenda shows one whole-agenda `EmptyState` ("No meetings today or tomorrow.", with its icon), not a bare empty list or per-day Today/Tomorrow headings with nothing under them
 
 **Steps:**
 1. `createConfirmedTestAccount(account)`; sign in as that account.
 2. Navigate to `/`.
 
 **Assertions:**
-- Both "Today" and "Tomorrow" panels show text "No meetings." and an `<img>` (the `empty-meetings.svg` illustration), not a bare empty `List`.
+- No "Today"/"Tomorrow" `<h2>` heading exists (the day sections only render once there's at least one meeting to show - see `HomePage.tsx`'s `bothDaysEmpty` branch).
+- The `EmptyState`'s icon renders as an accessible `role="img"` element named "No meetings today or tomorrow." (not an `<img>` tag - `EmptyState` moved off SVG illustrations to an icon-in-a-tinted-circle pattern, see designs/home-and-misc-pages-redesign.md), and its message text is visible.
 
 **Out of scope:** the populated case (D.22).
 
@@ -159,7 +161,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 <a id="tc-d107"></a>
 ### D.107 — "Needs your response" section, quick-respond, and status badges on Today/Tomorrow
 
-**Use case:** [use-cases.md#uc-107](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-107) — "A 'Needs your response' section lists, soonest-first, every upcoming meeting where the signed-in person is an attendee (not organiser) with status still No response... responding clears it from the list live. The Today/Tomorrow agenda lists are cards showing the viewer's own response status..."
+**Use case:** [use-cases.md#uc-107](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-107) — "A 'Needs your response' section, naming the time range it covers, lists soonest-first every upcoming meeting in that range where the signed-in person is an attendee (not organiser) with status still No response... responding clears it from the list live. The Today/Tomorrow agenda is one continuous, day-sectioned list showing the viewer's own response status on each row, unbounded..."
 **Status:** ✅ Automated — [`tests/attendee-response-status.spec.ts`](../tests/attendee-response-status.spec.ts), new 2026-09-21 — see `../../designs/attendee-response-status.md` in the hub repo.
 **Android:** not yet automated
 
@@ -183,6 +185,34 @@ See [README.md](README.md) for the entry format and test-data conventions.
 - Step 5/6: both update with no page reload.
 - Step 7: `attendees[demoPersonId].status` is `Going`.
 
-**Out of scope:** the exact three-day window boundary (today/tomorrow/day-after) and the "Show N more" expander threshold - covered at the unit/mocked-integration layer (`HomePage.tsx`'s own tests), not re-proven against a real deployment here.
+**Out of scope:** the exact three-day window boundary (today/tomorrow/day-after) - covered at the unit/mocked-integration layer (`HomePage.tsx`'s own tests), not re-proven against a real deployment here. "Search further ahead" itself is D.112, below.
+
+---
+
+<a id="tc-d112"></a>
+### D.112 — "Search further ahead" finds a real meeting booked beyond the initial window
+
+**Use case:** [use-cases.md#uc-112](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-112) — "'Search further ahead' on 'Needs your response' extends the window 3 days per click, merging in whatever it finds, and never collapses back once widened."
+**Status:** ✅ Automated — [`tests/home-page.spec.ts`](../tests/home-page.spec.ts), new 2026-09-22 — see `../../designs/home-and-misc-pages-redesign.md` in the hub repo.
+**Android:** N/A (webapp-specific)
+
+**Preconditions:** Signed in as the demo user, with a room and a second Person (created via Settings, as organiser) already present. A meeting booked via the real Add Meeting form, with the demo user as an attendee (not organiser), 6 days beyond the pinned "today" - past both the initial window and the first "Search further ahead" click's own new window.
+
+**Given** a signed-in user with an unresponded meeting further out than "Needs your response" currently searches
+**When** they click "Search further ahead" enough times to reach it
+**Then** the meeting appears as a card, with no card shown for the clicks before it's reached
+
+**Steps:**
+1. Sign in as the demo user; create a room and (via Settings) a second Person as organiser.
+2. Book a meeting via the real Add Meeting form: the new person as organiser, the demo user as an attendee, 6 days beyond the pinned today.
+3. Navigate to `/`; assert the meeting is absent from "Needs your response".
+4. Click "Search further ahead" (bounded, up to 5 times) until the card appears.
+5. Assert the card is visible, naming the organiser.
+
+**Assertions:**
+- Step 3: no card for the meeting's subject exists yet (proven absent, not just hidden).
+- Step 5: the card is visible and names the organiser.
+
+**Out of scope:** the empty→populated-again cycle (settle empty, then a later search finds something) - proven at the mocked-integration layer instead (`webapp/tests/search-further-ahead.spec.ts`), where exact fixture control makes that transition provable without a second real booking here - see designs/home-and-misc-pages-redesign.md's "Choices you had me make".
 
 **Notes:** This is the Home-page half of the design; H.108 covers the meeting-detail-sheet half of the same feature.

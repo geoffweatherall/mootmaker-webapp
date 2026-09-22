@@ -26,5 +26,8 @@ test('no rooms exist yet shows an empty state instead of the availability grid',
 
   await page.goto('/rooms/2026-08-26/availability')
 
-  await expect(page.getByText('No rooms exist yet.')).toBeVisible()
+  // role=img, not getByText: EmptyState's icon carries the same message as its own (decorative)
+  // SVG <title> - see components/EmptyState.tsx's titleAccess - which getByText also matches
+  // regardless of visibility, so a bare getByText hits a strict-mode violation against both.
+  await expect(page.getByRole('img', { name: 'No rooms exist yet.' })).toBeVisible()
 })

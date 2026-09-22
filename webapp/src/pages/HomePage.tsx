@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@apollo/client/react'
+import { useLazyQuery, useMutation, useQuery } from '@apollo/client/react'
 import AddIcon from '@mui/icons-material/Add'
 import {
   Alert,
@@ -6,31 +6,38 @@ import {
   Button,
   ButtonBase,
   Card,
+  Chip,
   CircularProgress,
+  IconButton,
   LinearProgress,
   Paper,
   Stack,
   Typography,
   useTheme,
 } from '@mui/material'
+import { alpha } from '@mui/material/styles'
 import dayjs from 'dayjs'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/authContext'
 import { runtimeConfig } from '../config'
-import emptyMeetings from '../assets/empty-meetings.svg'
-import homeHero from '../assets/home-hero.svg'
-import homeSignedIn from '../assets/home-signed-in.svg'
 import { AttendeeStatusBadge } from '../components/AttendeeStatusBadge'
 import { EmptyState } from '../components/EmptyState'
-import { CalendarIcon } from '../icons'
+import { AvailabilityIcon, CalendarIcon, CheckCircleIcon, PersonIcon } from '../icons'
 import { SignInForm } from '../components/SignInForm'
 import { useMeetingDetailOverlay } from '../components/useMeetingDetailOverlay'
 import { formatLocalTime } from '../graphql/formatDateTime'
 import { RESPOND_TO_MEETING } from '../graphql/mutations'
-import { PAGE_LOAD } from '../graphql/queries'
-import type { Attendee, AttendeeStatus, Meeting, Person, RespondToMeetingResult, Room } from '../graphql/types'
+import { DAYS, PAGE_LOAD } from '../graphql/queries'
+import type { Attendee, AttendeeStatus, Person, RespondToMeetingResult, Room } from '../graphql/types'
 import { roomColorAt } from '../theme/roomColor'
+import {
+  formatRangeLabel,
+  mergeNeedsResponseEntries,
+  needsResponseEntriesForDay,
+  nextSearchDates,
+  type NeedsResponseEntry,
+} from './searchFurtherAheadLogic'
 
 const SIGN_UP_STEPS = [
   'Enter your name, email address, and password.',
@@ -40,14 +47,11 @@ const SIGN_UP_STEPS = [
 
 const DATE_KEY_FORMAT = 'YYYY-MM-DD'
 
-/** Today/Tomorrow cards beyond this many are hidden behind "Show N more" - see the prototype. */
-const AGENDA_VISIBLE_COUNT = 3
-
 /**
  * Fires a response directly from the card - Going/Maybe/Not going, same three choices as
  * AttendeeStatusControl.tsx's detail-sheet control, but as one-shot buttons rather than a toggle
  * group: every card this appears on is, by construction, still at NoResponse (see
- * needsResponse below), so there is no "currently selected" state to show.
+ * needsResponseEntriesForDay), so there is no "currently selected" state to show.
  */
 function QuickRespondButtons({ meetingId }: { meetingId: string }) {
   const [respondToMeeting, { loading }] = useMutation<{ respondToMeeting: RespondToMeetingResult }>(
@@ -87,22 +91,21 @@ function dayLabel(dateKey: string, today: string, tomorrow: string): string {
   return dayjs(dateKey).format('dddd')
 }
 
-interface NeedsResponseEntry {
-  meeting: Meeting
-  organiserName: string
-  roomName: string
-}
-
-function NeedsResponseCard({ meeting, organiserName, roomName, today, tomorrow }: NeedsResponseEntry & { today: string; tomorrow: string }) {
+function NeedsResponseCard({ meeting, organiserName, roomName, source, today, tomorrow }: NeedsResponseEntry & { today: string; tomorrow: string }) {
   const { timeFormat } = useAuth()
   const whenLabel = `${dayLabel(meeting.startTime.slice(0, 10), today, tomorrow)}, ${formatLocalTime(meeting.startTime, timeFormat)}–${formatLocalTime(meeting.endTime, timeFormat)}`
+  // Amber for a meeting the initial window already had, indigo for one only "Search further
+  // ahead" turned up - purely so a widened search's finds are visually legible as such (see
+  // designs/home-and-misc-pages-redesign.md's "Trade-offs and decisions"), no behavioural
+  // difference between the two.
+  const borderColor = source === 'extra' ? 'primary.main' : 'warning.main'
 
   return (
     // component="section" + aria-label gives this an implicit "region" role with an accessible
     // name - lets a test (or assistive tech) find one card among several by the meeting's own
     // subject, without reaching for a test id (see CLAUDE.md's "locate by role and accessible
     // name" convention).
-    <Card component="section" aria-label={meeting.subject} variant="outlined" sx={{ borderLeft: 3, borderLeftColor: 'warning.main', p: 2 }}>
+    <Card component="section" aria-label={meeting.subject} variant="outlined" sx={{ borderLeft: 3, borderLeftColor: borderColor, p: 2 }}>
       <Stack spacing={1.25}>
         <Box>
           <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
@@ -118,100 +121,49 @@ function NeedsResponseCard({ meeting, organiserName, roomName, today, tomorrow }
   )
 }
 
-interface AgendaListProps {
-  title: string
-  meetings: Meeting[]
-  /** Room names are resolved by the page from the same response, not carried on each meeting. */
-  roomsById: Map<string, Room>
-  roomIndexById: Map<string, number>
-  /** Null for a signed-in account with no linked Person - see the degraded-path branch below. Every card still renders; none of them has a status badge to show. */
-  personId: string | null
-  /** No data at all yet - not even a stale cached copy. The only state that blocks rendering. */
-  unknown: boolean
-  /** Have data (possibly stale) but a `cache-and-network` revalidation is still in flight - see the
-   * shared LinearProgress this drives in HomePage's own return. A day showing zero meetings here
-   * is not yet trustworthy while this is true, so the empty state below is suppressed for it - per
-   * mootmaker-webapp#111, don't say "No meetings" with more confidence than the data actually has. */
-  refreshing: boolean
-  /** Opens the shared meeting-detail sheet/panel in place - see useMeetingDetailOverlay.tsx. Not a
-   * navigation: nothing in this app links to /meetings/:id any more, see
-   * designs/meeting-detail-consolidation.md. */
-  onMeetingClick: (meeting: Meeting) => void
+interface ToolbarActionProps {
+  /** The short, glanceable caption shown under the icon - deliberately shorter than the
+   * accessible name below, matching the prototype's compact toolbar captions. */
+  caption: string
+  /** The full, descriptive accessible name - unchanged from this page's previous plain-button
+   * labels, so existing role/name-based tests and assistive tech both keep a fuller description
+   * than the compact caption alone would give. */
+  accessibleName: string
+  icon: ReactNode
+  disabled?: boolean
+  to?: string
+  onClick?: () => void
 }
 
-function AgendaList({ title, meetings, unknown, refreshing, roomsById, roomIndexById, personId, onMeetingClick }: AgendaListProps) {
-  const { timeFormat } = useAuth()
-  const theme = useTheme()
-  const [expanded, setExpanded] = useState(false)
-  const visible = expanded ? meetings : meetings.slice(0, AGENDA_VISIBLE_COUNT)
-  const hasMore = meetings.length > AGENDA_VISIBLE_COUNT
-
+function ToolbarAction({ caption, accessibleName, icon, disabled, to, onClick }: ToolbarActionProps) {
   return (
-    <Paper sx={{ p: 2, flex: 1 }}>
-      <Typography variant="h6" component="h2" sx={{ mb: 1 }}>
-        {title}
+    <Stack sx={{ alignItems: 'center', gap: 0.5 }}>
+      <IconButton
+        aria-label={accessibleName}
+        disabled={disabled}
+        onClick={onClick}
+        {...(to ? { component: Link, to } : {})}
+        sx={{
+          width: 40,
+          height: 40,
+          bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
+          color: 'primary.main',
+          '&:hover': { bgcolor: (theme) => alpha(theme.palette.primary.main, 0.16) },
+        }}
+      >
+        {icon}
+      </IconButton>
+      <Typography variant="caption" color="text.secondary" aria-hidden sx={{ fontSize: '10.5px' }}>
+        {caption}
       </Typography>
-      {unknown ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-          <CircularProgress size={24} />
-        </Box>
-      ) : meetings.length === 0 ? (
-        // refreshing: a revalidation is still in flight, so "zero" isn't settled yet - the shared
-        // bar above already says so, and this stays blank rather than asserting "No meetings."
-        refreshing ? null : (
-          <EmptyState message="No meetings." illustration={emptyMeetings} />
-        )
-      ) : (
-        <Stack spacing={1}>
-          {visible.map((meeting) => {
-            const roomColor = roomColorAt(roomIndexById.get(meeting.room.id) ?? 0, theme.palette.mode)
-            const myAttendee: Attendee | undefined = meeting.attendees.find(
-              (attendee) => attendee.person.id === personId,
-            )
-            return (
-              <ButtonBase
-                key={meeting.id}
-                onClick={() => onMeetingClick(meeting)}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1.5,
-                  width: '100%',
-                  textAlign: 'left',
-                  borderRadius: 2,
-                  p: 1.25,
-                  bgcolor: 'action.hover',
-                  '&:hover': { bgcolor: 'action.selected' },
-                }}
-              >
-                <Box sx={{ width: 9, height: 9, borderRadius: '50%', bgcolor: roomColor, flexShrink: 0 }} />
-                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                  <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
-                    {meeting.subject}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" noWrap>
-                    {formatLocalTime(meeting.startTime, timeFormat)}–{formatLocalTime(meeting.endTime, timeFormat)} ·{' '}
-                    {roomsById.get(meeting.room.id)?.name ?? ''}
-                  </Typography>
-                </Box>
-                {myAttendee && <AttendeeStatusBadge status={myAttendee.status} size={22} />}
-              </ButtonBase>
-            )
-          })}
-          {hasMore && (
-            <Button size="small" onClick={() => setExpanded((current) => !current)} sx={{ alignSelf: 'flex-start' }}>
-              {expanded ? 'Show fewer' : `Show ${meetings.length - AGENDA_VISIBLE_COUNT} more`}
-            </Button>
-          )}
-        </Stack>
-      )}
-    </Paper>
+    </Stack>
   )
 }
 
 export default function HomePage() {
   const navigate = useNavigate()
-  const { email, personId, personLoading, initialising } = useAuth()
+  const theme = useTheme()
+  const { email, personId, personLoading, initialising, timeFormat } = useAuth()
 
   // Today through the end of tomorrow, for the signed-in person - the API filters server-side so
   // The landing route, so it loads through the composite entry point: rooms, people and the three
@@ -229,16 +181,22 @@ export default function HomePage() {
     skip: !email,
   })
 
+  // "Search further ahead" fetches its own extra days on demand via the DAYS query - the same
+  // query RoomAvailabilityPage reads a single day from, so a click here and a later visit to Room
+  // Availability/Person Calendar for one of those same dates share one cache entry instead of two
+  // independent fetches. See designs/home-and-misc-pages-redesign.md's Technical considerations.
+  const [fetchMoreDays, { loading: searching }] = useLazyQuery(DAYS)
+  const [searchLevel, setSearchLevel] = useState(0)
+  const [extraEntries, setExtraEntries] = useState<NeedsResponseEntry[]>([])
+
   // Rooms come back in the same response, so a meeting carries only a room id and the name is
   // resolved here. That is deliberate: asking for the name per meeting would make the server do a
-  // lookup for data this page already holds.
+  // lookup for data this page already holds. Rooms/people are NOT date-filtered, so this also
+  // covers any room/person a "Search further ahead" click turns up, however far out.
   const roomsById = useMemo(
     () => new Map<string, Room>((data?.workspace.rooms ?? []).map((room) => [room.id, room])),
     [data],
   )
-  // Same response too (see PAGE_LOAD's own comment) - needed to resolve organiser/attendee names
-  // for the shared meeting-detail overlay below, not previously built here since this page didn't
-  // show attendee names before designs/meeting-detail-consolidation.md.
   const peopleById = useMemo(
     () => new Map<string, Person>((data?.workspace.people ?? []).map((person) => [person.id, person])),
     [data],
@@ -253,13 +211,14 @@ export default function HomePage() {
     roomIndexById,
   )
 
-  const today = dayjs().format(DATE_KEY_FORMAT)
-  const tomorrow = dayjs().add(1, 'day').format(DATE_KEY_FORMAT)
+  const todayDayjs = useMemo(() => dayjs().startOf('day'), [])
+  const today = todayDayjs.format(DATE_KEY_FORMAT)
+  const tomorrow = todayDayjs.add(1, 'day').format(DATE_KEY_FORMAT)
 
   // The server no longer filters by person - a date range is a list of day keys, and there is no
   // personId argument. Three days of meetings is small enough that filtering here costs nothing,
   // and it removed a whole join table from the backend.
-  function agendaFor(dateKey: string): Meeting[] {
+  function agendaFor(dateKey: string) {
     const day = (data?.workspace.days ?? []).find((candidate) => candidate.date === dateKey)
     return (day?.meetings ?? [])
       .filter(
@@ -271,28 +230,34 @@ export default function HomePage() {
       .sort((a, b) => a.startTime.localeCompare(b.startTime))
   }
 
-  // Every meeting across the fetched window (today + the next two days) where the signed-in
-  // person is an ATTENDEE - never the organiser, who is implicitly Going with nothing to set (see
-  // designs/attendee-response-status.md) - and hasn't responded yet. Soonest-first, per Geoff's
-  // own call on the design doc's "Open questions": the most actionable ordering, respond to
-  // what's coming up soonest.
-  const needsResponse: NeedsResponseEntry[] = useMemo(() => {
+  // Every meeting in the initial 3-day window where the signed-in person is an ATTENDEE - never
+  // the organiser, who is implicitly Going with nothing to set (see
+  // designs/attendee-response-status.md) - and hasn't responded yet. "Search further ahead"
+  // extends this with extraEntries below, rather than re-deriving it from scratch.
+  const initialNeedsResponse: NeedsResponseEntry[] = useMemo(() => {
     if (!personId) return []
-    const entries: NeedsResponseEntry[] = []
-    for (const day of data?.workspace.days ?? []) {
-      for (const meeting of day.meetings) {
-        if (meeting.organiser.id === personId) continue
-        const mine = meeting.attendees.find((attendee) => attendee.person.id === personId)
-        if (mine?.status !== 'NoResponse') continue
-        entries.push({
-          meeting,
-          organiserName: peopleById.get(meeting.organiser.id)?.name ?? '',
-          roomName: roomsById.get(meeting.room.id)?.name ?? '',
-        })
-      }
-    }
+    const entries = (data?.workspace.days ?? []).flatMap((day) =>
+      needsResponseEntriesForDay(day, personId, peopleById, roomsById, 'initial'),
+    )
     return entries.sort((a, b) => a.meeting.startTime.localeCompare(b.meeting.startTime))
   }, [data, personId, peopleById, roomsById])
+
+  const needsResponse = useMemo(
+    () => mergeNeedsResponseEntries(initialNeedsResponse, extraEntries),
+    [initialNeedsResponse, extraEntries],
+  )
+  const rangeLabel = formatRangeLabel(todayDayjs, searchLevel)
+
+  async function handleSearchFurtherAhead() {
+    if (!personId) return
+    const dates = nextSearchDates(searchLevel, todayDayjs)
+    const result = await fetchMoreDays({ variables: { dates } })
+    const found = (result.data?.workspace.days ?? []).flatMap((day) =>
+      needsResponseEntriesForDay(day, personId, peopleById, roomsById, 'extra'),
+    )
+    setExtraEntries((current) => mergeNeedsResponseEntries(current, found).filter((entry) => entry.source === 'extra'))
+    setSearchLevel((current) => current + 1)
+  }
 
   // Three states, not one boolean - see mootmaker-webapp#111. `data` is undefined only until the
   // first complete result (from cache or network) arrives; `cache-and-network` never hands back a
@@ -326,24 +291,43 @@ export default function HomePage() {
 
     return (
       <Stack spacing={3}>
-        <Paper sx={{ p: 3 }}>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} sx={{ alignItems: 'center' }}>
-            <Box
-              component="img"
-              src={homeHero}
-              alt=""
-              sx={{ width: { xs: '100%', sm: 280 }, maxWidth: 360, flexShrink: 0 }}
-            />
-            <Stack spacing={1}>
-              <Typography variant="h3" component="h1">
-                Welcome to Mootmaker
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Schedule meetings and keep track of who's using each room, all in one place.
+        <Box>
+          <Typography variant="h3" component="h1">
+            Welcome to Mootmaker
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mt: 0.5, maxWidth: 520 }}>
+            Schedule meetings and keep track of who's using each room, all in one place.
+          </Typography>
+        </Box>
+
+        {/* A feature strip replaces the old hero image - see designs/home-and-misc-pages-redesign.md's
+            "No imagery anywhere" decision. */}
+        <Stack direction="row" spacing={4} sx={{ flexWrap: 'wrap', px: 0.25 }}>
+          {[
+            { icon: <CalendarIcon fontSize="small" />, label: 'Schedule meetings' },
+            { icon: <AvailabilityIcon fontSize="small" />, label: 'Room availability' },
+            { icon: <PersonIcon fontSize="small" />, label: 'One shared team calendar' },
+          ].map(({ icon, label }) => (
+            <Stack key={label} direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
+              <Stack
+                sx={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 2,
+                  bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
+                  color: 'primary.main',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {icon}
+              </Stack>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                {label}
               </Typography>
             </Stack>
-          </Stack>
-        </Paper>
+          ))}
+        </Stack>
 
         <Paper sx={{ p: 3 }}>
           <Typography variant="h6" component="h2" gutterBottom>
@@ -421,62 +405,51 @@ export default function HomePage() {
     )
   }
 
+  const bothDaysEmpty = agendaFor(today).length === 0 && agendaFor(tomorrow).length === 0
+
   return (
     <Stack spacing={3}>
-      <Paper sx={{ p: 3 }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} sx={{ alignItems: 'center' }}>
-          <Box
-            component="img"
-            src={homeSignedIn}
-            alt=""
-            sx={{ width: { xs: '100%', sm: 220 }, maxWidth: 280, flexShrink: 0 }}
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { xs: 'flex-start', sm: 'flex-start' }, justifyContent: 'space-between' }}>
+        <Box>
+          <Typography variant="h4" component="h1">
+            Home
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {dayjs().format('dddd, D MMMM')}
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={2.5}>
+          <ToolbarAction
+            caption="Add meeting"
+            accessibleName="Add Meeting"
+            icon={<AddIcon fontSize="small" />}
+            to="/meetings/add"
           />
-          <Stack spacing={2} sx={{ flexGrow: 1 }}>
-            <Stack spacing={1}>
-              <Typography variant="h3" component="h1">
-                Welcome to Mootmaker
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Schedule meetings and keep track of who's using each room, all in one place.
-              </Typography>
-            </Stack>
-            <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap' }}>
-              {/* Swaps a same-sized icon for the spinner rather than dropping the startIcon
-                  entirely, which is what MenuContent's own Calendar item does. An icon that comes
-                  and goes changes this button's width, which moves the two buttons to its right -
-                  and a control that moves under the cursor silently eats a click already in
-                  progress: mousedown lands on the button, the layout shifts, mouseup lands
-                  elsewhere, and the browser fires click on the common ancestor rather than the
-                  button. See mootmaker-webapp#43 for the same fault costing a 120-second
-                  acceptance timeout on Settings. */}
-              <Button
-                variant="contained"
-                disabled={!personId}
-                startIcon={personLoading ? <CircularProgress size={20} color="inherit" /> : <CalendarIcon />}
-                onClick={() => personId && navigate(`/persons/${personId}/calendar`)}
-              >
-                Calendar
-              </Button>
-              <Button variant="contained" onClick={() => navigate(`/rooms/${today}/availability`)}>
-                Room availability today
-              </Button>
-              <Button variant="contained" component={Link} to="/meetings/add" startIcon={<AddIcon />}>
-                Add Meeting
-              </Button>
-            </Stack>
-          </Stack>
+          <ToolbarAction
+            caption="Rooms today"
+            accessibleName="Room availability today"
+            icon={<AvailabilityIcon fontSize="small" />}
+            onClick={() => navigate(`/rooms/${today}/availability`)}
+          />
+          <ToolbarAction
+            caption="My calendar"
+            accessibleName="Calendar"
+            icon={personLoading ? <CircularProgress size={18} color="inherit" /> : <CalendarIcon fontSize="small" />}
+            disabled={!personId}
+            onClick={() => personId && navigate(`/persons/${personId}/calendar`)}
+          />
         </Stack>
-      </Paper>
+      </Stack>
 
       {/* One shared indicator for the whole dashboard below, matching PersonCalendarPage/
           RoomAvailabilityPage's convention (README.md's "Progress indicators") rather than a bar
-          per section - Needs-response and both agenda panels come from the one PAGE_LOAD query, so
-          three separate bars would just say the same thing three times. */}
+          per section - Needs-response and the merged agenda both come from the one PAGE_LOAD
+          query, so two separate bars would just say the same thing twice. */}
       <Box sx={{ height: 4 }}>{agendaRefreshing && <LinearProgress />}</Box>
 
       {personId && !agendaUnknown && (
         <Stack spacing={1.5}>
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline' }}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline', flexWrap: 'wrap' }}>
             <Typography variant="h6" component="h2">
               Needs your response
             </Typography>
@@ -495,56 +468,132 @@ export default function HomePage() {
                 {needsResponse.length}
               </Typography>
             )}
+            <Typography variant="caption" color="text.secondary">
+              · {rangeLabel}
+            </Typography>
           </Stack>
+
           {needsResponse.length === 0 ? (
-            // refreshing: not settled yet, so "you're all caught up" isn't known to be true - say
-            // nothing rather than assert it (see AgendaList's identical treatment below).
+            // refreshing: not settled yet, so "nothing waiting" isn't known to be true - say
+            // nothing rather than assert it (see the merged agenda's identical treatment below).
             agendaRefreshing ? null : (
-              <Paper sx={{ p: 2, textAlign: 'center' }}>
-                <Typography variant="body2" color="text.secondary">
-                  Nothing waiting on a response — you're all caught up.
-                </Typography>
-              </Paper>
+              <EmptyState
+                message={`Nothing waiting on a response between ${rangeLabel}.`}
+                icon={CheckCircleIcon}
+                tone="success"
+              />
             )
           ) : (
             <Stack spacing={1.5}>
-              {needsResponse.map(({ meeting, organiserName, roomName }) => (
-                <NeedsResponseCard
-                  key={meeting.id}
-                  meeting={meeting}
-                  organiserName={organiserName}
-                  roomName={roomName}
-                  today={today}
-                  tomorrow={tomorrow}
-                />
+              {needsResponse.map((entry) => (
+                <NeedsResponseCard key={entry.meeting.id} {...entry} today={today} tomorrow={tomorrow} />
               ))}
             </Stack>
+          )}
+
+          {/* Always available, never collapses back once a wider window has been searched - see
+              designs/home-and-misc-pages-redesign.md's "Search further ahead always stays
+              available" decision. */}
+          {searching ? (
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', color: 'text.secondary', px: 0.25 }}>
+              <CircularProgress size={14} thickness={5} />
+              <Typography variant="caption">Searching the next 3 days for more meetings you haven't responded to…</Typography>
+            </Stack>
+          ) : (
+            <ButtonBase
+              onClick={handleSearchFurtherAhead}
+              sx={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 0.5, borderRadius: 1, px: 0.75, py: 0.5, color: 'primary.main' }}
+            >
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                Search further ahead
+              </Typography>
+            </ButtonBase>
           )}
         </Stack>
       )}
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3}>
-        <AgendaList
-          title="Today"
-          meetings={agendaFor(today)}
-          unknown={agendaUnknown}
-          refreshing={agendaRefreshing}
-          roomsById={roomsById}
-          roomIndexById={roomIndexById}
-          personId={personId}
-          onMeetingClick={openMeetingDetail}
-        />
-        <AgendaList
-          title="Tomorrow"
-          meetings={agendaFor(tomorrow)}
-          unknown={agendaUnknown}
-          refreshing={agendaRefreshing}
-          roomsById={roomsById}
-          roomIndexById={roomIndexById}
-          personId={personId}
-          onMeetingClick={openMeetingDetail}
-        />
-      </Stack>
+      {/* Today/Tomorrow merged into one calendar-style list, matching PersonCalendarPage's own
+          day sections - see designs/home-and-misc-pages-redesign.md's "one merged list, not two
+          card columns" decision. */}
+      <Paper sx={{ overflow: 'hidden' }}>
+        {agendaUnknown ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress size={24} />
+          </Box>
+        ) : bothDaysEmpty ? (
+          agendaRefreshing ? null : <EmptyState message="No meetings today or tomorrow." icon={CalendarIcon} />
+        ) : (
+          <Stack divider={<Box sx={{ borderTop: 1, borderColor: 'divider' }} />}>
+            {[today, tomorrow].map((dateKey) => {
+              const dayMeetings = agendaFor(dateKey)
+              const isToday = dateKey === today
+              return (
+                <Box key={dateKey} sx={{ px: 2.25, py: 1.75 }}>
+                  <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline' }}>
+                    <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 700 }}>
+                      {isToday ? 'Today' : 'Tomorrow'}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {dayjs(dateKey).format('D MMM')}
+                    </Typography>
+                    {isToday && (
+                      <Chip
+                        label="Today"
+                        size="small"
+                        sx={{ ml: 'auto', bgcolor: 'primary.main', color: 'primary.contrastText', fontWeight: 700 }}
+                      />
+                    )}
+                  </Stack>
+                  <Stack spacing={0.25} sx={{ pt: 1 }}>
+                    {dayMeetings.length === 0 ? (
+                      !agendaRefreshing && (
+                        <Typography variant="body2" color="text.secondary">
+                          No meetings
+                        </Typography>
+                      )
+                    ) : (
+                      dayMeetings.map((meeting) => {
+                        const roomColor = roomColorAt(roomIndexById.get(meeting.room.id) ?? 0, theme.palette.mode)
+                        const myAttendee: Attendee | undefined = meeting.attendees.find(
+                          (attendee) => attendee.person.id === personId,
+                        )
+                        return (
+                          <ButtonBase
+                            key={meeting.id}
+                            onClick={() => openMeetingDetail(meeting)}
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1.5,
+                              width: '100%',
+                              textAlign: 'left',
+                              borderRadius: 2,
+                              p: 1,
+                              '&:hover': { bgcolor: 'action.hover' },
+                            }}
+                          >
+                            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: roomColor, flexShrink: 0 }} />
+                            <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                              <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
+                                {meeting.subject}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary" noWrap>
+                                {formatLocalTime(meeting.startTime, timeFormat)}–{formatLocalTime(meeting.endTime, timeFormat)} ·{' '}
+                                {roomsById.get(meeting.room.id)?.name ?? ''}
+                              </Typography>
+                            </Box>
+                            {myAttendee && <AttendeeStatusBadge status={myAttendee.status} size={22} />}
+                          </ButtonBase>
+                        )
+                      })
+                    )}
+                  </Stack>
+                </Box>
+              )
+            })}
+          </Stack>
+        )}
+      </Paper>
 
       {meetingDetailOverlay}
     </Stack>

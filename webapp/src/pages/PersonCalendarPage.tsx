@@ -21,7 +21,6 @@ import dayjs, { type Dayjs } from 'dayjs'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../auth/authContext'
-import emptyPeople from '../assets/empty-people.svg'
 import { EmptyState } from '../components/EmptyState'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { PersonAvatar } from '../components/PersonAvatar'
@@ -30,6 +29,7 @@ import { errorMessages } from '../graphql/errorMessages'
 import { formatLocalTime } from '../graphql/formatDateTime'
 import { PAGE_LOAD, REFERENCE_DATA } from '../graphql/queries'
 import type { Meeting, Person } from '../graphql/types'
+import { PersonIcon } from '../icons'
 import { roomColorAt } from '../theme/roomColor'
 import { dayRelativeLabel } from './dayRelativeLabel'
 
@@ -245,7 +245,7 @@ export default function PersonCalendarPage() {
           <CircularProgress />
         </Box>
       ) : people.length === 0 ? (
-        !peopleError && <EmptyState message="No people exist yet." illustration={emptyPeople} />
+        !peopleError && <EmptyState message="No people exist yet." icon={PersonIcon} />
       ) : (
         <Stack sx={{ pb: 10 }}>
           {days.map((date) => {

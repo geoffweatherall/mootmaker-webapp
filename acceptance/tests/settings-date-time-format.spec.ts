@@ -404,8 +404,14 @@ test('N.105: an account with no linked Person sees the section disabled with an 
   await expect(page.getByText("Your account has no linked person yet, so these can't be changed here.")).toBeVisible()
 
   // A missing preference must never mean a missing date: the defaults still apply for display.
+  // Checked via "Room availability today", not a Home page heading - a no-linked-Person account's
+  // Home page never renders an agenda at all (the degraded path D.24 covers), so there is no
+  // "Today" heading to find here regardless of date-format defaults; this pre-existing assertion
+  // predates that and was never actually reachable. "Room availability today" still deep-links
+  // correctly (see D.25's equivalent check), which is what actually exercises the default date.
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible()
+  await page.getByRole('button', { name: 'Room availability today' }).click()
+  await expect(page).toHaveURL(/\/rooms\/\d{4}-\d{2}-\d{2}\/availability/)
 })
 
 test("N.106: a meeting's time in Room Availability's expanded list follows the time format", async ({ page }) => {

@@ -6,7 +6,7 @@ import { formatDateParam, pinnedWeekday } from './support/pinnedDates'
  * refresh, and the client that made it does not flicker.
  *
  * These are the rows of the design's cross-client definition of done that a browser can actually
- * observe (mootmaker/designs/graphql-schema-and-caching.md). They are the only place the whole
+ * observe (mootmaker/designs/archive/graphql-schema-and-caching.md). They are the only place the whole
  * chain is proven end to end - resolver Lambda, IAM-signed publish, @aws_subscribe, the realtime
  * socket, and the cache eviction - with a real user watching a real page.
  *

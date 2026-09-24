@@ -38,6 +38,8 @@ function cacheHolding(...dates: string[]): InMemoryCache {
 const holds = (cache: InMemoryCache, date: string): boolean =>
   Object.keys(cache.extract()).some((key) => key.startsWith('Day:') && key.includes(date))
 
+const holdsMeeting = (cache: InMemoryCache, id: string): boolean => id in cache.extract()
+
 describe('DayInvalidations', () => {
   it('evicts the days a broadcast names, and leaves the others alone', () => {
     const cache = cacheHolding('2026-09-14', '2026-09-15')
@@ -47,6 +49,25 @@ describe('DayInvalidations', () => {
 
     expect(holds(cache, '2026-09-14')).toBe(false)
     expect(holds(cache, '2026-09-15')).toBe(true)
+  })
+
+  it('also evicts the meetings a day referenced, not just the day itself', () => {
+    // Evicting the Day alone leaves each Meeting entity's own fields completely untouched -
+    // wrong for one that's been cancelled: nothing else removes a Meeting entity, and Apollo's
+    // automatic gc() does not reliably collect one with an active watcher (an open meeting detail
+    // sheet's own useFragment on that exact id always is one) - see designs/
+    // edit-and-cancel-meetings.md's Decision 10. Without this, a cancelled meeting an open sheet
+    // is watching could stay "complete" in that sheet indefinitely.
+    const cache = cacheHolding('2026-09-14', '2026-09-15')
+    const invalidations = new DayInvalidations(cache)
+
+    expect(holdsMeeting(cache, 'Meeting:m-2026-09-14')).toBe(true)
+
+    invalidations.invalidate(['2026-09-14'])
+
+    expect(holdsMeeting(cache, 'Meeting:m-2026-09-14')).toBe(false)
+    // The other day's meeting is untouched - eviction is scoped to the invalidated day only.
+    expect(holdsMeeting(cache, 'Meeting:m-2026-09-15')).toBe(true)
   })
 
   it('is a no-op for a day nobody has fetched', () => {

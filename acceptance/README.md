@@ -56,15 +56,19 @@ drift" and "Known implementation gap" sections.
 
 ## Status
 
-Every one of the 99 catalogued use cases now has a spec, across `sign-up.spec.ts`,
+Most of the catalogued use cases have a spec, across `sign-up.spec.ts`,
 `sign-in-sign-out.spec.ts`, `forgot-password.spec.ts`, `add-meeting.spec.ts`,
 `00-room-availability-empty.spec.ts`, `room-availability.spec.ts`, `person-calendar.spec.ts`,
 `meeting-details.spec.ts`, `home-page.spec.ts`, `settings-your-name.spec.ts`,
-`settings-rooms.spec.ts`, `settings-people.spec.ts`, `authorization-boundaries.spec.ts`, and
-`cross-cutting.spec.ts` — except G.64, confirmed infeasible against this project's standard
-environments (see its own catalog entry). A few specs are still being verified/fixed against a
-live environment (see [test-cases/](test-cases/)'s own per-case **Status** lines, which are the
-source of truth for coverage, not this list).
+`settings-rooms.spec.ts`, `settings-people.spec.ts`, `authorization-boundaries.spec.ts`,
+`cross-cutting.spec.ts`, `attendee-response-status.spec.ts`, `cross-client-updates.spec.ts`, and
+`edit-and-cancel-meetings.spec.ts` — except G.64, confirmed infeasible against this project's
+standard environments (see its own catalog entry). Not every case has automated acceptance-layer
+coverage: some are left deliberately Planned where the Integration layer under `webapp/tests/`
+already proves the logic thoroughly against a mock and only a thinner real-infrastructure smoke
+case remains open (see e.g. `test-cases/o-edit-and-cancel-meetings.md`'s own per-case notes). A
+few specs are still being verified/fixed against a live environment. [test-cases/](test-cases/)'s
+own per-case **Status** lines are the source of truth for coverage, not this list.
 
 Everything else in `use-cases.md` is still just a checklist. Adding a case here should follow the
 same shape: pick the *use case*, not the UI flow, as the thing under test — assert the business

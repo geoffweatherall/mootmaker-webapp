@@ -58,6 +58,9 @@ export const MEETING_ERROR_MESSAGES: Record<MeetingError, string> = {
   SubjectTooLong: 'The subject is too long. Emoji and accented characters take up more of the limit than plain letters.',
   OutsideBookableRange: 'That date is outside the range meetings can be booked in.',
   TooManyMeetingsInOneCall: 'Too many meetings were sent in a single request.',
+  // updateMeeting/cancelMeeting only - same wording as RESPOND_TO_MEETING_ERROR_MESSAGES's own
+  // MeetingNotFound below, for the same case.
+  MeetingNotFound: 'This meeting no longer exists - it may have been deleted.',
 }
 
 export const RESPOND_TO_MEETING_ERROR_MESSAGES: Record<RespondToMeetingError, string> = {

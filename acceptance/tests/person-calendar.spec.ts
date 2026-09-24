@@ -120,6 +120,17 @@ async function goToOwnCalendar(page: Page) {
   await expect(page).toHaveURL(/\/persons\/[^/]+\/calendar$/)
 }
 
+const MONTH_ABBREV = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** Matches PersonCalendarPage's own week-range label,
+ * `{firstMonday.format('D MMM')} – {lastDayShown.format('D MMM YYYY')}` - given the Monday that
+ * starts the work week, not the pinned "now" within it (see pinnedDates.ts's own `pinnedWeekday`,
+ * which every caller here uses to get that Monday for a given week offset). */
+function weekRangeLabel(monday: Date): string {
+  const friday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 4)
+  return `${monday.getDate()} ${MONTH_ABBREV[monday.getMonth()]} – ${friday.getDate()} ${MONTH_ABBREV[friday.getMonth()]} ${friday.getFullYear()}`
+}
+
 test('G.59 - viewing your own calendar by default shows it pre-selected in the Person selector', async ({
   page,
 }) => {
@@ -196,21 +207,23 @@ test('G.61 - the weekly agenda shows exactly Monday-Friday, five day sections', 
 })
 
 test('G.62 - Previous/Next week and This week navigate the visible one-week window', async ({ page }) => {
-  // Deliberately still a literal, unlike the meeting-creating cases below (see
-  // support/pinnedDates.ts). This case books nothing - it only navigates the visible week - so
-  // the retention boundary never applies, and the three expected ranges below are precomputed from
-  // this exact instant. Deriving the date would mean re-deriving PersonCalendarPage's own
-  // startOfWorkWeek() math in the test, which is the thing those literals exist to avoid.
-  await page.clock.setFixedTime(new Date('2026-08-26T10:00:00'))
+  // mootmaker-webapp#58: this test's own reasoning for staying a hardcoded literal ("books
+  // nothing, so the retention boundary never applies") turned out to be wrong - "Previous week" is
+  // disabled once the window it would navigate to falls entirely before the retention boundary,
+  // regardless of whether anything gets booked there, and that boundary advances every Monday the
+  // same as it does for every other pinned date in this suite. Caught exactly as #58 predicted,
+  // one calendar week after every OTHER G-series test had already been migrated off literals -
+  // this one was overlooked. Now derived the same way as its siblings (see support/pinnedDates.ts),
+  // with the three expected ranges computed from the same anchor rather than precomputed by hand.
+  const pinnedNow = pinnedWeekday('Wednesday')
+  await page.clock.setFixedTime(pinnedNow)
   await signInAsDemo(page)
   await goToOwnCalendar(page)
 
-  // Precomputed directly from PersonCalendarPage's own startOfWorkWeek()/window-length logic for
-  // the pinned "now" above (Wed 26 Aug 2026 -> week starts Mon 24 Aug, one work week - Mon-Fri -
-  // shown at a time), rather than re-deriving dayjs math at runtime in the test.
-  const originalRange = '24 Aug – 28 Aug 2026'
-  const threeWeeksForward = '14 Sep – 18 Sep 2026'
-  const oneWeekBack = '17 Aug – 21 Aug 2026'
+  // Matches PersonCalendarPage's own `{firstMonday.format('D MMM')} – {lastDayShown.format('D MMM YYYY')}`.
+  const originalRange = weekRangeLabel(pinnedWeekday('Monday'))
+  const threeWeeksForward = weekRangeLabel(pinnedWeekday('Monday', { weeks: 3 }))
+  const oneWeekBack = weekRangeLabel(pinnedWeekday('Monday', { weeks: -1 }))
 
   await expect(page.getByText(originalRange, { exact: true })).toBeVisible()
 

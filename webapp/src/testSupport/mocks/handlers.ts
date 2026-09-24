@@ -9,6 +9,7 @@
 import { http, HttpResponse, type HttpHandler } from 'msw'
 import type {
   AttendeeStatus,
+  CancelMeetingResult,
   CreateMeetingResult,
   DateFormat,
   MeetingDetails,
@@ -18,9 +19,19 @@ import type {
   RespondToMeetingResult,
   Room,
   TimeFormat,
+  UpdateMeetingResult,
   UpdateMyPreferencesResult,
 } from '../../graphql/types'
-import { createMeetingFixture, linkedPersonByEmail, meetings, people, rooms, saveMeetings } from './fixtures'
+import {
+  cancelMeetingFixture,
+  createMeetingFixture,
+  linkedPersonByEmail,
+  meetings,
+  people,
+  rooms,
+  saveMeetings,
+  updateMeetingFixture,
+} from './fixtures'
 
 /**
  * Apollo's `InMemoryCache` normalises an entity only when its response carries `__typename` -
@@ -145,7 +156,12 @@ interface MeetingInput {
 // "Rules" section) that webapp/tests/*.spec.ts actually exercises - not a full reimplementation
 // of the server's own acceptance-tested rule set, which stays covered by mootmaker-api's own
 // tests instead (see mootmaker/docs/reference/testing-strategy.md's layering table).
-function validateMeetingInput(input: MeetingInput): MeetingError[] {
+// excludingMeetingId is only ever passed from UpdateMeeting - it excludes that one meeting's own
+// prior slot from the clash check below, mirroring mootmaker-api's RoomAvailability.isFreeIgnoring
+// (see MeetingValidator), so editing a meeting's time within its own room - even to a range that
+// overlaps its own prior slot - doesn't spuriously reject as a self-conflict. undefined for
+// CreateMeeting, where there is no self to exclude.
+function validateMeetingInput(input: MeetingInput, excludingMeetingId?: string): MeetingError[] {
   const errors: MeetingError[] = []
 
   if (!input.subject.trim()) errors.push('SubjectRequired')
@@ -165,6 +181,7 @@ function validateMeetingInput(input: MeetingInput): MeetingError[] {
     if (room.capacity < input.attendeeIds.length + 1) errors.push('InsufficientCapacity')
     const clashes = meetings.some(
       (existing) =>
+        existing.id !== excludingMeetingId &&
         existing.room.id === input.roomId &&
         overlaps(input.startTime, input.endTime, existing.startTime, existing.endTime),
     )
@@ -268,20 +285,26 @@ export const handlers: HttpHandler[] = [
       }
 
       case 'SuggestRoom': {
-        const { startTime, endTime, requiredCapacity } = variables as {
+        const { startTime, endTime, requiredCapacity, excludingMeetingId } = variables as {
           startTime: string
           endTime: string
           requiredCapacity: number
+          excludingMeetingId?: string
         }
         // Ranked smallest surplus capacity first (equivalent to smallest capacity first, since
         // every candidate already meets requiredCapacity), ties broken by name - see README.md's
-        // "Room" bullet under Add Meeting.
+        // "Room" bullet under Add Meeting. excludingMeetingId (only ever sent while editing)
+        // excludes that one meeting's own prior slot, mirroring validateMeetingInput's own
+        // exclusion above and the real API's SuggestRoomHandler.
         const suggestions: Room[] = rooms
           .filter((room) => room.capacity >= requiredCapacity)
           .filter(
             (room) =>
               !meetings.some(
-                (meeting) => meeting.room.id === room.id && overlaps(startTime, endTime, meeting.startTime, meeting.endTime),
+                (meeting) =>
+                  meeting.id !== excludingMeetingId &&
+                  meeting.room.id === room.id &&
+                  overlaps(startTime, endTime, meeting.startTime, meeting.endTime),
               ),
           )
           .sort((a, b) => a.capacity - b.capacity || a.name.localeCompare(b.name))
@@ -320,6 +343,68 @@ export const handlers: HttpHandler[] = [
           errors: [],
         }
         return HttpResponse.json({ data: { createMeeting: { __typename: 'CreateMeetingResult', ...result } } })
+      }
+
+      case 'UpdateMeeting': {
+        const id = variables.id as string
+        const input = variables.meeting as MeetingInput
+        const existing = meetings.find((candidate) => candidate.id === id)
+        if (!existing) {
+          const result: UpdateMeetingResult = { meeting: null, day: null, errors: ['MeetingNotFound'] }
+          return HttpResponse.json({ data: { updateMeeting: { __typename: 'UpdateMeetingResult', ...result } } })
+        }
+        const errors = validateMeetingInput(input, id)
+        if (errors.length > 0) {
+          const result: UpdateMeetingResult = { meeting: null, day: null, errors }
+          return HttpResponse.json({ data: { updateMeeting: { __typename: 'UpdateMeetingResult', ...result } } })
+        }
+        const room = rooms.find((candidate) => candidate.id === input.roomId)!
+        const organiser = people.find((person) => person.id === input.organiserId)!
+        // A continuing attendee keeps their existing response; only a newly added one starts at
+        // NoResponse - mirrors mootmaker-api's own preservedAttendeeStatuses fix in
+        // UpdateMeetingHandler (see designs/edit-and-cancel-meetings.md), since the webapp never
+        // sends MeetingInput.attendeeStatuses here either.
+        const previousStatusByPersonId = new Map(
+          existing.attendees.map((attendee) => [attendee.person.id, attendee.status]),
+        )
+        const attendees = people
+          .filter((person) => input.attendeeIds.includes(person.id))
+          .map((person) => ({
+            person,
+            status: previousStatusByPersonId.get(person.id) ?? ('NoResponse' as AttendeeStatus),
+          }))
+        const updated = updateMeetingFixture(id, {
+          subject: input.subject,
+          room,
+          organiser,
+          attendees,
+          startTime: input.startTime,
+          endTime: input.endTime,
+        })!
+        // Selects the day for the NEW startTime - a same-day edit and a cross-day move both just
+        // work here, since daysFor derives a date's meetings from the current (already-updated)
+        // fixture array rather than any separate pointer concept the real API needs.
+        const result: UpdateMeetingResult = {
+          meeting: asMeetingDetails(updated),
+          day: daysFor([updated.startTime.slice(0, 10)])[0],
+          errors: [],
+        }
+        return HttpResponse.json({ data: { updateMeeting: { __typename: 'UpdateMeetingResult', ...result } } })
+      }
+
+      case 'CancelMeeting': {
+        const id = variables.id as string
+        const existing = meetings.find((candidate) => candidate.id === id)
+        if (!existing) {
+          const result: CancelMeetingResult = { day: null, errors: ['MeetingNotFound'] }
+          return HttpResponse.json({ data: { cancelMeeting: { __typename: 'CancelMeetingResult', ...result } } })
+        }
+        const date = existing.startTime.slice(0, 10)
+        cancelMeetingFixture(id)
+        // A hard delete, matching the real API - daysFor recomputes from the fixture array, which
+        // no longer includes this meeting, so the returned day is simply the day without it.
+        const result: CancelMeetingResult = { day: daysFor([date])[0], errors: [] }
+        return HttpResponse.json({ data: { cancelMeeting: { __typename: 'CancelMeetingResult', ...result } } })
       }
 
       case 'RespondToMeeting': {

@@ -173,29 +173,50 @@ export const SESSION = graphql(`
 `)
 
 /**
- * A live binding into just a meeting's attendee statuses, keyed by id - read with `useFragment`
- * (see useMeetingDetailOverlay.tsx), not fetched directly.
+ * A live binding into every field `updateMeeting`/`cancelMeeting` can change, keyed by id - read
+ * with `useFragment` (see MeetingDetailContent.tsx), not fetched directly.
  *
- * Deliberately narrow: `id` and `attendees { person { id } status }` only, matching exactly what
- * every meetings query already selects (PAGE_LOAD/DAYS's day-embedded shape, not just
- * MEETING_BY_ID's fuller one) - so this fragment reads as "complete" from the cache regardless of
- * which query populated the entity. A wider fragment (room/organiser names, attendee names) would
- * usually read incomplete for a meeting opened from a list rather than a deep link, since those
- * fields are only ever fetched by MEETING_BY_ID.
+ * Covers `subject`/`startTime`/`endTime` directly, and `room`/`organiser`/`attendees[].person` by
+ * id+name. Every meetings query (PAGE_LOAD, DAYS, MEETING_BY_ID) already selects at least `room {
+ * id }`/`organiser { id }`/`attendees { person { id } }` on every Meeting, so this fragment's own
+ * `room`/`organiser`/`attendee.person` selections always resolve through an existing reference;
+ * the `name` each one adds resolves against the separately normalised Room/Person entity (from
+ * PAGE_LOAD/REFERENCE_DATA's own top-level `rooms`/`people` lists) rather than needing the
+ * Meeting's own query to have asked for it - every page that can open a meeting detail sheet/panel
+ * has already loaded its own rooms/people list before a user could click a row, so those entities
+ * are complete in cache well before this fragment is ever read. (Before this widened to every
+ * editable field, it covered only `attendees { person { id } status }` - narrow specifically
+ * because everything else on a meeting genuinely never changed after creation. That's no longer
+ * true.)
  *
- * Exists because the detail sheet/panel's `meeting` prop is a snapshot captured once into
- * useMeetingDetailOverlay.tsx's local state, not itself reactive - correct for fields that never
- * change after creation (subject, times, room, organiser), wrong for attendee status, which
- * changes underneath an already-open sheet whenever anyone (including another client) responds.
- * `useFragment` is Apollo's purpose-built tool for exactly this: a live view of one normalised
- * entity, independent of which query is currently mounted.
+ * Originally existed just for attendee status, because the detail sheet/panel's `meeting` prop is
+ * a snapshot captured once, not itself reactive - and attendee status changes underneath an
+ * already-open sheet whenever anyone (including another client) responds. Now the same reasoning
+ * covers every field an edit can change, and the meeting being cancelled entirely: `useFragment`'s
+ * `complete` flag flips to `false` once `cache.gc()` collects the now-unreachable entity after a
+ * cancellation, which `MeetingDetailContent` uses to show "This meeting was cancelled" instead of
+ * stale content. `useFragment` is Apollo's purpose-built tool for exactly this: a live view of one
+ * normalised entity, independent of which query is currently mounted.
  */
-export const MEETING_ATTENDEES_FRAGMENT = graphql(`
-  fragment MeetingAttendees on Meeting {
+export const MEETING_LIVE_FIELDS_FRAGMENT = graphql(`
+  fragment MeetingLiveFields on Meeting {
     id
+    subject
+    startTime
+    endTime
+    room {
+      id
+      name
+      capacity
+    }
+    organiser {
+      id
+      name
+    }
     attendees {
       person {
         id
+        name
       }
       status
     }
@@ -203,8 +224,18 @@ export const MEETING_ATTENDEES_FRAGMENT = graphql(`
 `)
 
 export const SUGGEST_ROOM = graphql(`
-  query SuggestRoom($startTime: String!, $endTime: String!, $requiredCapacity: Int!) {
-    suggestRoom(startTime: $startTime, endTime: $endTime, requiredCapacity: $requiredCapacity) {
+  query SuggestRoom(
+    $startTime: String!
+    $endTime: String!
+    $requiredCapacity: Int!
+    $excludingMeetingId: ID
+  ) {
+    suggestRoom(
+      startTime: $startTime
+      endTime: $endTime
+      requiredCapacity: $requiredCapacity
+      excludingMeetingId: $excludingMeetingId
+    ) {
       id
       name
       capacity

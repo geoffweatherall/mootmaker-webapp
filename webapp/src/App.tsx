@@ -35,6 +35,7 @@ function App() {
           <Route path="/persons/:personId/calendar" element={<PersonCalendarPage />} />
           <Route path="/rooms/:date/availability" element={<RoomAvailabilityPage />} />
           <Route path="/meetings/add" element={<AddMeetingPage />} />
+          <Route path="/meetings/:meetingId/edit" element={<AddMeetingPage />} />
           <Route path="/meetings/:meetingId" element={<MeetingDetailsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>

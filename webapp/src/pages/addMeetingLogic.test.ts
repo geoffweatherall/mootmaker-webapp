@@ -6,6 +6,7 @@ import {
   filterAttendeeOptions,
   filterOrganiserOptions,
   initialSuggestionCache,
+  prioritizeCurrentRoom,
   referenceDataReady,
   type SuggestionCache,
 } from './addMeetingLogic'
@@ -44,6 +45,29 @@ describe('filterAttendeeOptions', () => {
 
   it('offers everyone when no organiser is selected yet', () => {
     expect(filterAttendeeOptions(people, '')).toEqual(people)
+  })
+})
+
+describe('prioritizeCurrentRoom', () => {
+  it('moves the current room to the front when present, keeping the rest in order', () => {
+    expect(prioritizeCurrentRoom([roomA, roomB, roomC], roomC.id)).toEqual([roomC, roomA, roomB])
+  })
+
+  it('leaves the list unchanged when the current room is already first', () => {
+    expect(prioritizeCurrentRoom([roomA, roomB, roomC], roomA.id)).toEqual([roomA, roomB, roomC])
+  })
+
+  it('leaves the list unchanged (create mode) when currentRoomId is null', () => {
+    expect(prioritizeCurrentRoom([roomA, roomB, roomC], null)).toEqual([roomA, roomB, roomC])
+  })
+
+  it('leaves the list unchanged when the current room is not among the candidates at all - ' +
+      'genuinely unavailable, or under capacity for the new attendee count', () => {
+    expect(prioritizeCurrentRoom([roomA, roomB], 'not-a-candidate')).toEqual([roomA, roomB])
+  })
+
+  it('handles an empty candidate list', () => {
+    expect(prioritizeCurrentRoom([], roomA.id)).toEqual([])
   })
 })
 

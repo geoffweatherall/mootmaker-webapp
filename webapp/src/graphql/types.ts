@@ -13,12 +13,14 @@
  * rather than a runtime `undefined`.
  */
 import type {
+  CancelMeetingMutation,
   CreateMeetingMutation,
   CreateRoomMutation,
   DaysQuery,
   MeetingByIdQuery,
   PageLoadQuery,
   RespondToMeetingMutation,
+  UpdateMeetingMutation,
   UpdateMyPreferencesMutation,
   UpdatePersonMutation,
   UpdateRoomMutation,
@@ -70,6 +72,8 @@ export type UpdateMyPreferencesResult = UpdateMyPreferencesMutation['updateMyPre
 export type CreateMeetingResult = CreateMeetingMutation['createMeeting']
 export type CreatePersonResult = import('./generated/graphql').CreatePersonMutation['createPerson']
 export type RespondToMeetingResult = RespondToMeetingMutation['respondToMeeting']
+export type UpdateMeetingResult = UpdateMeetingMutation['updateMeeting']
+export type CancelMeetingResult = CancelMeetingMutation['cancelMeeting']
 
 // Input and error types come straight from the schema - they have no selection set, so there is no
 // app-specific shape to derive.

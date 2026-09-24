@@ -119,6 +119,29 @@ export function defaultMeetingTimes(now: Dayjs): DefaultMeetingTimes {
   return { start: clampedStart, end }
 }
 
+// --- Same-room priority when editing ---------------------------------------------------------
+//
+// See designs/edit-and-cancel-meetings.md's Decision 16: when editing a meeting, "Suggest a room"
+// prioritizes the meeting's own current room over the server's own smallest-surplus-capacity
+// ranking - done here, client-side, rather than as new backend ranking logic. The backend's own
+// correctness fix (excludingMeetingId, so the meeting's own current room isn't wrongly excluded
+// from the candidate list at all - see SuggestRoomHandler) is a prerequisite for this to have
+// anything to prioritize, but is a separate concern from where in the list it then goes.
+
+/**
+ * Moves `currentRoomId` to the front of `candidates` if it's present, leaving every other room's
+ * relative order untouched. A no-op in create mode (`currentRoomId` null) or when the current room
+ * isn't among the candidates at all - genuinely unavailable for the new time, or under capacity
+ * for the new attendee count, in which case there is nothing to prioritize and the server's own
+ * ranking is exactly right as-is.
+ */
+export function prioritizeCurrentRoom(candidates: Room[], currentRoomId: string | null): Room[] {
+  if (currentRoomId === null) return candidates
+  const index = candidates.findIndex((room) => room.id === currentRoomId)
+  if (index <= 0) return candidates
+  return [candidates[index], ...candidates.slice(0, index), ...candidates.slice(index + 1)]
+}
+
 /**
  * Whether the form may be rendered interactive yet.
  *

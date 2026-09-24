@@ -15,7 +15,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import { TimePicker } from '@mui/x-date-pickers/TimePicker'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useEffect, useState, type FormEvent } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../auth/authContext'
 import { datePickerFormat, timePickerUsesAmPm } from '../graphql/formatDateTime'
 import { ErrorBanner } from '../components/ErrorBanner'
@@ -23,18 +23,19 @@ import { PersonAvatar } from '../components/PersonAvatar'
 import { SubmitButton } from '../components/SubmitButton'
 import { dayInvalidations } from '../apolloClient'
 import { errorMessages } from '../graphql/errorMessages'
-import { CREATE_MEETING } from '../graphql/mutations'
-import { REFERENCE_DATA, SUGGEST_ROOM } from '../graphql/queries'
+import { CREATE_MEETING, UPDATE_MEETING } from '../graphql/mutations'
+import { MEETING_BY_ID, REFERENCE_DATA, SUGGEST_ROOM } from '../graphql/queries'
 import {
   MEETING_ERROR_MESSAGES,
 } from '../graphql/validationMessages'
-import type { CreateMeetingResult, Person, Room } from '../graphql/types'
+import type { CreateMeetingResult, Person, Room, UpdateMeetingResult } from '../graphql/types'
 import { SparkleIcon } from '../icons'
 import {
   advanceSuggestion,
   defaultMeetingTimes,
   filterAttendeeOptions,
   filterOrganiserOptions,
+  prioritizeCurrentRoom,
   referenceDataReady,
   initialSuggestionCache,
   type DefaultMeetingTimes,
@@ -72,9 +73,19 @@ function combineDateAndTime(date: Dayjs | null, time: Dayjs | null): string {
   return date.hour(time.hour()).minute(time.minute()).second(0).millisecond(0).format('YYYY-MM-DDTHH:mm:ss')
 }
 
+/**
+ * Serves both `/meetings/add` and `/meetings/:meetingId/edit` - one form component for both,
+ * mirroring SettingsPage.tsx's RoomDialog/PersonDialog precedent for a single component handling
+ * create and edit, rather than two separately maintained copies of this field set (see
+ * designs/edit-and-cancel-meetings.md's Decision 2). `meetingId` present (from the route) is what
+ * switches every edit-specific behaviour below: heading, prefill, which mutation fires, and
+ * `excludingMeetingId`/same-room-priority on "Suggest a room".
+ */
 export default function AddMeetingPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { meetingId } = useParams<{ meetingId?: string }>()
+  const isEdit = Boolean(meetingId)
   const { personId, personLoading, dateFormat, timeFormat } = useAuth()
   // RoomAvailabilityPage's "Add Meeting" links pass the date currently being viewed via router
   // state, so the form defaults to that date rather than always today - see defaultDate() above.
@@ -82,16 +93,33 @@ export default function AddMeetingPage() {
   // organiser - opening this form from someone's calendar reads as "schedule a meeting with them",
   // see the design doc's FAB pre-fill decision). Both read once, on mount: one-time initial values,
   // not something that should keep resetting a field if location.state were to change later on the
-  // same mounted page.
+  // same mounted page. Neither applies to edit - Edit always fetches the meeting fresh by id
+  // (below), never trusting location.state, so a bookmarked/shared edit link works the same as a
+  // freshly-clicked one.
   const routerState = location.state as { date?: string; attendeeId?: string } | null
-  const viewedDate = routerState?.date
-  const prefilledAttendeeId = routerState?.attendeeId
+  const viewedDate = isEdit ? undefined : routerState?.date
+  const prefilledAttendeeId = isEdit ? undefined : routerState?.attendeeId
 
   const {
     data: referenceData,
     loading: referenceLoading,
     error: referenceError,
   } = useQuery(REFERENCE_DATA)
+
+  // Only runs in edit mode (`skip`). Always a fresh fetch by id, never the sheet/panel's own
+  // in-memory snapshot - see the design doc's Decision 3: this is what makes a bookmarked/shared
+  // `/meetings/:meetingId/edit` link work, and avoids editing stale data if the sheet's snapshot
+  // has drifted from the server.
+  const {
+    data: existingMeetingData,
+    loading: existingMeetingLoading,
+    error: existingMeetingError,
+  } = useQuery(MEETING_BY_ID, {
+    variables: { id: meetingId ?? '' },
+    skip: !isEdit,
+    fetchPolicy: 'network-only',
+  })
+  const existingMeeting = existingMeetingData?.meeting
 
   const [subject, setSubject] = useState('')
   const [roomId, setRoomId] = useState('')
@@ -106,6 +134,44 @@ export default function AddMeetingPage() {
   const [endTime, setEndTime] = useState<Dayjs | null>(initialTimes.end)
   const [meetingErrors, setMeetingErrors] = useState<string[]>([])
   const [suggestionErrors, setSuggestionErrors] = useState<string[]>([])
+  // The meeting's OWN current room, captured once when the fetched meeting is seeded into the
+  // form below - distinct from `roomId` state, which the user can go on to change. This is what
+  // "Suggest a room"'s same-room-priority (Decision 16) prioritizes: the room the meeting is IN
+  // right now, not whatever the Room field happens to hold mid-edit.
+  const [originalRoomId, setOriginalRoomId] = useState<string | null>(null)
+  // Guards the seeding effect below so a MEETING_BY_ID refetch (this query's fetchPolicy is
+  // network-only) never clobbers edits already in progress - seeding happens exactly once, the
+  // instant the fetched meeting first becomes available.
+  const [formSeeded, setFormSeeded] = useState(false)
+
+  // Seeds every field from the fetched meeting, once, in edit mode only. Effect rather than a
+  // lazy useState initializer because the fetch is asynchronous - the meeting isn't known yet on
+  // this component's first render.
+  useEffect(() => {
+    if (!isEdit || !existingMeeting || formSeeded) return
+    setSubject(existingMeeting.subject)
+    setRoomId(existingMeeting.room.id)
+    setOriginalRoomId(existingMeeting.room.id)
+    setOrganiserId(existingMeeting.organiser.id)
+    setOrganiserTouched(true)
+    setAttendeeIds(existingMeeting.attendees.map((attendee) => attendee.person.id))
+    const start = dayjs(existingMeeting.startTime)
+    setDate(start.startOf('day'))
+    setStartTime(start)
+    setEndTime(dayjs(existingMeeting.endTime))
+    setFormSeeded(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEdit, existingMeeting, formSeeded])
+
+  const [createMeeting, { loading: creating, error: createError, reset: resetCreateError }] = useMutation<{
+    createMeeting: CreateMeetingResult
+  }>(CREATE_MEETING)
+  const [updateMeeting, { loading: updating, error: updateError, reset: resetUpdateError }] = useMutation<{
+    updateMeeting: UpdateMeetingResult
+  }>(UPDATE_MEETING)
+  const submitting = isEdit ? updating : creating
+  const mutationError = isEdit ? updateError : createError
+  const resetMutationError = isEdit ? resetUpdateError : resetCreateError
 
   // Defaults the organiser to the signed-in user's own Person, once it's known - not on every
   // render, and never overriding a choice the user already made (e.g. organising on someone
@@ -117,16 +183,15 @@ export default function AddMeetingPage() {
   // not override, same as an explicit organiser pick. Re-running on attendeeIds too means removing
   // that self-attendee pick lets the default apply retroactively, matching how removing someone as
   // an attendee always makes them selectable as organiser again elsewhere on this form.
+  //
+  // Never runs at all in edit mode - the seeding effect above sets organiserTouched itself, so an
+  // edit never has this default apply over the meeting's own already-fetched organiser.
   useEffect(() => {
-    if (personId && !organiserTouched && !attendeeIds.includes(personId)) {
+    if (!isEdit && personId && !organiserTouched && !attendeeIds.includes(personId)) {
       setOrganiserId(personId)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [personId, attendeeIds])
-
-  const [createMeeting, { loading: submitting, error: mutationError, reset }] = useMutation<{
-    createMeeting: CreateMeetingResult
-  }>(CREATE_MEETING)
+  }, [isEdit, personId, attendeeIds])
 
   const [suggestRoom, { loading: suggesting }] = useLazyQuery<{ suggestRoom: Room[] }>(SUGGEST_ROOM, {
     fetchPolicy: 'network-only',
@@ -166,7 +231,7 @@ export default function AddMeetingPage() {
 
   const bannerMessages = [
     ...errorMessages(referenceError),
-    ...errorMessages(referenceError),
+    ...errorMessages(existingMeetingError),
     ...meetingErrors,
     ...suggestionErrors,
     ...errorMessages(mutationError),
@@ -175,7 +240,7 @@ export default function AddMeetingPage() {
   function dismissBanner() {
     setMeetingErrors([])
     setSuggestionErrors([])
-    reset()
+    resetMutationError()
   }
 
   function handleAttendeesChange(selected: Person[]) {
@@ -201,9 +266,13 @@ export default function AddMeetingPage() {
           startTime: meetingStartTime,
           endTime: meetingEndTime,
           requiredCapacity: attendeeIds.length + 1,
+          excludingMeetingId: isEdit ? meetingId : undefined,
         },
       })
-      fetchedRooms = result.data?.suggestRoom ?? []
+      const raw = result.data?.suggestRoom ?? []
+      // Same-room priority (Decision 16) - a no-op outside edit mode, since originalRoomId is
+      // null until the seeding effect above sets it.
+      fetchedRooms = prioritizeCurrentRoom(raw, originalRoomId)
     }
 
     const { cache, room } = advanceSuggestion(suggestionCache, suggestionKey, fetchedRooms)
@@ -220,18 +289,38 @@ export default function AddMeetingPage() {
     event.preventDefault()
     setMeetingErrors([])
 
-    const result = await createMeeting({
-      variables: {
-        meeting: {
-          subject,
-          roomId,
-          organiserId,
-          attendeeIds,
-          startTime: meetingStartTime,
-          endTime: meetingEndTime,
-        },
-      },
-    })
+    const meetingInput = {
+      subject,
+      roomId,
+      organiserId,
+      attendeeIds,
+      startTime: meetingStartTime,
+      endTime: meetingEndTime,
+    }
+
+    if (isEdit) {
+      const result = await updateMeeting({ variables: { id: meetingId ?? '', meeting: meetingInput } })
+      const payload = result.data?.updateMeeting
+      if (payload?.errors.length) {
+        setMeetingErrors(payload.errors.map((code) => MEETING_ERROR_MESSAGES[code]))
+        return
+      }
+      if (payload?.meeting) {
+        const bookedDate = payload.meeting.startTime.slice(0, 10)
+        // Both dates: a same-day edit only touches one, but a cross-day one touches two, and
+        // suppressing eviction for the wrong (or only one) of them would flicker the other -
+        // see designs/edit-and-cancel-meetings.md's "Real-time" technical consideration.
+        dayInvalidations.noteOwnWrite(
+          originalRoomId !== null && existingMeeting ? [existingMeeting.startTime.slice(0, 10), bookedDate] : [bookedDate],
+        )
+        navigate(`/rooms/${bookedDate}/availability`, {
+          state: { toast: 'Meeting was successfully updated.' },
+        })
+      }
+      return
+    }
+
+    const result = await createMeeting({ variables: { meeting: meetingInput } })
 
     const payload = result.data?.createMeeting
     if (payload?.errors.length) {
@@ -272,12 +361,17 @@ export default function AddMeetingPage() {
   //
   // Not the same thing as having no linked Person: personLoading goes false either way, so an
   // account with no Person still gets the form with a blank Organiser, exactly as before.
-  const loadingReferenceData = !referenceDataReady(referenceLoading, personLoading)
+  //
+  // In edit mode, ALSO gated on the meeting itself having arrived and been seeded - rendering the
+  // form before that would show every field blank for an instant, then jump to the fetched values,
+  // exactly the flash referenceDataReady already exists to prevent for the reference-data case.
+  const loadingReferenceData =
+    !referenceDataReady(referenceLoading, personLoading) || (isEdit && (existingMeetingLoading || !formSeeded))
 
   return (
     <Stack spacing={3}>
       <Typography variant="h4" component="h1">
-        Add Meeting
+        {isEdit ? 'Edit Meeting' : 'Add Meeting'}
       </Typography>
 
       <ErrorBanner messages={bannerMessages} onDismiss={dismissBanner} />

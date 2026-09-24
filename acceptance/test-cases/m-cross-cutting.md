@@ -314,3 +314,58 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 - Step 5: the badge updates to "Going" within 30s, with no `page.reload()` or navigation performed on the observer's page at any point after step 3.
 
 **Notes:** `RespondToMeetingHandler` publishes `daysInvalidated` server-side on success, same as `createMeeting` - this proves the client side of that same wiring (`useDaysInvalidated.ts`) also covers a status change, not just a new booking.
+
+---
+
+<a id="tc-m112"></a>
+### M.112 — An edit made by another client is reflected live
+
+**Use case:** [use-cases.md#uc-122](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-122) — "An edit made by another client (e.g. the organiser, in another tab or by another admin) is reflected on an already-open meeting detail sheet without a refresh." (Cross-references [M.112](#tc-m112)/[M.113](#tc-m113) - see `../../designs/edit-and-cancel-meetings.md`.)
+**Status:** ✅ Automated — [`tests/edit-and-cancel-meetings.spec.ts`](../tests/edit-and-cancel-meetings.spec.ts)
+**Android:** not yet automated
+
+**Preconditions:** Two browser contexts: the demo user (observer) and a second confirmed account (the editor - an admin, or the meeting's organiser in another tab). A meeting created via the API, on the pinned "today".
+
+**Given** the observer has the meeting's detail sheet open, showing its original subject
+**When** the editor calls `updateMeeting` for that meeting from their own, separate session, changing the subject
+**Then** the observer's already-open sheet updates to show the new subject with no reload or navigation - the same `daysInvalidated` broadcast/refetch mechanism M.111 proves for `respondToMeeting`, now proven for `updateMeeting` too
+
+**Steps:**
+1. Sign in as the demo user (observer) and a second confirmed account (editor, admin), each in its own context.
+2. Observer creates a meeting via the API, organised by themselves.
+3. Observer opens the meeting's detail sheet; asserts the original subject is shown.
+4. The editor calls `updateMeeting` directly over the API, changing the subject - not through the observer's browser.
+5. Observer's page, untouched, is asserted again.
+
+**Assertions:**
+- Step 5: the sheet's heading updates to the new subject within 30s, with no `page.reload()` or navigation performed on the observer's page at any point after step 3.
+
+**Notes:** This is the case that motivated `MeetingDetailContent.tsx`'s `useFragment` live-binding in the first place (see the design's Technical considerations) - the sheet is kept open showing a live view of the meeting, not a frozen snapshot from when it was opened.
+
+---
+
+<a id="tc-m113"></a>
+### M.113 — A cancellation made by another client is reflected live
+
+**Use case:** [use-cases.md#uc-123](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-123) — "A cancellation made by another client is reflected on an already-open meeting detail sheet without a refresh - the sheet shows the meeting was cancelled elsewhere, rather than continuing to display stale content or erroring." (Cross-references [M.112](#tc-m112)/[M.113](#tc-m113) - see `../../designs/edit-and-cancel-meetings.md`.)
+**Status:** ✅ Automated — [`tests/edit-and-cancel-meetings.spec.ts`](../tests/edit-and-cancel-meetings.spec.ts)
+**Android:** not yet automated
+
+**Preconditions:** Two browser contexts: the demo user (observer) and a second confirmed account (the canceller - an admin, or the meeting's organiser in another tab). A meeting created via the API, on the pinned "today".
+
+**Given** the observer has the meeting's detail sheet open, showing its subject and details
+**When** the canceller calls `cancelMeeting` for that meeting from their own, separate session
+**Then** the observer's already-open sheet stops showing the meeting's content and instead shows that it was cancelled elsewhere, with no reload, navigation, or error dialog
+
+**Steps:**
+1. Sign in as the demo user (observer) and a second confirmed account (canceller, admin), each in its own context.
+2. Observer creates a meeting via the API, organised by themselves.
+3. Observer opens the meeting's detail sheet; asserts the subject is shown.
+4. The canceller calls `cancelMeeting` directly over the API - not through the observer's browser.
+5. Observer's page, untouched, is asserted again.
+
+**Assertions:**
+- Step 5: the sheet no longer shows the meeting's subject/details, and instead shows a "This meeting was cancelled" empty state, within 30s, with no `page.reload()` or navigation performed on the observer's page at any point after step 3.
+- No unhandled error surfaces on the page (checked via a `page.on('pageerror', ...)` listener registered before step 3).
+
+**Notes:** This is the case that motivated the explicit `evictMeetingsOf` fix in `daysInvalidated.ts` - Apollo's automatic `cache.gc()` does not reliably collect a `Meeting` entity that still has an active `useFragment` watcher (the open sheet itself), so the day's eviction has to explicitly evict the meetings it referenced too. See the design's Technical considerations for the full root-cause writeup.

@@ -21,7 +21,11 @@ test.describe('Attendee response status', () => {
     await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
   })
 
-  async function createMeetingAsAttendee(page: import('@playwright/test').Page, subject: string) {
+  async function createMeetingAsAttendee(
+    page: import('@playwright/test').Page,
+    subject: string,
+    dateOffsetDays?: number,
+  ) {
     await page.goto('/meetings/add')
     await expect(page.getByLabel('Subject')).toBeVisible()
     await page.getByLabel('Subject').fill(subject)
@@ -35,6 +39,16 @@ test.describe('Attendee response status', () => {
 
     await page.getByRole('combobox', { name: 'Room' }).click()
     await page.getByRole('option', { name: rooms[0].name, exact: false }).click()
+
+    if (dateOffsetDays !== undefined) {
+      const date = new Date()
+      date.setDate(date.getDate() + dateOffsetDays)
+      await page.getByRole('group', { name: 'Date' }).getByRole('spinbutton', { name: 'Year' }).click()
+      await page.keyboard.type(
+        `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`,
+      )
+    }
+
     await page.getByRole('button', { name: 'Save' }).click()
     await page.waitForURL(/\/rooms\/.+\/availability/)
   }
@@ -57,6 +71,44 @@ test.describe('Attendee response status', () => {
     // And the same meeting's Today card now carries a "Going" status badge.
     const todayCard = page.getByRole('button', { name: new RegExp(subject) })
     await expect(todayCard.getByRole('img', { name: 'Going', exact: true })).toBeVisible()
+  })
+
+  // mootmaker-webapp#122: the sibling test above only ever exercises `initialNeedsResponse`
+  // (HomePage.tsx's default 3-day window, reactively derived from the PAGE_LOAD query's own
+  // cache-backed data) - it passed while this exact scenario was broken in production, because
+  // nothing exercised "Search further ahead"'s own `extraEntries` state at all. That state is a
+  // plain useState snapshot taken once per click and never re-filtered afterward, unlike
+  // initialNeedsResponse, so a card found this way stays stuck showing as pending even after a
+  // successful response. This is the Integration-layer test that would have caught it: no real
+  // AWS needed, since the bug is pure client-side state staleness, not a server or wiring problem
+  // between real services - see the issue for the layer analysis.
+  test('a card found via "Search further ahead" also clears live after responding', async ({ page }) => {
+    const subject = `Search further ahead response test ${Date.now()}`
+    // 6 days out: past the initial window (offsets 0-2) and past the first "Search further
+    // ahead" click's own new window (offsets 3-5) - matches acceptance/tests/home-page.spec.ts's
+    // D.112 same choice of offset, for the same reason (exercises a click that finds nothing
+    // before the click that does).
+    await createMeetingAsAttendee(page, subject, 6)
+
+    await page.goto('/')
+    await expect(page.getByRole('heading', { name: 'Needs your response' })).toBeVisible()
+    await expect(page.getByRole('region', { name: subject, exact: true })).toHaveCount(0)
+
+    const searchButton = page.getByRole('button', { name: 'Search further ahead' })
+    const card = page.getByRole('region', { name: subject, exact: true })
+    for (let attempt = 0; attempt < 5 && (await card.count()) === 0; attempt++) {
+      await searchButton.click()
+      await page.waitForTimeout(300)
+    }
+    await expect(card).toBeVisible()
+
+    await card.getByRole('button', { name: 'Going', exact: true }).click()
+
+    // The mutation itself succeeds either way (asserted structurally: the button click doesn't
+    // throw, and the sibling test above already proves respondToMeeting's own mock handler
+    // works) - what's under test is specifically whether the CARD reflects it, which is exactly
+    // what stayed broken for an extra-window entry.
+    await expect(page.getByRole('region', { name: subject, exact: true })).toHaveCount(0)
   })
 
   test('meeting detail sheet shows "You" and a working self-response control, not a badge, on the caller\'s own row', async ({

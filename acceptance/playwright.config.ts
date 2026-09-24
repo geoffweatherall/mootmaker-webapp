@@ -12,7 +12,7 @@ if (!process.env.WEBAPP_URL) {
 // This suite now runs in two genuinely different contexts (mootmaker-webapp#19): a developer's
 // own machine (disk usage doesn't matter, and a human reviewing a run wants to see exactly what a
 // *passing* test did too, not just failures) and mootmaker-release's release pipeline
-// (mootmaker/designs/ci-cd-pipeline.md Decision 7 - unattended, once per release attempt, in
+// (mootmaker/designs/archive/ci-cd-pipeline.md Decision 7 - unattended, once per release attempt, in
 // GitHub Actions, which sets CI=true automatically - no manual wiring needed here). Full capture
 // on a local machine has produced ~800MB for a run; the same thing unconditionally in CI is a
 // different cost story even on a free-tier runner. Branching here keeps local behaviour completely

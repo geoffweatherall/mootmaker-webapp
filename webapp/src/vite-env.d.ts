@@ -2,7 +2,7 @@
 
 // Deliberately NOT read via import.meta.env / ImportMetaEnv: those are substituted into the
 // bundle at build time, which would tie one build to one environment. See mootmaker-webapp#3
-// and mootmaker/designs/ci-cd-pipeline.md Decision 8 - the values below are read from a global
+// and mootmaker/designs/archive/ci-cd-pipeline.md Decision 8 - the values below are read from a global
 // that a small <script> (env-config.js, sibling to index.html) sets before main.tsx runs, so the
 // same built bundle can be deployed to test then production unmodified. See src/config.ts for
 // the typed accessor every other module should import instead of reading `window` directly.

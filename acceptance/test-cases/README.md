@@ -15,7 +15,7 @@ appearing afterwards. DynamoDB `Scan` defaulting to eventually consistent reads,
 GSI where a consistent read is not permitted at all, an Apollo cache race that survived both of
 those, and a layout shift that swallowed the click that would have opened the create dialog. Each
 now has a deterministic regression test. See
-[the design's "What the gate exposed"](https://github.com/geoffweatherall/mootmaker/blob/main/designs/ci-cd-pipeline.md)
+[the design's "What the gate exposed"](https://github.com/geoffweatherall/mootmaker/blob/main/designs/archive/ci-cd-pipeline.md)
 for the full list and how each was diagnosed.
 
 **Scope**: full coverage — every one of the 99 use cases gets a complete real-browser test case

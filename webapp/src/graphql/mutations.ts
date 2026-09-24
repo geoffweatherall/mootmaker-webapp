@@ -199,3 +199,96 @@ export const RESPOND_TO_MEETING = graphql(`
     }
   }
 `)
+
+/**
+ * Full field replacement, exactly like UPDATE_ROOM/UPDATE_PERSON above - every field in
+ * MeetingInput is sent, not a partial patch. Selects `meeting` and `day` the same shape
+ * CREATE_MEETING does, for the same reason: the response IS the new state, so the writing
+ * client's own cache absorbs it with no update function or refetch. Other clients/tabs learn
+ * about the change via daysInvalidated, same as every other meeting mutation.
+ */
+export const UPDATE_MEETING = graphql(`
+  mutation UpdateMeeting($id: ID!, $meeting: MeetingInput!) {
+    updateMeeting(id: $id, meeting: $meeting) {
+      meeting {
+        id
+        subject
+        startTime
+        endTime
+        room {
+          id
+          name
+          capacity
+        }
+        organiser {
+          id
+          name
+        }
+        attendees {
+          person {
+            id
+            name
+          }
+          status
+        }
+      }
+      day {
+        date
+        meetings {
+          id
+          subject
+          startTime
+          endTime
+          room {
+            id
+          }
+          organiser {
+            id
+          }
+          attendees {
+            person {
+              id
+            }
+            status
+          }
+        }
+      }
+      errors
+    }
+  }
+`)
+
+/**
+ * A hard delete - no `meeting` field in the result at all, since there is nothing left to select.
+ * `day` is still selected, the same reasoning as every other meeting mutation: the response IS the
+ * new state (the cancelled meeting simply absent from it), so the writing client's own cache
+ * absorbs it with no update function or refetch.
+ */
+export const CANCEL_MEETING = graphql(`
+  mutation CancelMeeting($id: ID!) {
+    cancelMeeting(id: $id) {
+      day {
+        date
+        meetings {
+          id
+          subject
+          startTime
+          endTime
+          room {
+            id
+          }
+          organiser {
+            id
+          }
+          attendees {
+            person {
+              id
+            }
+            status
+          }
+        }
+      }
+      errors
+    }
+  }
+`)

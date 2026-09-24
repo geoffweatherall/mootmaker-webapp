@@ -60,6 +60,7 @@ describe('MEETING_ERROR_MESSAGES', () => {
     'SubjectTooLong',
     'OutsideBookableRange',
     'TooManyMeetingsInOneCall',
+    'MeetingNotFound',
   ]
 
   it('has a non-empty message for every MeetingError code, and no extra ones', () => {

@@ -15,7 +15,7 @@ import { RESPOND_TO_MEETING_ERROR_MESSAGES } from '../graphql/validationMessages
  * `respondToMeeting`'s schema has no `day` field. Selecting the whole `meeting` (see
  * graphql/mutations.ts) is what lets the response overwrite the normalised `Meeting:<id>` cache
  * entity in place, same effect by a different route - which is also what makes the `status` prop
- * below reflect a just-confirmed change with no local state of its own: useMeetingDetailOverlay.tsx
+ * below reflect a just-confirmed change with no local state of its own: MeetingDetailContent.tsx
  * reads this meeting's attendees live via `useFragment`, so the fresh prop arrives on its own.
  */
 export function AttendeeStatusControl({

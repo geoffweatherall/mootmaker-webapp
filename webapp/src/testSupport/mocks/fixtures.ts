@@ -88,3 +88,25 @@ export function createMeetingFixture(input: Omit<Meeting, 'id'>): Meeting {
   saveMeetings(meetings)
   return meeting
 }
+
+/** Full field replacement, matching updateMeeting's own real shape - every field in `fields` is
+ * applied, id kept. Returns null when `id` doesn't match any meeting, for the handler to turn
+ * into MeetingNotFound the same way the real API does. */
+export function updateMeetingFixture(id: string, fields: Omit<Meeting, 'id'>): Meeting | null {
+  const existing = meetings.find((meeting) => meeting.id === id)
+  if (!existing) return null
+  const updated: Meeting = { id, ...fields }
+  meetings = meetings.map((meeting) => (meeting.id === id ? updated : meeting))
+  saveMeetings(meetings)
+  return updated
+}
+
+/** A hard delete, matching the real API - the meeting is simply gone, no tombstone. Returns
+ * false when `id` didn't match any meeting, for the handler to turn into MeetingNotFound. */
+export function cancelMeetingFixture(id: string): boolean {
+  const existed = meetings.some((meeting) => meeting.id === id)
+  if (!existed) return false
+  meetings = meetings.filter((meeting) => meeting.id !== id)
+  saveMeetings(meetings)
+  return true
+}

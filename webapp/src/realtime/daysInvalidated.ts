@@ -120,7 +120,33 @@ export class DayInvalidations {
    */
   private evict(date: string): boolean {
     const id = this.cache.identify({ __typename: 'Day', date })
-    return id !== undefined && this.cache.evict({ id })
+    if (id === undefined) return false
+    this.evictMeetingsOf(id)
+    return this.cache.evict({ id })
+  }
+
+  /**
+   * Evicts every Meeting the day currently references, before the day itself goes.
+   *
+   * Evicting the Day alone leaves each Meeting entity's own fields completely untouched - fine
+   * for a meeting that's still there (the refetch this triggers overwrites it fresh a moment
+   * later regardless), but wrong for one that's been CANCELLED: nothing else ever removes a
+   * Meeting entity on its own, and Apollo's automatic `cache.gc()` (called right after this by
+   * every caller of `evict`) does not reliably collect an entity that still has an active
+   * watcher - which an open `MeetingDetailContent`'s own `useFragment` on this exact id always
+   * is. Without this, that sheet's `complete` flag could stay `true` indefinitely, watching an
+   * entity that no longer corresponds to anything (see designs/edit-and-cancel-meetings.md's
+   * Decision 10 - this is the fix that decision needed and gc() alone didn't reliably provide).
+   *
+   * Safe either way: a still-valid meeting is simply incomplete for the brief window until the
+   * refetch this triggers lands and writes it fresh - the same transient every Day-level eviction
+   * here already accepts, not a new category of risk.
+   */
+  private evictMeetingsOf(dayId: string): void {
+    const day = this.cache.extract()[dayId] as { meetings?: readonly { __ref?: string }[] } | undefined
+    for (const ref of day?.meetings ?? []) {
+      if (ref.__ref) this.cache.evict({ id: ref.__ref })
+    }
   }
 
   /** Every `Day` the cache currently holds, read from the cache rather than tracked separately. */

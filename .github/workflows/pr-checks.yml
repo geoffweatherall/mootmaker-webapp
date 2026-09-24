@@ -1,4 +1,4 @@
-# Required PR gate for mootmaker-webapp. See mootmaker/designs/ci-cd-pipeline.md Decision 12.
+# Required PR gate for mootmaker-webapp. See mootmaker/designs/archive/ci-cd-pipeline.md Decision 12.
 #
 # Deliberately fuller than the two Java repos' gates - that asymmetry is intentional and
 # explained in the design (this repo has lint and codegen tooling that the Maven repos do

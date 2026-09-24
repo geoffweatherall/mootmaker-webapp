@@ -10,7 +10,7 @@
 # --skip-build deploys the webapp/dist/ that is already present instead of regenerating and
 # rebuilding it. Dependencies are still installed - the schema compatibility check needs them.
 # This is what makes Decision 8 of
-# mootmaker/designs/ci-cd-pipeline.md ("build once, promote the same artifact") actually true:
+# mootmaker/designs/archive/ci-cd-pipeline.md ("build once, promote the same artifact") actually true:
 # the release pipeline builds dist/ once, then deploys those identical files to test and then
 # production. What is deliberately NOT skipped is everything environment-specific - the schema
 # compatibility check against the target API, the env-config.js written after the build, and the
@@ -111,7 +111,7 @@ fi
 # Written AFTER the build, into dist/ directly, not as a Vite env file consumed at build time -
 # this is what lets the exact same build be deployed to another environment unmodified (e.g.
 # promoted from test to production without rebuilding). See webapp/src/vite-env.d.ts and
-# mootmaker/designs/ci-cd-pipeline.md Decision 8. index.html loads this before main.tsx runs.
+# mootmaker/designs/archive/ci-cd-pipeline.md Decision 8. index.html loads this before main.tsx runs.
 cat > webapp/dist/env-config.js <<EOF
 window.__MOOTMAKER_CONFIG__ = {
   "GRAPHQL_API_URL": "${GRAPHQL_API_URL}",

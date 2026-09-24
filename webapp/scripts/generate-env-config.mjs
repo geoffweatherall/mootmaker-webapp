@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Local-dev-only counterpart to deploy.sh's dist/env-config.js generation - see
-// src/vite-env.d.ts and mootmaker/designs/ci-cd-pipeline.md Decision 8. Reuses Vite's own
+// src/vite-env.d.ts and mootmaker/designs/archive/ci-cd-pipeline.md Decision 8. Reuses Vite's own
 // loadEnv (same .env/.env.<mode> loading and precedence Vite itself would apply at build time)
 // so `.env`/`.env.mock` stay the single source of local config values; this just repoints them
 // at a runtime file instead of a compile-time substitution. Run via the predev/predev:mock npm

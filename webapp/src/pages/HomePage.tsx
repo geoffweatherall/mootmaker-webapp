@@ -1,4 +1,4 @@
-import { useLazyQuery, useMutation, useQuery } from '@apollo/client/react'
+import { useMutation, useQuery } from '@apollo/client/react'
 import AddIcon from '@mui/icons-material/Add'
 import {
   Alert,
@@ -181,13 +181,35 @@ export default function HomePage() {
     skip: !email,
   })
 
-  // "Search further ahead" fetches its own extra days on demand via the DAYS query - the same
-  // query RoomAvailabilityPage reads a single day from, so a click here and a later visit to Room
+  // "Search further ahead" extends the dates asked for via the same DAYS query
+  // RoomAvailabilityPage reads a single day from, so a click here and a later visit to Room
   // Availability/Person Calendar for one of those same dates share one cache entry instead of two
   // independent fetches. See designs/home-and-misc-pages-redesign.md's Technical considerations.
-  const [fetchMoreDays, { loading: searching }] = useLazyQuery(DAYS)
+  //
+  // extraDates is plain accumulated state (which dates have been searched so far), but the
+  // MEETINGS themselves are never snapshotted into local state - extraNeedsResponse below reads
+  // this query's own `data` fresh on every render, the same way initialNeedsResponse reads
+  // PAGE_LOAD's. mootmaker-webapp#122: an earlier version stored the matching entries themselves
+  // in a `useState<NeedsResponseEntry[]>`, populated once via `useLazyQuery`'s one-shot result -
+  // once a card landed there, nothing ever re-filtered it against a later status change, so
+  // responding to a card found this way had no visible effect even though the mutation itself
+  // succeeded. skip avoids ever sending `dates: []` before the first click.
+  //
+  // cache-and-network, not the default cache-first, for the same reason RoomAvailabilityPage and
+  // PersonCalendarPage's own DAYS queries already need it: Query.workspace's field policy in
+  // apolloClient.ts is `keyArgs: false` with a `read` that reconstructs `days` from whatever
+  // Day entities are already normalized. Once extraDates grows to include even one date already
+  // cached from an earlier click, that read looks "complete enough" under cache-first and the
+  // genuinely new dates in the same request never get fetched at all - caught while writing this
+  // fix's own regression test, which is exactly the growing-window shape this field policy's own
+  // comment warns matters.
   const [searchLevel, setSearchLevel] = useState(0)
-  const [extraEntries, setExtraEntries] = useState<NeedsResponseEntry[]>([])
+  const [extraDates, setExtraDates] = useState<string[]>([])
+  const { data: extraData, loading: searching } = useQuery(DAYS, {
+    variables: { dates: extraDates },
+    fetchPolicy: 'cache-and-network',
+    skip: extraDates.length === 0,
+  })
 
   // Rooms come back in the same response, so a meeting carries only a room id and the name is
   // resolved here. That is deliberate: asking for the name per meeting would make the server do a
@@ -233,7 +255,7 @@ export default function HomePage() {
   // Every meeting in the initial 3-day window where the signed-in person is an ATTENDEE - never
   // the organiser, who is implicitly Going with nothing to set (see
   // designs/attendee-response-status.md) - and hasn't responded yet. "Search further ahead"
-  // extends this with extraEntries below, rather than re-deriving it from scratch.
+  // extends this with extraNeedsResponse below.
   const initialNeedsResponse: NeedsResponseEntry[] = useMemo(() => {
     if (!personId) return []
     const entries = (data?.workspace.days ?? []).flatMap((day) =>
@@ -242,20 +264,26 @@ export default function HomePage() {
     return entries.sort((a, b) => a.meeting.startTime.localeCompare(b.meeting.startTime))
   }, [data, personId, peopleById, roomsById])
 
+  // Mirrors initialNeedsResponse exactly, just reading extraData instead of data - see the note
+  // on extraDates above for why this has to be freshly derived rather than accumulated once.
+  const extraNeedsResponse: NeedsResponseEntry[] = useMemo(() => {
+    if (!personId) return []
+    const entries = (extraData?.workspace.days ?? []).flatMap((day) =>
+      needsResponseEntriesForDay(day, personId, peopleById, roomsById, 'extra'),
+    )
+    return entries.sort((a, b) => a.meeting.startTime.localeCompare(b.meeting.startTime))
+  }, [extraData, personId, peopleById, roomsById])
+
   const needsResponse = useMemo(
-    () => mergeNeedsResponseEntries(initialNeedsResponse, extraEntries),
-    [initialNeedsResponse, extraEntries],
+    () => mergeNeedsResponseEntries(initialNeedsResponse, extraNeedsResponse),
+    [initialNeedsResponse, extraNeedsResponse],
   )
   const rangeLabel = formatRangeLabel(todayDayjs, searchLevel)
 
-  async function handleSearchFurtherAhead() {
+  function handleSearchFurtherAhead() {
     if (!personId) return
-    const dates = nextSearchDates(searchLevel, todayDayjs)
-    const result = await fetchMoreDays({ variables: { dates } })
-    const found = (result.data?.workspace.days ?? []).flatMap((day) =>
-      needsResponseEntriesForDay(day, personId, peopleById, roomsById, 'extra'),
-    )
-    setExtraEntries((current) => mergeNeedsResponseEntries(current, found).filter((entry) => entry.source === 'extra'))
+    const newDates = nextSearchDates(searchLevel, todayDayjs)
+    setExtraDates((current) => [...current, ...newDates])
     setSearchLevel((current) => current + 1)
   }
 

@@ -144,16 +144,19 @@ async function createMeetingViaForm(page: Page, options: MeetingFormOptions): Pr
   if (!match) {
     throw new Error(`Could not extract a meeting id from the shared URL: ${url}`)
   }
-  // Scoped to <main>, not a page-wide role query - the clipboard-fallback confirmation toast
-  // (SuccessToast/MUI Alert) also renders its own "Close" button with the identical accessible
-  // name, outside <main>, and a page-wide query resolves to both ambiguously. Not the Share
-  // button's own following-sibling::button[1] either, despite that scoping this same way - the
-  // sheet's header now also has Edit (a link, not a button - see MeetingDetailContent.tsx) and
-  // Cancel meeting between Share and Close, so a sibling::button[1] now lands on Cancel meeting
-  // and opens its confirmation dialog instead of dismissing the sheet, blocking every subsequent
-  // action on this page behind that dialog's backdrop (mootmaker-webapp#118's own acceptance run
-  // caught this - see designs/edit-and-cancel-meetings.md).
-  await page.getByRole('main').getByRole('button', { name: 'Close' }).click()
+  // Scoped relative to "Cancel meeting", not a page-wide role query or a bare <main> scope -
+  // the "Link copied to clipboard." confirmation this Share click itself just triggered is its
+  // own MUI Alert rendered INSIDE the sheet (inside <main> too, unlike the app-wide SuccessToast
+  // in Layout.tsx), with its own identically-named "Close" button, so both a page-wide query and
+  // a <main>-scoped one resolve to two elements ambiguously (mootmaker-webapp#118's own
+  // acceptance run caught this). "Cancel meeting" is unique on the page while the sheet is open,
+  // and Close is reliably its next button sibling in the header (Share, Edit - a link, not a
+  // button - Cancel meeting, Close - see MeetingDetailContent.tsx), which the clipboard alert's
+  // own Close never is.
+  await page
+    .getByRole('button', { name: 'Cancel meeting' })
+    .locator('xpath=following-sibling::button[1]')
+    .click()
 
   return { id: match[1], url }
 }

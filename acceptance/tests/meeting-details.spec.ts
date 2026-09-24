@@ -144,13 +144,16 @@ async function createMeetingViaForm(page: Page, options: MeetingFormOptions): Pr
   if (!match) {
     throw new Error(`Could not extract a meeting id from the shared URL: ${url}`)
   }
-  // Scoped via the Share button's own sibling, not a page-wide role query - the clipboard-
-  // fallback confirmation toast (SuccessToast/MUI Alert) also renders its own "Close" button
-  // with the identical accessible name, and a page-wide query resolves to both ambiguously.
-  await page
-    .getByRole('button', { name: 'Share meeting' })
-    .locator('xpath=following-sibling::button[1]')
-    .click()
+  // Scoped to <main>, not a page-wide role query - the clipboard-fallback confirmation toast
+  // (SuccessToast/MUI Alert) also renders its own "Close" button with the identical accessible
+  // name, outside <main>, and a page-wide query resolves to both ambiguously. Not the Share
+  // button's own following-sibling::button[1] either, despite that scoping this same way - the
+  // sheet's header now also has Edit (a link, not a button - see MeetingDetailContent.tsx) and
+  // Cancel meeting between Share and Close, so a sibling::button[1] now lands on Cancel meeting
+  // and opens its confirmation dialog instead of dismissing the sheet, blocking every subsequent
+  // action on this page behind that dialog's backdrop (mootmaker-webapp#118's own acceptance run
+  // caught this - see designs/edit-and-cancel-meetings.md).
+  await page.getByRole('main').getByRole('button', { name: 'Close' }).click()
 
   return { id: match[1], url }
 }

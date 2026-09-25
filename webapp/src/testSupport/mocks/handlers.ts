@@ -19,6 +19,7 @@ import type {
   TimeFormat,
   UpdateMeetingResult,
   UpdateMyPreferencesResult,
+  WeekStart,
 } from '../../graphql/types'
 import {
   cancelMeetingFixture,
@@ -150,6 +151,7 @@ function isFifteenMinuteAligned(isoLocalDateTime: string): boolean {
 interface RoomInput {
   name: string
   capacity: number
+  color?: Room['color']
 }
 
 function nextId(prefix: string, existing: { id: string }[]): string {
@@ -457,7 +459,12 @@ export const handlers: HttpHandler[] = [
             data: { createRoom: { __typename: 'CreateRoomResult', room: null, rooms: rooms.map(asRoom), errors: ['NameRequired'] } },
           })
         }
-        const room = { id: nextId('room', rooms), name: input.name, capacity: input.capacity }
+        const room = {
+          id: nextId('room', rooms),
+          name: input.name,
+          capacity: input.capacity,
+          color: input.color ?? null,
+        }
         rooms.push(room)
         return HttpResponse.json({
           data: { createRoom: { __typename: 'CreateRoomResult', room: asRoom(room), rooms: rooms.map(asRoom), errors: [] } },
@@ -480,6 +487,7 @@ export const handlers: HttpHandler[] = [
         }
         room.name = input.name
         room.capacity = input.capacity
+        room.color = input.color ?? null
         return HttpResponse.json({
           data: { updateRoom: { __typename: 'UpdateRoomResult', room: asRoom(room), rooms: rooms.map(asRoom), errors: [] } },
         })
@@ -505,6 +513,19 @@ export const handlers: HttpHandler[] = [
           return HttpResponse.json({
             data: {
               createPerson: { __typename: 'CreatePersonResult', person: null, people: people.map(asPerson), errors: ['NameRequired'] },
+            },
+          })
+        }
+        const normalized = name.trim().toLowerCase()
+        if (people.some((existing) => existing.name.trim().toLowerCase() === normalized)) {
+          return HttpResponse.json({
+            data: {
+              createPerson: {
+                __typename: 'CreatePersonResult',
+                person: null,
+                people: people.map(asPerson),
+                errors: ['NameAlreadyExists'],
+              },
             },
           })
         }
@@ -676,7 +697,7 @@ export const handlers: HttpHandler[] = [
 
       case 'UpdateMyPreferences': {
         const { preferences } = variables as {
-          preferences: { dateFormat: DateFormat; timeFormat: TimeFormat }
+          preferences: { dateFormat: DateFormat; timeFormat: TimeFormat; weekStart: WeekStart }
         }
         const email = emailFromAuthHeader(request)
         const person = (email && linkedPersonByEmail[email]) ?? null
@@ -689,6 +710,7 @@ export const handlers: HttpHandler[] = [
         // refreshPerson() immediately after saving.
         person.dateFormat = preferences.dateFormat
         person.timeFormat = preferences.timeFormat
+        person.weekStart = preferences.weekStart
         const result: UpdateMyPreferencesResult = { person: asPerson(person), errors: [] }
         return HttpResponse.json({ data: { updateMyPreferences: { __typename: 'UpdateMyPreferencesResult', ...result } } })
       }

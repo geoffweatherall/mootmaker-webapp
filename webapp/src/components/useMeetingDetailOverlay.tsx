@@ -1,7 +1,7 @@
 import { Box, Drawer, useMediaQuery, useTheme } from '@mui/material'
 import { useState } from 'react'
 import type { Meeting, MeetingDetails, Person, Room } from '../graphql/types'
-import { roomColorAt } from '../theme/roomColor'
+import { roomColorFor } from '../theme/roomColor'
 import { MeetingDetailContent } from './MeetingDetailContent'
 
 /**
@@ -26,7 +26,12 @@ export function resolveMeetingDetails(
     subject: meeting.subject,
     startTime: meeting.startTime,
     endTime: meeting.endTime,
-    room: { id: meeting.room.id, name: room?.name ?? '', capacity: room?.capacity ?? 0 },
+    room: {
+      id: meeting.room.id,
+      name: room?.name ?? '',
+      capacity: room?.capacity ?? 0,
+      color: room?.color ?? null,
+    },
     organiser: { id: meeting.organiser.id, name: peopleById.get(meeting.organiser.id)?.name ?? '' },
     attendees: meeting.attendees.map((attendee) => ({
       person: { id: attendee.person.id, name: peopleById.get(attendee.person.id)?.name ?? '' },
@@ -64,7 +69,11 @@ export function useMeetingDetailOverlay(
 
   const resolved = openMeeting ? resolveMeetingDetails(openMeeting, peopleById, roomsById) : null
   const roomColor = openMeeting
-    ? roomColorAt(roomIndexById.get(openMeeting.room.id) ?? 0, theme.palette.mode)
+    ? roomColorFor(
+        roomsById.get(openMeeting.room.id) ?? { color: null },
+        roomIndexById.get(openMeeting.room.id) ?? 0,
+        theme.palette.mode,
+      )
     : ''
 
   // Narrow: a real modal bottom sheet (MUI Drawer's default backdrop + dismiss). Wide: a hand-rolled

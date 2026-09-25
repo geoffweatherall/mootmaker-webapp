@@ -38,6 +38,7 @@ import {
   prioritizeCurrentRoom,
   referenceDataReady,
   initialSuggestionCache,
+  snapToNearestQuarterHour,
   type DefaultMeetingTimes,
   type SuggestionCache,
 } from './addMeetingLogic'
@@ -448,7 +449,7 @@ export default function AddMeetingPage() {
               label="Start time"
               ampm={timePickerUsesAmPm(timeFormat)}
               value={startTime}
-              onChange={(value) => setStartTime(value)}
+              onChange={(value) => setStartTime(snapToNearestQuarterHour(value))}
               timeSteps={MEETING_TIME_STEPS}
               slotProps={{ textField: { fullWidth: true } }}
             />
@@ -456,7 +457,7 @@ export default function AddMeetingPage() {
               label="End time"
               ampm={timePickerUsesAmPm(timeFormat)}
               value={endTime}
-              onChange={(value) => setEndTime(value)}
+              onChange={(value) => setEndTime(snapToNearestQuarterHour(value))}
               timeSteps={MEETING_TIME_STEPS}
               slotProps={{ textField: { fullWidth: true } }}
             />

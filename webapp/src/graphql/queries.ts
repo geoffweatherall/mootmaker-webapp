@@ -21,6 +21,7 @@ export const PAGE_LOAD = graphql(`
         name
         dateFormat
         timeFormat
+        weekStart
       }
       people {
         id
@@ -32,6 +33,7 @@ export const PAGE_LOAD = graphql(`
         id
         name
         capacity
+        color
       }
       boundaries {
         earliestRetainedDate
@@ -111,6 +113,7 @@ export const REFERENCE_DATA = graphql(`
         id
         name
         capacity
+        color
       }
       people {
         id
@@ -140,6 +143,7 @@ export const MEETING_BY_ID = graphql(`
         id
         name
         capacity
+        color
       }
       organiser {
         id
@@ -171,6 +175,7 @@ export const SESSION = graphql(`
         name
         dateFormat
         timeFormat
+        weekStart
       }
     }
   }
@@ -212,6 +217,7 @@ export const MEETING_LIVE_FIELDS_FRAGMENT = graphql(`
       id
       name
       capacity
+      color
     }
     organiser {
       id
@@ -243,6 +249,7 @@ export const SUGGEST_ROOM = graphql(`
       id
       name
       capacity
+      color
     }
   }
 `)

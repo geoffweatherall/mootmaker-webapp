@@ -16,6 +16,8 @@ import {
   Paper,
   Stack,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
   useTheme,
 } from '@mui/material'
@@ -27,10 +29,16 @@ import { errorMessages } from '../graphql/errorMessages'
 import { cacheRooms } from '../graphql/referenceDataCache'
 import { CREATE_ROOM, DELETE_ROOM, UPDATE_ROOM } from '../graphql/mutations'
 import { REFERENCE_DATA } from '../graphql/queries'
-import { type CreateRoomResult, type DeleteRoomResult, type Room, type UpdateRoomResult } from '../graphql/types'
+import {
+  type CreateRoomResult,
+  type DeleteRoomResult,
+  type Room,
+  type RoomColor,
+  type UpdateRoomResult,
+} from '../graphql/types'
 import { ROOM_ERROR_MESSAGES } from '../graphql/validationMessages'
 import { RoomIcon } from '../icons'
-import { roomColorAt } from '../theme/roomColor'
+import { ROOM_COLOR_SLOTS, roomColorAt, roomColorFor } from '../theme/roomColor'
 
 /**
  * Admin only (RequireAdmin, see App.tsx). Card grid matching RoomAvailabilityPage's own card
@@ -88,7 +96,7 @@ export default function RoomsPage() {
           }}
         >
           {rooms.map((room, index) => {
-            const roomColor = roomColorAt(index, theme.palette.mode)
+            const roomColor = roomColorFor(room, index, theme.palette.mode)
             return (
               <Paper key={room.id} sx={{ p: 2.5 }}>
                 <Stack spacing={1.5}>
@@ -164,8 +172,10 @@ interface RoomDialogProps {
 }
 
 function RoomDialog({ room, onClose }: RoomDialogProps) {
+  const theme = useTheme()
   const [name, setName] = useState(room?.name ?? '')
   const [capacity, setCapacity] = useState(room ? String(room.capacity) : '')
+  const [color, setColor] = useState<RoomColor | null>(room?.color ?? null)
   const [fieldErrors, setFieldErrors] = useState<string[]>([])
   // No refetch to race it deliberately - both mutations return the whole `rooms` collection, which
   // replaces the cached list wholesale (see referenceDataCache.ts). The remaining race, against the
@@ -183,7 +193,7 @@ function RoomDialog({ room, onClose }: RoomDialogProps) {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setFieldErrors([])
-    const roomInput = { name, capacity: Number(capacity) }
+    const roomInput = { name, capacity: Number(capacity), color }
 
     if (room) {
       const result = await updateRoom({ variables: { id: room.id, room: roomInput } })
@@ -220,6 +230,38 @@ function RoomDialog({ room, onClose }: RoomDialogProps) {
               slotProps={{ htmlInput: { min: 0 } }}
               fullWidth
             />
+            <Stack spacing={1}>
+              <Typography variant="body2" color="text.secondary">
+                Colour
+              </Typography>
+              {/* A fixed 8-hue palette, not a free colour picker - see theme/roomColor.ts. "None"
+                  reverts to the same deterministic by-position assignment every room without an
+                  explicit choice already gets. exclusive + a value of '' for "None" (ToggleButton
+                  values must be non-empty strings) is what makes this behave like a radio group:
+                  exactly one selected at a time, never zero. */}
+              <ToggleButtonGroup
+                value={color ?? ''}
+                exclusive
+                onChange={(_event, next: RoomColor | '' | null) => setColor(next ? next : null)}
+                sx={{ flexWrap: 'wrap' }}
+              >
+                <ToggleButton value="" aria-label="No colour" sx={{ px: 1.5 }}>
+                  None
+                </ToggleButton>
+                {ROOM_COLOR_SLOTS.map((slot) => (
+                  <ToggleButton key={slot} value={slot} aria-label={slot} sx={{ p: 1 }}>
+                    <Box
+                      sx={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: '50%',
+                        bgcolor: roomColorAt(ROOM_COLOR_SLOTS.indexOf(slot), theme.palette.mode),
+                      }}
+                    />
+                  </ToggleButton>
+                ))}
+              </ToggleButtonGroup>
+            </Stack>
           </Stack>
         </DialogContent>
         <DialogActions>

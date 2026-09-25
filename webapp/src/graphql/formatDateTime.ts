@@ -13,8 +13,13 @@ export type DateFormat = 'Usa' | 'British' | 'Iso'
 /** Mirrors the GraphQL TimeFormat enum. */
 export type TimeFormat = 'TwentyFourHour' | 'AmPm'
 
+/** Mirrors the GraphQL WeekStart enum. Only affects a date-picker calendar grid's first column -
+ * see Person.weekStart's own schema doc for why PersonCalendarPage's weekly agenda is unrelated. */
+export type WeekStart = 'Monday' | 'Sunday'
+
 export const DEFAULT_DATE_FORMAT: DateFormat = 'Iso'
 export const DEFAULT_TIME_FORMAT: TimeFormat = 'TwentyFourHour'
+export const DEFAULT_WEEK_START: WeekStart = 'Monday'
 
 interface Parts {
   year: string

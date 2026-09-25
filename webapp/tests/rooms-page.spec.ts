@@ -54,4 +54,31 @@ test.describe('Rooms page', () => {
     await page.getByRole('button', { name: 'Save' }).click()
     await expect(page.getByText('Name must not be blank.')).toBeVisible()
   })
+
+  // mootmaker-api#75. "None" (no explicit colour) is the default and isn't itself asserted here -
+  // every other test in this file already exercises it implicitly, since none of them touch this
+  // control at all.
+  test('an admin can choose a room colour from the fixed palette, and later clear it back to none', async ({
+    page,
+  }) => {
+    await signIn(page, ADMIN_USER)
+    await page.getByRole('link', { name: 'Rooms' }).click()
+
+    await page.getByRole('button', { name: 'Add room' }).click()
+    await page.getByRole('textbox', { name: 'Name' }).fill('Beehive')
+    await page.getByRole('spinbutton', { name: 'Capacity' }).fill('6')
+    await page.getByRole('button', { name: 'Violet' }).click()
+    await page.getByRole('button', { name: 'Save' }).click()
+    await expect(page.getByText('Beehive')).toBeVisible()
+
+    // Re-opening Edit shows the same choice already selected, proving it round-tripped through
+    // the mutation and back, not just that the button could be clicked.
+    await page.getByRole('button', { name: 'Edit Beehive' }).click()
+    await expect(page.getByRole('button', { name: 'Violet', pressed: true })).toBeVisible()
+
+    await page.getByRole('button', { name: 'No colour' }).click()
+    await page.getByRole('button', { name: 'Save' }).click()
+    await page.getByRole('button', { name: 'Edit Beehive' }).click()
+    await expect(page.getByRole('button', { name: 'No colour', pressed: true })).toBeVisible()
+  })
 })

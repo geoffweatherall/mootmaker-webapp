@@ -161,3 +161,28 @@ export function prioritizeCurrentRoom(candidates: Room[], currentRoomId: string 
 export function referenceDataReady(referenceLoading: boolean, personLoading: boolean): boolean {
   return !referenceLoading && !personLoading
 }
+
+// --- Time picker snapping -------------------------------------------------------------------
+//
+// mootmaker-webapp#126: `timeSteps={{ minutes: 15 }}` (see AddMeetingPage.tsx's TimePicker props)
+// only constrains the desktop list-style picker and the arrow/scroll increments - the touch
+// analog-clock view MUI switches to on mobile lets a drag/tap land on any exact minute regardless,
+// a real MUI X gap rather than something this app's own props control. Snapping the value on
+// change, after the picker produces it, is what actually closes it everywhere.
+
+/**
+ * Rounds a time to the nearest 15-minute boundary, biasing to the LATER boundary on an exact tie.
+ * `null` (the field cleared) passes through unchanged - there is nothing to round.
+ *
+ * The tie-break can't actually fire today: 15 is odd, so its exact midpoint (7.5 minutes) is never
+ * a value a whole-minute input can land on. Implemented anyway, as cheap insurance in case this is
+ * ever reused with an even step.
+ */
+export function snapToNearestQuarterHour(value: Dayjs | null): Dayjs | null {
+  if (!value) return value
+  const minutesSinceMidnight = value.hour() * 60 + value.minute()
+  const remainder = minutesSinceMidnight % 15
+  const snapped =
+    remainder >= 7.5 ? minutesSinceMidnight + (15 - remainder) : minutesSinceMidnight - remainder
+  return value.hour(0).minute(0).second(0).millisecond(0).add(snapped, 'minute')
+}

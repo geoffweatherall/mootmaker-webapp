@@ -71,7 +71,10 @@ async function signInAsFreshAccount(page: Page): Promise<TestAccount> {
   return account
 }
 
-async function setFormats(page: Page, options: { date?: string; time?: string }): Promise<void> {
+async function setFormats(
+  page: Page,
+  options: { date?: string; time?: string; weekStart?: 'Monday' | 'Sunday' },
+): Promise<void> {
   await page.goto('/settings')
   if (options.date) {
     await page.getByLabel('Date format').click()
@@ -80,6 +83,10 @@ async function setFormats(page: Page, options: { date?: string; time?: string })
   if (options.time) {
     await page.getByLabel('Time format').click()
     await page.getByRole('option', { name: options.time, exact: true }).click()
+  }
+  if (options.weekStart) {
+    await page.getByLabel('Week starts on').click()
+    await page.getByRole('option', { name: options.weekStart, exact: true }).click()
   }
   // The "Date and time format" section's own Save - the page has several.
   await page
@@ -450,4 +457,54 @@ test("N.106: a meeting's time in Room Availability's expanded list follows the t
   await page.goto(`/rooms/${isoUrlDate}/availability`)
   await roomCard().getByRole('button', { name: /'s meetings/ }).click()
   await expect(roomCard().getByRole('button', { name: subject, exact: false })).toContainText('09:00 AM')
+})
+
+// mootmaker-api#76. Deliberately not folded into N.100-106 above: those cases
+// are about the two formats read out of PreferencesInput's dateFormat/timeFormat and share a single
+// account/save flow; weekStart is a third, independent field on the same mutation (see
+// UpdateMyPreferencesHandler and SettingsPage's DateTimeFormatSection) that changes a different
+// thing - the DatePicker calendar grid's column order, not any rendered string - so it gets its own
+// case and its own assertion strategy.
+//
+// Checked via DayCalendar's own weekday columnheaders rather than the visible abbreviated text
+// ("Mo"/"Su"): MUI X gives each one role="columnheader" with an aria-label set to
+// adapter.format(weekday, 'weekday') (see node_modules/@mui/x-date-pickers/DateCalendar/
+// DayCalendar.js), the full, unambiguous weekday name - "Mo" would also match a two-letter
+// abbreviation coincidence in another locale, and reading the accessible name is the same signal a
+// screen reader user gets. The column order itself comes from the adapter's own startOfWeek, which
+// is what weekStartAdapterLocale's registered locales (src/theme/weekStartLocale.ts) actually
+// drive - this test is exercising that wiring end-to-end, not just that the Settings save succeeds.
+test('N.107: your week-start preference sets which day starts the calendar grid in the Date picker', async ({
+  page,
+}) => {
+  await signInAsFreshAccount(page)
+
+  // Monday is the default (see Person.DEFAULT_WEEK_START) - checked without ever calling
+  // setFormats, so this also proves the default applies with no preference saved yet.
+  await page.goto('/meetings/add')
+  await expect(page.getByRole('heading', { name: 'Add Meeting' })).toBeVisible()
+  const dateGroup = page.getByRole('group', { name: 'Date' })
+  await dateGroup.getByRole('button', { name: /Choose date/i }).click()
+  let dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('columnheader').first()).toHaveAccessibleName('Monday')
+  await page.keyboard.press('Escape')
+
+  await setFormats(page, { weekStart: 'Sunday' })
+
+  await page.goto('/meetings/add')
+  await expect(page.getByRole('heading', { name: 'Add Meeting' })).toBeVisible()
+  await dateGroup.getByRole('button', { name: /Choose date/i }).click()
+  dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('columnheader').first()).toHaveAccessibleName('Sunday')
+  await page.keyboard.press('Escape')
+
+  // Switch back explicitly and re-check, rather than trusting the first assertion alone - proves
+  // the setting is read live each time the picker opens, not just applied once at first mount.
+  await setFormats(page, { weekStart: 'Monday' })
+
+  await page.goto('/meetings/add')
+  await expect(page.getByRole('heading', { name: 'Add Meeting' })).toBeVisible()
+  await dateGroup.getByRole('button', { name: /Choose date/i }).click()
+  dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('columnheader').first()).toHaveAccessibleName('Monday')
 })

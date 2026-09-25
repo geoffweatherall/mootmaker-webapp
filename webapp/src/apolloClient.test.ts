@@ -59,9 +59,16 @@ function pageLoadData(dates: string[]) {
   return {
     workspace: {
       __typename: 'Workspace',
-      me: { __typename: 'Person', id: 'person-1', name: 'Me', dateFormat: 'Iso', timeFormat: 'TwentyFourHour' },
+      me: {
+        __typename: 'Person',
+        id: 'person-1',
+        name: 'Me',
+        dateFormat: 'Iso',
+        timeFormat: 'TwentyFourHour',
+        weekStart: 'Monday',
+      },
       people: [{ __typename: 'Person', id: 'person-1', name: 'Me', isAdmin: false, linkedEmails: [] }],
-      rooms: [{ __typename: 'Room', id: 'room-1', name: 'Room 1', capacity: 4 }],
+      rooms: [{ __typename: 'Room', id: 'room-1', name: 'Room 1', capacity: 4, color: null }],
       boundaries: { __typename: 'Boundaries', earliestRetainedDate: '2026-01-01', latestBookableDate: '2027-01-01' },
       days: dates.map(day),
     },

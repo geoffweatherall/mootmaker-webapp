@@ -7,7 +7,7 @@ import { ErrorBanner } from '../components/ErrorBanner'
 import { MeetingDetailContent } from '../components/MeetingDetailContent'
 import { errorMessages } from '../graphql/errorMessages'
 import { MEETING_BY_ID, REFERENCE_DATA } from '../graphql/queries'
-import { roomColorAt } from '../theme/roomColor'
+import { roomColorFor } from '../theme/roomColor'
 
 /**
  * The one lookup that works from a cold, shared or bookmarked link - see designs/
@@ -52,7 +52,9 @@ export default function MeetingDetailsPage() {
   // Null covers both "no such meeting" and "its day has aged out of retention" - deliberately the
   // same answer, so this page has one not-found state rather than two.
   const meeting = data?.meeting
-  const roomColor = meeting ? roomColorAt(roomIndexById.get(meeting.room.id) ?? 0, theme.palette.mode) : ''
+  const roomColor = meeting
+    ? roomColorFor(meeting.room, roomIndexById.get(meeting.room.id) ?? 0, theme.palette.mode)
+    : ''
 
   // Shown only after a genuine in-app navigation that explicitly says so via router state - NOT
   // based on browser history depth (history.length, navigate(-1) unconditionally). Pasting this

@@ -32,6 +32,7 @@ export const PREFERENCES_ERROR_MESSAGES: Record<PreferencesError, string> = {
 
 export const PERSON_ERROR_MESSAGES: Record<PersonError, string> = {
   NameRequired: 'Name must not be blank.',
+  NameAlreadyExists: 'A person with this name already exists.',
   PersonNotFound: 'This person no longer exists - it may have been deleted.',
   NoLinkedPerson: "Your account isn't linked to a person yet, so your name can't be changed here.",
   CannotDeleteSelf: 'You cannot delete your own person this way - use Delete account in Settings instead.',

@@ -31,7 +31,7 @@ import { formatLocalTime } from '../graphql/formatDateTime'
 import { DAYS, REFERENCE_DATA } from '../graphql/queries'
 import type { Meeting, Person } from '../graphql/types'
 import { AvailabilityIcon } from '../icons'
-import { roomColorAt } from '../theme/roomColor'
+import { roomColorFor } from '../theme/roomColor'
 import { dayRelativeLabel } from './dayRelativeLabel'
 import { segmentsForRoom, statusForRoom } from './roomAvailabilityLogic'
 
@@ -207,7 +207,7 @@ export default function RoomAvailabilityPage() {
           {rooms.map((room, roomIndex) => {
             // See theme/roomColor.ts - a room's colour is a secondary scan aid, not its only
             // identity: the room name is always shown as text alongside it too.
-            const roomColor = roomColorAt(roomIndex, theme.palette.mode)
+            const roomColor = roomColorFor(room, roomIndex, theme.palette.mode)
             const meetings = meetingsByRoom.get(room.id) ?? []
             const status = statusForRoom(meetings, isToday, now, timeFormat)
             const segments = segmentsForRoom(meetings)

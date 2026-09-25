@@ -144,4 +144,45 @@ test.describe('Persons page', () => {
     await page.getByRole('button', { name: 'Save' }).click()
     await expect(page.getByText('Name must not be blank.')).toBeVisible()
   })
+
+  // mootmaker-webapp#125.
+  test('a filter narrows the list by name or linked email', async ({ page }) => {
+    await signIn(page, ADMIN_USER)
+    await page.getByRole('link', { name: 'Persons' }).click()
+    await expect(page.getByText('Alice Anderson')).toBeVisible()
+    await expect(page.getByText('Bob Brown')).toBeVisible()
+
+    await page.getByRole('textbox', { name: 'Filter' }).fill('alice')
+    await expect(page.getByText('Alice Anderson')).toBeVisible()
+    await expect(page.getByText('Bob Brown')).toHaveCount(0)
+
+    // Matches by linked email too, not name alone - see cognito.mock.ts for ADMIN_USER's email.
+    // Scoped to `main`: the signed-in admin (Dana Diaz) is ADMIN_USER, so her own name is also in
+    // the nav sidebar's account area, same ambiguity acceptance/tests/q-persons.spec.ts's
+    // personCard() helper already works around.
+    await page.getByRole('textbox', { name: 'Filter' }).fill(ADMIN_USER.email)
+    await expect(page.getByRole('main').getByText('Dana Diaz')).toBeVisible()
+    await expect(page.getByText('Alice Anderson')).toHaveCount(0)
+
+    // A plain <p> locator, not getByText: EmptyState's icon carries the same message as its own
+    // (invisible, decorative) SVG <title>, which getByText also matches regardless of visibility -
+    // see search-further-ahead.spec.ts's identical comment.
+    await page.getByRole('textbox', { name: 'Filter' }).fill('nobody matches this')
+    await expect(page.locator('p', { hasText: 'No people match that filter.' })).toBeVisible()
+  })
+
+  // mootmaker-api#70: closes it, alongside PreSignUpNameCollisionHandlerTest and the two
+  // CreatePersonAcceptanceIT cases (mootmaker-api) and sign-up.spec.ts's real-Cognito coverage
+  // (mootmaker-webapp/acceptance) for the sign-up-time half of this same rule.
+  test('rejects adding a person whose name collides with an existing one', async ({ page }) => {
+    await signIn(page, ADMIN_USER)
+    await page.getByRole('link', { name: 'Persons' }).click()
+
+    await page.getByRole('button', { name: 'Add person' }).click()
+    await page.getByRole('textbox', { name: 'Name' }).fill('  alice anderson ')
+    await page.getByRole('button', { name: 'Save' }).click()
+    await expect(page.getByText('A person with this name already exists.')).toBeVisible()
+    // Rejected, not silently linked or merged - the dialog stays open on the same failed attempt.
+    await expect(page.getByRole('dialog')).toBeVisible()
+  })
 })

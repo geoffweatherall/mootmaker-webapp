@@ -30,7 +30,7 @@ import { formatLocalTime } from '../graphql/formatDateTime'
 import { PAGE_LOAD, REFERENCE_DATA } from '../graphql/queries'
 import type { Meeting, Person } from '../graphql/types'
 import { PersonIcon } from '../icons'
-import { roomColorAt } from '../theme/roomColor'
+import { roomColorFor } from '../theme/roomColor'
 import { dayRelativeLabel } from './dayRelativeLabel'
 
 const WORK_DAYS_PER_WEEK = 5
@@ -288,7 +288,11 @@ export default function PersonCalendarPage() {
                     )
                   ) : (
                     dayMeetings.map((meeting) => {
-                      const roomColor = roomColorAt(roomIndexById.get(meeting.room.id) ?? 0, theme.palette.mode)
+                      const roomColor = roomColorFor(
+                        roomsById.get(meeting.room.id) ?? { color: null },
+                        roomIndexById.get(meeting.room.id) ?? 0,
+                        theme.palette.mode,
+                      )
                       return (
                         <ButtonBase
                           key={meeting.id}

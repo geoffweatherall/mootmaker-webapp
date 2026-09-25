@@ -44,32 +44,120 @@ export const UPDATE_ROOM = graphql(`
   }
 `)
 
-export const CREATE_PERSON = graphql(`
-  mutation CreatePerson($person: PersonInput!) {
-    createPerson(person: $person) {
-      people {
+export const DELETE_ROOM = graphql(`
+  mutation DeleteRoom($id: ID!) {
+    deleteRoom(id: $id) {
+      rooms {
         id
         name
-      }
-      person {
-        id
-        name
+        capacity
       }
       errors
     }
   }
 `)
 
-export const UPDATE_PERSON = graphql(`
-  mutation UpdatePerson($id: ID!, $person: PersonInput!) {
-    updatePerson(id: $id, person: $person) {
+export const CREATE_PERSON = graphql(`
+  mutation CreatePerson($name: String!) {
+    createPerson(name: $name) {
       people {
         id
         name
+        isAdmin
+        linkedEmails
       }
       person {
         id
         name
+        isAdmin
+        linkedEmails
+      }
+      errors
+    }
+  }
+`)
+
+/** Self-only - see updateMyName's own doc comment in the schema. */
+export const UPDATE_MY_NAME = graphql(`
+  mutation UpdateMyName($name: String!) {
+    updateMyName(name: $name) {
+      person {
+        id
+        name
+        dateFormat
+        timeFormat
+      }
+      errors
+    }
+  }
+`)
+
+/**
+ * `cognitoSyncFailed` is a partial success, not a rejection - it comes back alongside an empty
+ * `errors` list and a populated `person`, since the DynamoDB write already succeeded. See the
+ * design doc's "UI handling of cognitoSyncFailed: true" for the retry/cancel prompt this drives.
+ */
+export const SET_PERSON_ADMIN = graphql(`
+  mutation SetPersonAdmin($id: ID!, $isAdmin: Boolean!) {
+    setPersonAdmin(id: $id, isAdmin: $isAdmin) {
+      people {
+        id
+        name
+        isAdmin
+        linkedEmails
+      }
+      person {
+        id
+        name
+        isAdmin
+        linkedEmails
+      }
+      cognitoSyncFailed
+      errors
+    }
+  }
+`)
+
+/**
+ * Edit Person's single Save click sends both changes as one GraphQL document - one HTTP round
+ * trip, GraphQL executes mutation root fields serially, so setPersonAdmin (which runs second) sees
+ * the rename already applied and its own `person`/`people` snapshot is the authoritative final
+ * state. Safe to send unconditionally even when the admin switch is disabled in the UI: sending
+ * `isAdmin: false` for a person with no linked account, or `isAdmin: true` (unchanged) for the
+ * caller's own Person, trips neither of setPersonAdmin's guards - see SetPersonAdminHandler.
+ */
+export const EDIT_PERSON = graphql(`
+  mutation EditPerson($id: ID!, $name: String!, $isAdmin: Boolean!) {
+    renamePerson(id: $id, name: $name) {
+      errors
+    }
+    setPersonAdmin(id: $id, isAdmin: $isAdmin) {
+      people {
+        id
+        name
+        isAdmin
+        linkedEmails
+      }
+      person {
+        id
+        name
+        isAdmin
+        linkedEmails
+      }
+      cognitoSyncFailed
+      errors
+    }
+  }
+`)
+
+export const DELETE_PERSON = graphql(`
+  mutation DeletePerson($id: ID!) {
+    deletePerson(id: $id) {
+      people {
+        id
+        name
+        isAdmin
+        linkedEmails
       }
       errors
     }

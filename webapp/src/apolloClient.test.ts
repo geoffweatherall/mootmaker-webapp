@@ -60,7 +60,7 @@ function pageLoadData(dates: string[]) {
     workspace: {
       __typename: 'Workspace',
       me: { __typename: 'Person', id: 'person-1', name: 'Me', dateFormat: 'Iso', timeFormat: 'TwentyFourHour' },
-      people: [{ __typename: 'Person', id: 'person-1', name: 'Me' }],
+      people: [{ __typename: 'Person', id: 'person-1', name: 'Me', isAdmin: false, linkedEmails: [] }],
       rooms: [{ __typename: 'Room', id: 'room-1', name: 'Room 1', capacity: 4 }],
       boundaries: { __typename: 'Boundaries', earliestRetainedDate: '2026-01-01', latestBookableDate: '2027-01-01' },
       days: dates.map(day),

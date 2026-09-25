@@ -86,7 +86,10 @@ export default function PersonCalendarPage() {
     const fromList = people.find((person) => person.id === personId)
     if (fromList) return fromList
     if (personId && personId === ownPersonId && ownDisplayName) {
-      return { id: personId, name: ownDisplayName }
+      // Placeholder for the viewer's own Person before the people list has loaded - isAdmin/
+      // linkedEmails aren't known yet, so this defaults them the same way the schema does for a
+      // Person it hasn't loaded a real value for.
+      return { id: personId, name: ownDisplayName, isAdmin: false, linkedEmails: [] as string[] }
     }
     return undefined
   }, [people, personId, ownPersonId, ownDisplayName])

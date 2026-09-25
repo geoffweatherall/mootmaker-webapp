@@ -19,11 +19,13 @@ export const rooms: Room[] = [
 ]
 
 export const people: Person[] = [
-  { id: 'person-alice', name: 'Alice Anderson' },
-  { id: 'person-bob', name: 'Bob Brown' },
-  { id: 'person-carol', name: 'Carol Chen' },
-  { id: 'person-dana', name: 'Dana Diaz' },
-  { id: 'person-demo', name: 'Demo User' },
+  { id: 'person-alice', name: 'Alice Anderson', isAdmin: false, linkedEmails: [] },
+  { id: 'person-bob', name: 'Bob Brown', isAdmin: false, linkedEmails: [] },
+  { id: 'person-carol', name: 'Carol Chen', isAdmin: false, linkedEmails: [] },
+  // Linked to ADMIN_USER below - the one fixture person with admin access.
+  { id: 'person-dana', name: 'Dana Diaz', isAdmin: true, linkedEmails: [ADMIN_USER.email] },
+  // Linked to DEMO_USER below.
+  { id: 'person-demo', name: 'Demo User', isAdmin: false, linkedEmails: [DEMO_USER.email] },
 ]
 
 // The only account with a linked Person - see cognito.mock.ts's MOCK_USERS doc comment.

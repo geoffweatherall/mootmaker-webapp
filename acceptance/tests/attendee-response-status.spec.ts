@@ -50,7 +50,7 @@ async function signInAsFreshAccount(page: Page): Promise<{ name: string; email: 
 }
 
 async function createRoom(page: Page, name: string, capacity: number): Promise<void> {
-  await page.goto('/settings')
+  await page.goto('/rooms')
   await page.getByRole('button', { name: 'Add room' }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByLabel('Name').fill(name)
@@ -194,11 +194,11 @@ test('Home page shows a real "Needs your response" card, and quick-respond updat
     const token = await getIdToken(page)
     const meId = await myPersonId(page, token)
 
-    // Reference data for the room id, then an organiser created via the admin-only Settings page
+    // Reference data for the room id, then an organiser created via the admin-only Persons page
     // (createPerson helper elsewhere in this suite) so Demo User can be an ATTENDEE, not the
     // organiser - Add Meeting's own default would otherwise make Demo User the organiser, who has
     // no status to respond with.
-    await page.goto('/settings')
+    await page.goto('/persons')
     await page.getByRole('button', { name: 'Add person' }).click()
     const personDialog = page.getByRole('dialog')
     await personDialog.getByLabel('Name').fill(organiser)
@@ -343,7 +343,7 @@ test('one person responding to two different meetings on the same day both land 
     const token = await getIdToken(page)
     const meId = await myPersonId(page, token)
 
-    await page.goto('/settings')
+    await page.goto('/persons')
     const organiserName = `Same Day Organiser ${id}`
     await page.getByRole('button', { name: 'Add person' }).click()
     const dialog = page.getByRole('dialog')

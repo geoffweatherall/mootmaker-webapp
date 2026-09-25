@@ -18,7 +18,7 @@ import type {
 // to duplicate the API's own error-code list.
 
 describe('ROOM_ERROR_MESSAGES', () => {
-  const codes: RoomError[] = ['NameRequired', 'CapacityTooLow', 'RoomNotFound']
+  const codes: RoomError[] = ['NameRequired', 'CapacityTooLow', 'RoomNotFound', 'RoomHasUpcomingMeetings']
 
   it('has a non-empty message for every RoomError code, and no extra ones', () => {
     expect(Object.keys(ROOM_ERROR_MESSAGES).sort()).toEqual([...codes].sort())
@@ -30,7 +30,15 @@ describe('ROOM_ERROR_MESSAGES', () => {
 })
 
 describe('PERSON_ERROR_MESSAGES', () => {
-  const codes: PersonError[] = ['NameRequired', 'PersonNotFound']
+  const codes: PersonError[] = [
+    'NameRequired',
+    'PersonNotFound',
+    'NoLinkedPerson',
+    'CannotDeleteSelf',
+    'ReservedAccount',
+    'NoLinkedAccount',
+    'CannotRevokeOwnAdminAccess',
+  ]
 
   it('has a non-empty message for every PersonError code, and no extra ones', () => {
     expect(Object.keys(PERSON_ERROR_MESSAGES).sort()).toEqual([...codes].sort())

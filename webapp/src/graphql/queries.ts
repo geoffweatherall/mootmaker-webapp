@@ -25,6 +25,8 @@ export const PAGE_LOAD = graphql(`
       people {
         id
         name
+        isAdmin
+        linkedEmails
       }
       rooms {
         id
@@ -113,6 +115,8 @@ export const REFERENCE_DATA = graphql(`
       people {
         id
         name
+        isAdmin
+        linkedEmails
       }
     }
   }

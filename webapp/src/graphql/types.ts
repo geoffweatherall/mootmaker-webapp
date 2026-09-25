@@ -15,14 +15,19 @@
 import type {
   CancelMeetingMutation,
   CreateMeetingMutation,
+  CreatePersonMutation,
   CreateRoomMutation,
   DaysQuery,
+  DeletePersonMutation,
+  DeleteRoomMutation,
+  EditPersonMutation,
   MeetingByIdQuery,
   PageLoadQuery,
   RespondToMeetingMutation,
+  SetPersonAdminMutation,
   UpdateMeetingMutation,
+  UpdateMyNameMutation,
   UpdateMyPreferencesMutation,
-  UpdatePersonMutation,
   UpdateRoomMutation,
 } from './generated/graphql'
 
@@ -67,10 +72,14 @@ export type MeetingDetails = NonNullable<MeetingByIdQuery['meeting']>
 // pair, so a component can branch on errors without knowing which mutation produced them.
 export type CreateRoomResult = CreateRoomMutation['createRoom']
 export type UpdateRoomResult = UpdateRoomMutation['updateRoom']
-export type UpdatePersonResult = UpdatePersonMutation['updatePerson']
+export type DeleteRoomResult = DeleteRoomMutation['deleteRoom']
+export type UpdateMyNameResult = UpdateMyNameMutation['updateMyName']
+export type EditPersonResult = EditPersonMutation
+export type SetPersonAdminResult = SetPersonAdminMutation['setPersonAdmin']
+export type DeletePersonResult = DeletePersonMutation['deletePerson']
 export type UpdateMyPreferencesResult = UpdateMyPreferencesMutation['updateMyPreferences']
 export type CreateMeetingResult = CreateMeetingMutation['createMeeting']
-export type CreatePersonResult = import('./generated/graphql').CreatePersonMutation['createPerson']
+export type CreatePersonResult = CreatePersonMutation['createPerson']
 export type RespondToMeetingResult = RespondToMeetingMutation['respondToMeeting']
 export type UpdateMeetingResult = UpdateMeetingMutation['updateMeeting']
 export type CancelMeetingResult = CancelMeetingMutation['cancelMeeting']

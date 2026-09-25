@@ -141,14 +141,14 @@ test('can immediately schedule a meeting as themselves right after signing up', 
   const subject = `Acceptance test meeting A6 ${runId}`
 
   // Precondition: a room to book, created by the demo user (admin). A freshly signed-up standard
-  // user can't create rooms themselves (Settings' Rooms section is admin-only).
+  // user can't create rooms themselves (the Rooms page is admin-only).
   await page.goto('/signin')
   await page.getByLabel('Email').fill(demoEmail)
   await page.getByLabel('Password').fill(demoPassword)
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page.getByText('Sign out')).toBeVisible()
 
-  await page.goto('/settings')
+  await page.goto('/rooms')
   await page.getByRole('button', { name: 'Add room' }).click()
   const addRoomDialog = page.getByRole('dialog')
   await addRoomDialog.getByLabel('Name').fill(roomName)

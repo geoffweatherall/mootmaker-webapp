@@ -1,4 +1,4 @@
-import { CircularProgress, List, ListItemButton, ListItemIcon, ListItemText, Stack } from '@mui/material'
+import { CircularProgress, List, ListItemButton, ListItemIcon, ListItemText, ListSubheader, Stack } from '@mui/material'
 import dayjs from 'dayjs'
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
@@ -12,6 +12,8 @@ import {
   LoginIcon as LoginRoundedIcon,
   LogoutIcon as LogoutRoundedIcon,
   PersonAddIcon as PersonAddRoundedIcon,
+  PersonsIcon as PersonsRoundedIcon,
+  RoomIcon as RoomRoundedIcon,
 } from '../icons'
 
 const AVAILABILITY_PATH_PATTERN = /^\/rooms\/[^/]+\/availability$/
@@ -35,7 +37,7 @@ interface MenuContentProps {
 export function MenuContent({ onNavigate }: MenuContentProps) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
-  const { email, personId, personLoading, initialising, signOut } = useAuth()
+  const { email, personId, personLoading, initialising, isAdmin, signOut } = useAuth()
   // True from the moment "Calendar" is clicked before personId is known until it resolves one
   // way or another - shows a spinner in place of the icon instead of leaving the item disabled.
   const [awaitingCalendar, setAwaitingCalendar] = useState(false)
@@ -112,6 +114,26 @@ export function MenuContent({ onNavigate }: MenuContentProps) {
               </ListItemIcon>
               <ListItemText primary="Room Availability" />
             </ListItemButton>
+
+            {isAdmin && (
+              <>
+                <ListSubheader component="div" sx={{ bgcolor: 'transparent', lineHeight: '32px', mt: 1 }}>
+                  Admin
+                </ListSubheader>
+                <ListItemButton component={Link} to="/rooms" selected={pathname === '/rooms'} onClick={onNavigate}>
+                  <ListItemIcon>
+                    <RoomRoundedIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="Rooms" />
+                </ListItemButton>
+                <ListItemButton component={Link} to="/persons" selected={pathname === '/persons'} onClick={onNavigate}>
+                  <ListItemIcon>
+                    <PersonsRoundedIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="Persons" />
+                </ListItemButton>
+              </>
+            )}
           </>
         )}
 

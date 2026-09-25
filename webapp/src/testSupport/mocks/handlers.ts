@@ -14,8 +14,6 @@ import type {
   DateFormat,
   MeetingDetails,
   MeetingError,
-  MyPerson,
-  Person,
   RespondToMeetingResult,
   Room,
   TimeFormat,
@@ -46,11 +44,13 @@ function asRoom(room: Room) {
   return { __typename: 'Room' as const, ...room }
 }
 
-// Generic (rather than a fixed `Person | MyPerson` parameter) so the return type narrows to
-// whichever one was actually passed in - a fixed union parameter would make every call site's
-// result the full union, which is what broke `UpdateMyPreferencesResult.person` below (typed as
-// exactly `MyPerson`, not `Person | MyPerson`).
-function asPerson<T extends Person | MyPerson>(person: T) {
+// Generic, bound only to the id+name every caller actually has (rather than a fixed
+// `Person | MyPerson` parameter), so the return type narrows to whichever shape was actually
+// passed in - a fixed union parameter would make every call site's result the full union, which is
+// what broke `UpdateMyPreferencesResult.person` below (typed as exactly `MyPerson`, not
+// `Person | MyPerson`). The bound has to stay this loose because MeetingDetails' organiser/attendee
+// person (asMeetingDetails below) selects only id+name, neither the full Person nor MyPerson shape.
+function asPerson<T extends { id: string; name: string }>(person: T) {
   return { __typename: 'Person' as const, ...person }
 }
 
@@ -109,9 +109,13 @@ declare global {
   interface Window {
     __mockControls?: {
       myPersonGate?: Promise<void>
-      // Held open by layout-stability.spec.ts to observe the window where Rooms has not yet
-      // arrived but People has - see AdminSections in SettingsPage.tsx.
+      // Held open by a test wanting to observe RoomsPage/PersonsPage's own loading state before
+      // their single REFERENCE_DATA query resolves.
       listRoomsGate?: Promise<void>
+      // When true, the next SetPersonAdmin response (only) reports cognitoSyncFailed: true despite
+      // a successful write, then clears itself - so a test can drive the retry/cancel prompt
+      // deterministically without a real Cognito failure. See persons-page.spec.ts.
+      cognitoSyncFailsOnce?: boolean
       // Checked in src/auth/cognito.mock.ts's currentUserClaims, not here - this call never goes
       // through MSW, so it isn't one of this file's own handlers. Declared here anyway so there is
       // one place naming every gate this test suite has. Held open by layout-stability.spec.ts to
@@ -141,6 +145,19 @@ function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string): b
 function isFifteenMinuteAligned(isoLocalDateTime: string): boolean {
   const minute = Number(isoLocalDateTime.slice(14, 16))
   return minute % 15 === 0
+}
+
+interface RoomInput {
+  name: string
+  capacity: number
+}
+
+function nextId(prefix: string, existing: { id: string }[]): string {
+  const maxSuffix = existing.reduce((max, item) => {
+    const match = /-(\d+)$/.exec(item.id)
+    return match ? Math.max(max, Number(match[1])) : max
+  }, 0)
+  return `${prefix}-${maxSuffix + 1}`
 }
 
 interface MeetingInput {
@@ -433,6 +450,230 @@ export const handlers: HttpHandler[] = [
         return HttpResponse.json({ data: { respondToMeeting: { __typename: 'RespondToMeetingResult', ...result } } })
       }
 
+      case 'CreateRoom': {
+        const input = variables.room as RoomInput
+        if (!input.name.trim()) {
+          return HttpResponse.json({
+            data: { createRoom: { __typename: 'CreateRoomResult', room: null, rooms: rooms.map(asRoom), errors: ['NameRequired'] } },
+          })
+        }
+        const room = { id: nextId('room', rooms), name: input.name, capacity: input.capacity }
+        rooms.push(room)
+        return HttpResponse.json({
+          data: { createRoom: { __typename: 'CreateRoomResult', room: asRoom(room), rooms: rooms.map(asRoom), errors: [] } },
+        })
+      }
+
+      case 'UpdateRoom': {
+        const id = variables.id as string
+        const input = variables.room as RoomInput
+        const room = rooms.find((candidate) => candidate.id === id)
+        if (!room) {
+          return HttpResponse.json({
+            data: { updateRoom: { __typename: 'UpdateRoomResult', room: null, rooms: rooms.map(asRoom), errors: ['RoomNotFound'] } },
+          })
+        }
+        if (!input.name.trim()) {
+          return HttpResponse.json({
+            data: { updateRoom: { __typename: 'UpdateRoomResult', room: null, rooms: rooms.map(asRoom), errors: ['NameRequired'] } },
+          })
+        }
+        room.name = input.name
+        room.capacity = input.capacity
+        return HttpResponse.json({
+          data: { updateRoom: { __typename: 'UpdateRoomResult', room: asRoom(room), rooms: rooms.map(asRoom), errors: [] } },
+        })
+      }
+
+      case 'DeleteRoom': {
+        const id = variables.id as string
+        const index = rooms.findIndex((candidate) => candidate.id === id)
+        if (index === -1) {
+          return HttpResponse.json({
+            data: { deleteRoom: { __typename: 'DeleteRoomResult', rooms: rooms.map(asRoom), errors: ['RoomNotFound'] } },
+          })
+        }
+        rooms.splice(index, 1)
+        return HttpResponse.json({
+          data: { deleteRoom: { __typename: 'DeleteRoomResult', rooms: rooms.map(asRoom), errors: [] } },
+        })
+      }
+
+      case 'CreatePerson': {
+        const name = variables.name as string
+        if (!name.trim()) {
+          return HttpResponse.json({
+            data: {
+              createPerson: { __typename: 'CreatePersonResult', person: null, people: people.map(asPerson), errors: ['NameRequired'] },
+            },
+          })
+        }
+        const person = { id: nextId('person', people), name, isAdmin: false, linkedEmails: [] as string[] }
+        people.push(person)
+        return HttpResponse.json({
+          data: {
+            createPerson: { __typename: 'CreatePersonResult', person: asPerson(person), people: people.map(asPerson), errors: [] },
+          },
+        })
+      }
+
+      case 'UpdateMyName': {
+        const name = variables.name as string
+        const email = emailFromAuthHeader(request)
+        const viewerPerson = (email && linkedPersonByEmail[email]) ?? null
+        if (!viewerPerson) {
+          return HttpResponse.json({
+            data: { updateMyName: { __typename: 'UpdateMyNameResult', person: null, errors: ['NoLinkedPerson'] } },
+          })
+        }
+        viewerPerson.name = name
+        const fixturePerson = people.find((candidate) => candidate.id === viewerPerson.id)
+        if (fixturePerson) fixturePerson.name = name
+        return HttpResponse.json({
+          data: { updateMyName: { __typename: 'UpdateMyNameResult', person: asPerson(viewerPerson), errors: [] } },
+        })
+      }
+
+      // Combined document, matching EDIT_PERSON's own doc comment (mutations.ts): renamePerson
+      // runs first, setPersonAdmin second - its people/person snapshot is what the test-facing
+      // response returns, the same order the real API executes root mutation fields in.
+      case 'EditPerson': {
+        const id = variables.id as string
+        const name = variables.name as string
+        const isAdmin = variables.isAdmin as boolean
+        const person = people.find((candidate) => candidate.id === id)
+        if (!person) {
+          return HttpResponse.json({
+            data: {
+              renamePerson: { __typename: 'RenamePersonResult', errors: ['PersonNotFound'] },
+              setPersonAdmin: {
+                __typename: 'SetPersonAdminResult',
+                people: people.map(asPerson),
+                person: null,
+                cognitoSyncFailed: false,
+                errors: ['PersonNotFound'],
+              },
+            },
+          })
+        }
+        if (!name.trim()) {
+          return HttpResponse.json({
+            data: {
+              renamePerson: { __typename: 'RenamePersonResult', errors: ['NameRequired'] },
+              setPersonAdmin: {
+                __typename: 'SetPersonAdminResult',
+                people: people.map(asPerson),
+                person: asPerson(person),
+                cognitoSyncFailed: false,
+                errors: [],
+              },
+            },
+          })
+        }
+        const viewerEmail = emailFromAuthHeader(request)
+        const viewer = viewerEmail ? linkedPersonByEmail[viewerEmail] : null
+        if (!isAdmin && viewer?.id === id) {
+          return HttpResponse.json({
+            data: {
+              renamePerson: { __typename: 'RenamePersonResult', errors: [] },
+              setPersonAdmin: {
+                __typename: 'SetPersonAdminResult',
+                people: people.map(asPerson),
+                person: null,
+                cognitoSyncFailed: false,
+                errors: ['CannotRevokeOwnAdminAccess'],
+              },
+            },
+          })
+        }
+        if (isAdmin && person.linkedEmails.length === 0) {
+          return HttpResponse.json({
+            data: {
+              renamePerson: { __typename: 'RenamePersonResult', errors: [] },
+              setPersonAdmin: {
+                __typename: 'SetPersonAdminResult',
+                people: people.map(asPerson),
+                person: null,
+                cognitoSyncFailed: false,
+                errors: ['NoLinkedAccount'],
+              },
+            },
+          })
+        }
+        person.name = name
+        person.isAdmin = isAdmin
+        const cognitoSyncFailed = Boolean(window.__mockControls?.cognitoSyncFailsOnce)
+        if (window.__mockControls) window.__mockControls.cognitoSyncFailsOnce = false
+        return HttpResponse.json({
+          data: {
+            renamePerson: { __typename: 'RenamePersonResult', errors: [] },
+            setPersonAdmin: {
+              __typename: 'SetPersonAdminResult',
+              people: people.map(asPerson),
+              person: asPerson(person),
+              cognitoSyncFailed,
+              errors: [],
+            },
+          },
+        })
+      }
+
+      // Standalone - only ever called by CognitoSyncFailedDialog's Retry (see PersonsPage.tsx),
+      // re-sending the same id/isAdmin EditPerson already saved.
+      case 'SetPersonAdmin': {
+        const id = variables.id as string
+        const isAdmin = variables.isAdmin as boolean
+        const person = people.find((candidate) => candidate.id === id)
+        if (!person) {
+          return HttpResponse.json({
+            data: {
+              setPersonAdmin: {
+                __typename: 'SetPersonAdminResult',
+                people: people.map(asPerson),
+                person: null,
+                cognitoSyncFailed: false,
+                errors: ['PersonNotFound'],
+              },
+            },
+          })
+        }
+        person.isAdmin = isAdmin
+        const cognitoSyncFailed = Boolean(window.__mockControls?.cognitoSyncFailsOnce)
+        if (window.__mockControls) window.__mockControls.cognitoSyncFailsOnce = false
+        return HttpResponse.json({
+          data: {
+            setPersonAdmin: {
+              __typename: 'SetPersonAdminResult',
+              people: people.map(asPerson),
+              person: asPerson(person),
+              cognitoSyncFailed,
+              errors: [],
+            },
+          },
+        })
+      }
+
+      case 'DeletePerson': {
+        const id = variables.id as string
+        const index = people.findIndex((candidate) => candidate.id === id)
+        if (index === -1) {
+          return HttpResponse.json({
+            data: { deletePerson: { __typename: 'DeletePersonResult', people: people.map(asPerson), errors: ['PersonNotFound'] } },
+          })
+        }
+        const viewerEmail = emailFromAuthHeader(request)
+        const viewer = viewerEmail ? linkedPersonByEmail[viewerEmail] : null
+        if (viewer?.id === id) {
+          return HttpResponse.json({
+            data: { deletePerson: { __typename: 'DeletePersonResult', people: people.map(asPerson), errors: ['CannotDeleteSelf'] } },
+          })
+        }
+        people.splice(index, 1)
+        return HttpResponse.json({
+          data: { deletePerson: { __typename: 'DeletePersonResult', people: people.map(asPerson), errors: [] } },
+        })
+      }
+
       case 'UpdateMyPreferences': {
         const { preferences } = variables as {
           preferences: { dateFormat: DateFormat; timeFormat: TimeFormat }
@@ -453,9 +694,7 @@ export const handlers: HttpHandler[] = [
       }
 
       default:
-        // Settings-page mutations (createRoom/updateRoom/createPerson/updatePerson) aren't
-        // handled above - no test in webapp/tests/ exercises SettingsPage yet (see README.md's
-        // Tests section). Extend this file rather than letting a future settings test hang here.
+        // Extend this file rather than letting a future test hang here.
         return HttpResponse.json(
           {
             errors: [

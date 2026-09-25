@@ -103,6 +103,43 @@ export const PersonIcon = createSvgIcon(
   'MootmakerPerson',
 )
 
+// A door with a handle - the Admin nav section's Rooms item (MenuContent.tsx) and RoomsPage's
+// empty state.
+export const RoomIcon = createSvgIcon(
+  <>
+    <rect x="5.5" y="3" width="12" height="18" rx="1.2" fill="currentColor" fillOpacity="0.16" />
+    <rect
+      x="5.5"
+      y="3"
+      width="12"
+      height="18"
+      rx="1.2"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    />
+    <circle cx="14.2" cy="12" r="1.1" fill="currentColor" />
+  </>,
+  'MootmakerRoom',
+)
+
+// Two overlapping person silhouettes - the Admin nav section's Persons item (MenuContent.tsx) and
+// PersonsPage's empty state. Distinct from the single-person PersonIcon above, which is used
+// elsewhere for one specific person rather than "people" as a group.
+export const PersonsIcon = createSvgIcon(
+  <>
+    <circle cx="9" cy="8.2" r="3" fill="currentColor" />
+    <path
+      d="M3.5 20c0-3.3 2.9-5.6 5.5-5.6s5.5 2.3 5.5 5.6"
+      fill="currentColor"
+      fillOpacity="0.85"
+    />
+    <circle cx="16" cy="8.6" r="2.6" fill="none" stroke="currentColor" strokeWidth="1.7" />
+    <path d="M15 14.6c2.6.2 5 2.3 5 5.4" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+  </>,
+  'MootmakerPersons',
+)
+
 export const SettingsIcon = createSvgIcon(
   <>
     <circle cx="12" cy="12" r="3.3" fill="currentColor" />

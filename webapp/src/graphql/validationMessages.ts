@@ -22,6 +22,8 @@ export const ROOM_ERROR_MESSAGES: Record<RoomError, string> = {
   NameRequired: 'Name must not be blank.',
   CapacityTooLow: 'Room capacity must be at least 2.',
   RoomNotFound: 'This room no longer exists - it may have been deleted.',
+  RoomHasUpcomingMeetings:
+    'This room has one or more meetings booked from today onward - reassign or cancel them before deleting it.',
 }
 
 export const PREFERENCES_ERROR_MESSAGES: Record<PreferencesError, string> = {
@@ -31,6 +33,11 @@ export const PREFERENCES_ERROR_MESSAGES: Record<PreferencesError, string> = {
 export const PERSON_ERROR_MESSAGES: Record<PersonError, string> = {
   NameRequired: 'Name must not be blank.',
   PersonNotFound: 'This person no longer exists - it may have been deleted.',
+  NoLinkedPerson: "Your account isn't linked to a person yet, so your name can't be changed here.",
+  CannotDeleteSelf: 'You cannot delete your own person this way - use Delete account in Settings instead.',
+  ReservedAccount: 'This account is reserved and cannot be deleted.',
+  NoLinkedAccount: "This person hasn't signed in yet, so admin access can't be granted until they sign up.",
+  CannotRevokeOwnAdminAccess: 'You cannot remove your own admin access.',
 }
 
 export const MEETING_ERROR_MESSAGES: Record<MeetingError, string> = {

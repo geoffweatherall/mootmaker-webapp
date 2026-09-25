@@ -57,9 +57,9 @@ async function signInAsDemo(page: Page) {
 }
 
 // Precondition helper - no data-seeding bypass for rooms/people, so every test creates its own via
-// the real Settings UI (see acceptance/README.md's "Known gaps"), uniquely named per run.
+// the real Rooms/Persons UI (see acceptance/README.md's "Known gaps"), uniquely named per run.
 async function createRoom(page: Page, roomName: string) {
-  await page.goto('/settings')
+  await page.goto('/rooms')
   await page.getByRole('button', { name: 'Add room' }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByLabel('Name').fill(roomName)
@@ -69,7 +69,7 @@ async function createRoom(page: Page, roomName: string) {
 }
 
 async function createPerson(page: Page, name: string) {
-  await page.goto('/settings')
+  await page.goto('/persons')
   await page.getByRole('button', { name: 'Add person' }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByLabel('Name').fill(name)

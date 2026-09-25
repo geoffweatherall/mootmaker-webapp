@@ -86,11 +86,11 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 **Steps:**
 1. Sign in as the demo user.
 2. Corrupt the cached Cognito session: `localStorage` keys under `amazon-cognito-identity-js`'s own naming convention (its id/access/refresh tokens) — overwrite the id token's value with a garbage string, or clear the refresh token specifically so `getSession()`'s transparent refresh can't succeed.
-3. Trigger a fresh API call: navigate to a different authenticated page (e.g. `/settings`), or click something that issues a new query.
+3. Trigger a fresh API call: navigate to Home (`/`), which issues its own query on mount. Deliberately not an admin-only page (Rooms/Persons) or another `RequireAuth`-guarded page, so this test's outcome is decided solely by what the corrupted session itself resolves to, not by a route guard's own redirect target.
 
 **Assertions:**
 - No unhandled crash/blank page.
-- Either: (a) an `ErrorBanner` appears with a readable message, or (b) the app detects the invalid session and redirects to `/signin` — record honestly which of these the app actually does when this is implemented, since the use case itself only says "ideally" for the redirect behaviour, not "must."
+- One of three outcomes, any of which counts as graceful — record honestly which one actually happens rather than assuming the "ideal" one: (a) an `ErrorBanner` appears with a readable message, (b) the app detects the invalid session and redirects to `/signin`, or (c) Home isn't route-guarded, so if the session resolves as genuinely signed-out it renders its own ordinary signed-out landing view in place rather than redirecting anywhere — confirmed against a real run to be what actually happens.
 
 **Out of scope:** waiting out a real Cognito token TTL (impractical); the exact `localStorage` key names/shape (an `amazon-cognito-identity-js` internal detail — inspect real `localStorage` content in a signed-in session to get the exact keys when implementing, rather than guessing them here).
 
@@ -193,10 +193,10 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 ### M.98 — Same-session cache consistency without a manual refresh
 
 **Use case:** [use-cases.md#uc-98](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-98) — "Data edited in one place (e.g. a room renamed in Settings) is consistent everywhere it's cached (meeting lists, availability grid) without needing a manual refresh."
-**Status:** ✅ Satisfied by [`tests/settings-rooms.spec.ts`](../tests/settings-rooms.spec.ts)'s J.81 test — see Notes
+**Status:** ✅ Satisfied by [`tests/p-rooms.spec.ts`](../tests/p-rooms.spec.ts)'s P.128 test — see Notes
 **Android:** not yet automated
 
-**Preconditions/Steps/Assertions:** Identical to [J.81](j-settings-rooms.md#tc-j81) — same mechanism (Apollo `InMemoryCache` normalization), same room-rename fixture, same "no reload" assertion.
+**Preconditions/Steps/Assertions:** Identical to [P.128](p-rooms.md#tc-p128) — same mechanism (Apollo `InMemoryCache` normalization), same room-rename fixture, same "no reload" assertion.
 
 **Out of scope:** N/A.
 

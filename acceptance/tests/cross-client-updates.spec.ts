@@ -48,7 +48,7 @@ async function signInAsDemo(page: Page): Promise<void> {
 }
 
 async function createRoom(page: Page, name: string, capacity: number): Promise<void> {
-  await page.goto('/settings')
+  await page.goto('/rooms')
   await page.getByRole('button', { name: 'Add room' }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByLabel('Name').fill(name)
@@ -58,7 +58,7 @@ async function createRoom(page: Page, name: string, capacity: number): Promise<v
 }
 
 async function createPerson(page: Page, name: string): Promise<void> {
-  await page.goto('/settings')
+  await page.goto('/persons')
   await page.getByRole('button', { name: 'Add person' }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByLabel('Name').fill(name)

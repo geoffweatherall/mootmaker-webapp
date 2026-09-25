@@ -190,8 +190,8 @@ test.describe('Q. Persons (admin only)', () => {
     await expect(personCard(page, guestName).getByText('Not signed up yet')).toBeVisible()
 
     const demoEmail = requireEnv('DEMO_USER_EMAIL')
-    await expect(personCard(page, 'Demo User').getByText('Admin')).toBeVisible()
-    await expect(personCard(page, 'Demo User').getByText(demoEmail)).toBeVisible()
+    await expect(personCard(page, 'Demo Strater').getByText('Admin')).toBeVisible()
+    await expect(personCard(page, 'Demo Strater').getByText(demoEmail)).toBeVisible()
   })
 
   test('Q.138 - admin grants admin access to a person with a linked account', async ({ page }) => {
@@ -235,7 +235,7 @@ test.describe('Q. Persons (admin only)', () => {
   test('Q.140 - the admin switch is disabled for the signed-in admin\'s own person', async ({ page }) => {
     await signInAsDemo(page)
     await page.goto('/persons')
-    await page.getByLabel('Edit Demo User').click()
+    await page.getByLabel('Edit Demo Strater').click()
     const dialog = page.getByRole('dialog')
 
     await expect(dialog.getByRole('switch', { name: 'Admin' })).toBeDisabled()
@@ -247,6 +247,9 @@ test.describe('Q. Persons (admin only)', () => {
     const targetName = `Q141 Person ${runId}`
     const otherAttendeeName = `Q141 Other ${runId}`
     const roomName = `Q141 Room ${runId}`
+    // A second room for the second meeting - both booked at Add Meeting's same default time under
+    // this test's one fixed clock, so sharing a room would collide with TimeRangeUnavailable.
+    const roomName2 = `Q141 Room 2 ${runId}`
     const organisedSubject = `Q141 Organised ${runId}`
     const attendedSubject = `Q141 Attended ${runId}`
     await page.clock.setFixedTime(PINNED_NOW)
@@ -257,12 +260,13 @@ test.describe('Q. Persons (admin only)', () => {
 
     await signInAsDemo(page)
     await createRoom(page, roomName, '4')
+    await createRoom(page, roomName2, '4')
     await createPerson(page, targetName)
     await createPerson(page, otherAttendeeName)
     // Target organises one meeting (demo user as an attendee, so it's still visible/queryable
     // afterward), and only attends a second one the demo user organises.
     await createMeeting(page, { subject: organisedSubject, roomName, organiserName: targetName })
-    await createMeeting(page, { subject: attendedSubject, roomName, attendeeNames: [targetName, otherAttendeeName] })
+    await createMeeting(page, { subject: attendedSubject, roomName: roomName2, attendeeNames: [targetName, otherAttendeeName] })
 
     await page.goto('/persons')
     await page.getByLabel(`Remove ${targetName}`).click()
@@ -277,7 +281,7 @@ test.describe('Q. Persons (admin only)', () => {
     // The meeting they only attended is untouched apart from their own removal - still bookable,
     // still shows the other attendee.
     const card = page
-      .getByText(roomName, { exact: true })
+      .getByText(roomName2, { exact: true })
       .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
     await card.getByRole('button', { name: /'s meetings/ }).click()
     await card.getByRole('button', { name: attendedSubject, exact: false }).click()
@@ -287,12 +291,12 @@ test.describe('Q. Persons (admin only)', () => {
   test('Q.142 - an admin cannot delete their own person this way', async ({ page }) => {
     await signInAsDemo(page)
     await page.goto('/persons')
-    await page.getByLabel('Remove Demo User').click()
+    await page.getByLabel('Remove Demo Strater').click()
     const dialog = page.getByRole('dialog')
     await dialog.getByRole('button', { name: 'Remove person' }).click()
 
     await expect(dialog.getByText('use Delete account in Settings instead')).toBeVisible()
     await dialog.getByRole('button', { name: 'Cancel' }).click()
-    await expect(personCard(page, 'Demo User')).toBeVisible()
+    await expect(personCard(page, 'Demo Strater')).toBeVisible()
   })
 })

@@ -45,10 +45,10 @@ is meant to be kept long-term.
 ## Test case catalog
 
 [test-cases/](test-cases/) has a detailed, reviewable design (Given/When/Then, UI-level steps with
-Playwright selector hints, assertions, explicit "out of scope" notes) for **every one of the 99
-use cases** in `use-cases.md` — the source to generate this suite's `.spec.ts` files from, one at a
+Playwright selector hints, assertions, explicit "out of scope" notes) for **every use case** in
+`use-cases.md` — the source to generate this suite's `.spec.ts` files from, one at a
 time. "Designed" isn't "automated" — see its own README for the format and the account/test-data
-conventions shared across all 99, and the Status list right below for what's actually implemented
+conventions shared across every case, and the Status list right below for what's actually implemented
 so far. It also flags three real inconsistencies found between `use-cases.md`'s wording and the
 actual webapp/API behaviour while writing it (a stale time-default figure, an apparently-unenforced
 validation rule, and a page-navigation feature that doesn't exist yet) — see its "Known doc/code
@@ -60,7 +60,7 @@ Most of the catalogued use cases have a spec, across `sign-up.spec.ts`,
 `sign-in-sign-out.spec.ts`, `forgot-password.spec.ts`, `add-meeting.spec.ts`,
 `00-room-availability-empty.spec.ts`, `room-availability.spec.ts`, `person-calendar.spec.ts`,
 `meeting-details.spec.ts`, `home-page.spec.ts`, `settings-your-name.spec.ts`,
-`settings-rooms.spec.ts`, `settings-people.spec.ts`, `authorization-boundaries.spec.ts`,
+`p-rooms.spec.ts`, `q-persons.spec.ts`, `authorization-boundaries.spec.ts`,
 `cross-cutting.spec.ts`, `attendee-response-status.spec.ts`, `cross-client-updates.spec.ts`, and
 `edit-and-cancel-meetings.spec.ts` — except G.64, confirmed infeasible against this project's
 standard environments (see its own catalog entry). Not every case has automated acceptance-layer

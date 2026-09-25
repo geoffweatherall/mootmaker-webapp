@@ -5,8 +5,8 @@ import { freshTestAccount } from '../../support/testAccount'
 // mootmaker/docs/reference/use-cases.md, section L (Authorization boundaries), cases 89-91.
 //
 // L.89 and (half of) L.91 are explicitly framed by the catalog as the general
-// authorization-boundary restatement of mechanics already built for their own sections (J.77,
-// K.84, I.74) - see l-authorization-boundaries.md's own file-level note. This file re-proves the
+// authorization-boundary restatement of mechanics already built for their own sections (P.124,
+// Q.132, I.74) - see l-authorization-boundaries.md's own file-level note. This file re-proves the
 // presentation-only half (L.89) directly rather than only cross-referencing, since it's cheap and
 // keeps this file self-contained; it does NOT re-implement I.74's self-rename happy path (L.91a),
 // only references it, per the catalog's explicit instruction not to make a third copy of that
@@ -70,27 +70,27 @@ async function fetchAdminAccessToken(request: import('@playwright/test').APIRequ
   return body.access_token as string
 }
 
-test('L.89 - standard user does not see the admin-only Rooms/People sections in Settings', async ({
+test('L.89 - standard user has no Rooms/Persons nav links and cannot reach either page directly', async ({
   page,
 }) => {
   const e2eEmail = requireEnv('E2E_USER_EMAIL')
   const e2ePassword = requireEnv('E2E_USER_PASSWORD')
 
   await signIn(page, e2eEmail, e2ePassword)
-  await page.goto('/settings')
 
-  // Same mechanism as J.77 + K.84, checked together in one visit per this entry's own Notes.
-  await expect(page.getByRole('heading', { name: 'Rooms' })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Add room' })).toHaveCount(0)
-  await expect(page.getByRole('heading', { name: 'People' })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Add person' })).toHaveCount(0)
+  // Same mechanism as P.124 + Q.132, checked together in one visit per this entry's own Notes.
+  // Rooms/Persons moved out of Settings to their own top-level pages (see the admin-rooms-and-
+  // people design doc) - the old in-Settings-section check this test used to do no longer applies.
+  await expect(page.getByRole('link', { name: 'Rooms' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Persons' })).toHaveCount(0)
 
-  // The page did render (not everything hidden by some unrelated failure) - the "Your name"
-  // section is visible to every signed-in user, admin or not.
-  await expect(page.getByRole('heading', { name: 'Your name' })).toBeVisible()
+  await page.goto('/rooms')
+  await expect(page).toHaveURL('/')
+  await page.goto('/persons')
+  await expect(page).toHaveURL('/')
 })
 
-test('L.90 - a standard user directly calling createRoom/updateRoom/createPerson is rejected server-side', async ({
+test('L.90 - a standard user directly calling any admin mutation is rejected server-side', async ({
   page,
   request,
 }) => {
@@ -98,10 +98,12 @@ test('L.90 - a standard user directly calling createRoom/updateRoom/createPerson
   const account = freshTestAccount()
   const runId = `${Date.now()}-${Math.floor(Math.random() * 10_000)}`
   const targetRoomName = `L90 Target Room ${runId}`
+  const targetPersonName = `L90 Target Person ${runId}`
 
-  // A real room to target with updateRoom - created via the M2M admin-equivalent token (see
-  // fetchAdminAccessToken) rather than the demo user's Settings UI, so this test's own precondition
-  // doesn't depend on which real Cognito account happens to be admin in this environment.
+  // A real room and person to target with updateRoom/deleteRoom/renamePerson/setPersonAdmin/
+  // deletePerson - created via the M2M admin-equivalent token (see fetchAdminAccessToken) rather
+  // than the demo admin's own UI, so this test's own precondition doesn't depend on which real
+  // Cognito account happens to be admin in this environment.
   const adminToken = await fetchAdminAccessToken(request)
   const createFixtureResponse = await request.post(graphqlUrl, {
     headers: { Authorization: adminToken },
@@ -114,6 +116,18 @@ test('L.90 - a standard user directly calling createRoom/updateRoom/createPerson
   const existingRoomId: string | undefined = createFixtureBody.data?.createRoom?.room?.id
   if (!existingRoomId) {
     throw new Error(`Failed to create this test's own room fixture: ${JSON.stringify(createFixtureBody)}`)
+  }
+  const createPersonFixtureResponse = await request.post(graphqlUrl, {
+    headers: { Authorization: adminToken },
+    data: {
+      query: `mutation ($name: String!) { createPerson(name: $name) { person { id } errors } }`,
+      variables: { name: targetPersonName },
+    },
+  })
+  const createPersonFixtureBody = await createPersonFixtureResponse.json()
+  const existingPersonId: string | undefined = createPersonFixtureBody.data?.createPerson?.person?.id
+  if (!existingPersonId) {
+    throw new Error(`Failed to create this test's own person fixture: ${JSON.stringify(createPersonFixtureBody)}`)
   }
 
   await createConfirmedTestAccount(account)
@@ -138,6 +152,15 @@ test('L.90 - a standard user directly calling createRoom/updateRoom/createPerson
   })
   const updateRoomBody = await updateRoomResponse.json()
 
+  const deleteRoomResponse = await request.post(graphqlUrl, {
+    headers: { Authorization: token },
+    data: {
+      query: `mutation ($id: ID!) { deleteRoom(id: $id) { rooms { id } errors } }`,
+      variables: { id: existingRoomId },
+    },
+  })
+  const deleteRoomBody = await deleteRoomResponse.json()
+
   const createPersonResponse = await request.post(graphqlUrl, {
     headers: { Authorization: token },
     data: {
@@ -147,22 +170,58 @@ test('L.90 - a standard user directly calling createRoom/updateRoom/createPerson
   })
   const createPersonBody = await createPersonResponse.json()
 
-  // Identity.requireAdmin throws, which AppSync surfaces as a top-level GraphQL `errors` array -
-  // a different channel than the structured CreateRoomResult.errors/UpdateRoomResult.errors field
-  // used for ordinary validation failures. All three requests should be rejected this way, with
-  // no data payload for the attempted mutation.
-  for (const body of [createRoomBody, updateRoomBody, createPersonBody]) {
-    expect(Array.isArray(body.errors) && body.errors.length > 0).toBe(true)
-  }
-  expect(createRoomBody.data?.createRoom ?? null).toBeNull()
-  expect(updateRoomBody.data?.updateRoom ?? null).toBeNull()
-  expect(createPersonBody.data?.createPerson ?? null).toBeNull()
+  const renamePersonResponse = await request.post(graphqlUrl, {
+    headers: { Authorization: token },
+    data: {
+      query: `mutation ($id: ID!, $name: String!) { renamePerson(id: $id, name: $name) { person { id } errors } }`,
+      variables: { id: existingPersonId, name: `L90 Renamed Person ${runId}` },
+    },
+  })
+  const renamePersonBody = await renamePersonResponse.json()
 
-  // Spot-check: neither the room nor the person was actually created, confirming the rejection
-  // wasn't just a response-shape artefact.
+  const setPersonAdminResponse = await request.post(graphqlUrl, {
+    headers: { Authorization: token },
+    data: {
+      query: `mutation ($id: ID!, $isAdmin: Boolean!) { setPersonAdmin(id: $id, isAdmin: $isAdmin) { person { id } errors } }`,
+      variables: { id: existingPersonId, isAdmin: true },
+    },
+  })
+  const setPersonAdminBody = await setPersonAdminResponse.json()
+
+  const deletePersonResponse = await request.post(graphqlUrl, {
+    headers: { Authorization: token },
+    data: {
+      query: `mutation ($id: ID!) { deletePerson(id: $id) { people { id } errors } }`,
+      variables: { id: existingPersonId },
+    },
+  })
+  const deletePersonBody = await deletePersonResponse.json()
+
+  // Identity.requireAdmin throws, which AppSync surfaces as a top-level GraphQL `errors` array -
+  // a different channel than each mutation's own structured Result.errors field used for ordinary
+  // validation failures. Every request above should be rejected this way, with no data payload
+  // for the attempted mutation. updateMyName is deliberately not included here - it isn't
+  // admin-only (self-only, no id argument at all - see L.91), so it would misrepresent it as
+  // symmetric with these when it isn't.
+  const results = {
+    createRoom: createRoomBody,
+    updateRoom: updateRoomBody,
+    deleteRoom: deleteRoomBody,
+    createPerson: createPersonBody,
+    renamePerson: renamePersonBody,
+    setPersonAdmin: setPersonAdminBody,
+    deletePerson: deletePersonBody,
+  }
+  for (const [name, body] of Object.entries(results)) {
+    expect(Array.isArray(body.errors) && body.errors.length > 0, `${name} should be rejected`).toBe(true)
+    expect(body.data?.[name] ?? null, `${name} should return no data`).toBeNull()
+  }
+
+  // Spot-check: nothing was actually created/changed/deleted, confirming the rejections weren't
+  // just a response-shape artefact.
   const afterResponse = await request.post(graphqlUrl, {
     headers: { Authorization: token },
-    data: { query: 'query { workspace { rooms { name } people { name } } }' },
+    data: { query: 'query { workspace { rooms { id name } people { id name } } }' },
   })
   const afterBody = await afterResponse.json()
   // Fail loudly if the query itself did not resolve. Reading through `?? []` alone made this
@@ -171,11 +230,13 @@ test('L.90 - a standard user directly calling createRoom/updateRoom/createPerson
   if (!afterBody.data?.workspace) {
     throw new Error(`Spot-check query failed: ${JSON.stringify(afterBody.errors ?? afterBody)}`)
   }
-  const roomNames: string[] = afterBody.data.workspace.rooms.map((r: { name: string }) => r.name)
-  const personNames: string[] = afterBody.data.workspace.people.map((p: { name: string }) => p.name)
-  expect(roomNames).not.toContain(`L90 Room ${runId}`)
-  expect(roomNames).not.toContain(`L90 Renamed ${runId}`)
-  expect(personNames).not.toContain(`L90 Person ${runId}`)
+  const rooms: { id: string; name: string }[] = afterBody.data.workspace.rooms
+  const people: { id: string; name: string }[] = afterBody.data.workspace.people
+  expect(rooms.map((r) => r.name)).not.toContain(`L90 Room ${runId}`)
+  expect(rooms.map((r) => r.name)).not.toContain(`L90 Renamed ${runId}`)
+  expect(rooms.find((r) => r.id === existingRoomId)?.name).toBe(targetRoomName)
+  expect(people.map((p) => p.name)).not.toContain(`L90 Person ${runId}`)
+  expect(people.find((p) => p.id === existingPersonId)?.name).toBe(targetPersonName)
 })
 
 test('L.91 - a standard user cannot rename another user\'s Person, even by forcing the mutation directly', async ({
@@ -193,12 +254,12 @@ test('L.91 - a standard user cannot rename another user\'s Person, even by forci
   // (a) accountA successfully renaming *itself* is already proven by I.74 (same account shape -
   // a fresh createConfirmedTestAccount) - deliberately not re-run here.
 
-  // (b) accountA has no UI path to renaming anyone else: no People section exists for a standard
-  // user at all (L.89/K.84 above), so there's structurally nothing to click.
+  // (b) accountA has no UI path to renaming anyone else: no Persons page exists for a standard
+  // user at all (L.89/Q.132 above), so there's structurally nothing to click. accountA's own
+  // self-rename path (Settings' "Your name") calls updateMyName, which takes no id argument at
+  // all - so even that UI has no way to target anyone but the caller.
   await signIn(page, accountA.email, accountA.password)
-  await page.goto('/settings')
-  await expect(page.getByRole('heading', { name: 'People' })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Add person' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Persons' })).toHaveCount(0)
 
   const token = await extractIdToken(page)
 

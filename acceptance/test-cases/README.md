@@ -4,7 +4,7 @@ A detailed, per-use-case design for every test in the `acceptance/` suite — on
 [mootmaker/docs/reference/use-cases.md](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md),
 written to be reviewed by a human before any test code exists, and precise enough for Claude to
 generate that code from later. This catalog is the *design*; [`../tests/`](../tests/) is the
-*implementation* — every one of the 99 use cases now has a spec (see each entry's **Status**),
+*implementation* — every use case now has a spec (see each entry's **Status**),
 except G.64, confirmed infeasible against this project's standard environments (see its own
 Notes).
 
@@ -18,7 +18,7 @@ now has a deterministic regression test. See
 [the design's "What the gate exposed"](https://github.com/geoffweatherall/mootmaker/blob/main/designs/archive/ci-cd-pipeline.md)
 for the full list and how each was diagnosed.
 
-**Scope**: full coverage — every one of the 99 use cases gets a complete real-browser test case
+**Scope**: full coverage — every use case gets a complete real-browser test case
 here, including ones that are also (or better) provable at the mocked `webapp/tests/` integration
 layer. This project isn't following the test pyramid strictly for this suite; some duplication
 between `acceptance/` and `webapp/tests/` is accepted deliberately rather than screened out case by
@@ -39,11 +39,14 @@ One file per lettered section of `use-cases.md`, same letters, same case numbers
 | [g-person-calendar.md](g-person-calendar.md) | G. Person Calendar | 59–67 |
 | [h-meeting-details.md](h-meeting-details.md) | H. Meeting Details | 68–73 |
 | [i-settings-your-name.md](i-settings-your-name.md) | I. Settings — Your name | 74–76 |
-| [j-settings-rooms.md](j-settings-rooms.md) | J. Settings — Rooms | 77–83 |
-| [k-settings-people.md](k-settings-people.md) | K. Settings — People | 84–88 |
+| [j-settings-rooms.md](j-settings-rooms.md) | J. Settings — Rooms *(superseded by P)* | 77–83 |
+| [k-settings-people.md](k-settings-people.md) | K. Settings — People *(superseded by Q)* | 84–88 |
 | [l-authorization-boundaries.md](l-authorization-boundaries.md) | L. Authorization boundaries | 89–91 |
-| [m-cross-cutting.md](m-cross-cutting.md) | M. Cross-cutting / non-functional | 92–99 |
+| [m-cross-cutting.md](m-cross-cutting.md) | M. Cross-cutting / non-functional | 92–99, 109–111 |
 | [n-date-time-format-settings.md](n-date-time-format-settings.md) | N. Settings — Date and time format | 100–106 |
+| [o-edit-and-cancel-meetings.md](o-edit-and-cancel-meetings.md) | O. Edit and Cancel Meetings | 112–123 |
+| [p-rooms.md](p-rooms.md) | P. Rooms *(supersedes J)* | 124–131 |
+| [q-persons.md](q-persons.md) | Q. Persons *(supersedes K)* | 132–142 |
 
 Case numbering matches `use-cases.md` exactly (global 1–99, not restarting per section), so a test
 case's ID is always `<SectionLetter>.<N>` — e.g. `F.38` — with no separate numbering scheme to keep

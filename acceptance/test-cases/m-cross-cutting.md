@@ -193,10 +193,10 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 ### M.98 — Same-session cache consistency without a manual refresh
 
 **Use case:** [use-cases.md#uc-98](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-98) — "Data edited in one place (e.g. a room renamed in Settings) is consistent everywhere it's cached (meeting lists, availability grid) without needing a manual refresh."
-**Status:** ✅ Satisfied by [`tests/settings-rooms.spec.ts`](../tests/settings-rooms.spec.ts)'s J.81 test — see Notes
+**Status:** ✅ Satisfied by [`tests/p-rooms.spec.ts`](../tests/p-rooms.spec.ts)'s P.128 test — see Notes
 **Android:** not yet automated
 
-**Preconditions/Steps/Assertions:** Identical to [J.81](j-settings-rooms.md#tc-j81) — same mechanism (Apollo `InMemoryCache` normalization), same room-rename fixture, same "no reload" assertion.
+**Preconditions/Steps/Assertions:** Identical to [P.128](p-rooms.md#tc-p128) — same mechanism (Apollo `InMemoryCache` normalization), same room-rename fixture, same "no reload" assertion.
 
 **Out of scope:** N/A.
 

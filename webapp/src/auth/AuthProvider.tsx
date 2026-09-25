@@ -3,8 +3,10 @@ import { apolloClient } from '../apolloClient'
 import {
   DEFAULT_DATE_FORMAT,
   DEFAULT_TIME_FORMAT,
+  DEFAULT_WEEK_START,
   type DateFormat,
   type TimeFormat,
+  type WeekStart,
 } from '../graphql/formatDateTime'
 import { SESSION } from '../graphql/queries'
 import { AuthContext } from './authContext'
@@ -19,6 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // always has both, and a null would only push a `?? 'Iso'` fallback into every call site.
   const [dateFormat, setDateFormat] = useState<DateFormat>(DEFAULT_DATE_FORMAT)
   const [timeFormat, setTimeFormat] = useState<TimeFormat>(DEFAULT_TIME_FORMAT)
+  const [weekStart, setWeekStart] = useState<WeekStart>(DEFAULT_WEEK_START)
   const [personLoading, setPersonLoading] = useState(false)
   const [initialising, setInitialising] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -59,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setPersonId(me.id)
           setDateFormat(me.dateFormat)
           setTimeFormat(me.timeFormat)
+          setWeekStart(me.weekStart)
         }
       })
       .catch(() => {
@@ -85,6 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsAdmin(false)
     setDateFormat(DEFAULT_DATE_FORMAT)
     setTimeFormat(DEFAULT_TIME_FORMAT)
+    setWeekStart(DEFAULT_WEEK_START)
     apolloClient.clearStore() // don't keep the signed-out user's data cached
   }
 
@@ -97,6 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         personLoading,
         dateFormat,
         timeFormat,
+        weekStart,
         initialising,
         isAdmin,
         signIn,

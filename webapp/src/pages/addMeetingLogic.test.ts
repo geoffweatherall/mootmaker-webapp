@@ -8,6 +8,7 @@ import {
   initialSuggestionCache,
   prioritizeCurrentRoom,
   referenceDataReady,
+  snapToNearestQuarterHour,
   type SuggestionCache,
 } from './addMeetingLogic'
 import type { Person, Room } from '../graphql/types'
@@ -17,9 +18,9 @@ const bob: Person = { id: 'p2', name: 'Bob', isAdmin: false, linkedEmails: [] }
 const carol: Person = { id: 'p3', name: 'Carol', isAdmin: false, linkedEmails: [] }
 const people: Person[] = [alice, bob, carol]
 
-const roomA: Room = { id: 'r1', name: 'Room A', capacity: 4 }
-const roomB: Room = { id: 'r2', name: 'Room B', capacity: 6 }
-const roomC: Room = { id: 'r3', name: 'Room C', capacity: 8 }
+const roomA: Room = { id: 'r1', name: 'Room A', capacity: 4, color: null }
+const roomB: Room = { id: 'r2', name: 'Room B', capacity: 6, color: null }
+const roomC: Room = { id: 'r3', name: 'Room C', capacity: 8, color: null }
 
 const keyA = '2026-01-01T10:00:00|2026-01-01T11:00:00|2'
 const keyB = '2026-01-01T10:00:00|2026-01-01T11:00:00|4'
@@ -219,5 +220,46 @@ describe('referenceDataReady', () => {
     // separate case to assert here: "no linked Person" IS (false, false), and writing it as its own
     // test would assert the same inputs twice while reading like extra coverage.
     expect(referenceDataReady(false, false)).toBe(true)
+  })
+})
+
+describe('snapToNearestQuarterHour', () => {
+  // Asserts non-null: every case here passes a real value in, so there is always a snapped
+  // Dayjs to format - `snapToNearestQuarterHour`'s own null-passthrough is covered separately.
+  function snap(iso: string, format: string): string {
+    const result = snapToNearestQuarterHour(dayjs(iso))
+    if (!result) throw new Error('expected a snapped value, got null')
+    return result.format(format)
+  }
+
+  it('leaves an already-on-step value unchanged', () => {
+    expect(snap('2026-01-01T10:30:00', 'HH:mm')).toEqual('10:30')
+  })
+
+  it('rounds down to the nearer boundary when it is the closer one', () => {
+    // 12:21 is 6 minutes past :15, 9 short of :30 - nearer to :15.
+    expect(snap('2026-01-01T12:21:00', 'HH:mm')).toEqual('12:15')
+    // 12:37 is 7 minutes past :30, 8 short of :45 - nearer to :30.
+    expect(snap('2026-01-01T12:37:00', 'HH:mm')).toEqual('12:30')
+  })
+
+  it('rounds up to the nearer boundary when it is the closer one', () => {
+    // mootmaker-webapp#126's own reported case: 12:28 is 13 minutes past :15, 2 short of :30 -
+    // nearer to :30.
+    expect(snap('2026-01-01T12:28:00', 'HH:mm')).toEqual('12:30')
+    // 12:23 is 8 minutes past :15, 7 short of :30 - nearer to :30.
+    expect(snap('2026-01-01T12:23:00', 'HH:mm')).toEqual('12:30')
+  })
+
+  it('rolls over into the next hour when the nearer boundary is :00', () => {
+    expect(snap('2026-01-01T12:53:00', 'HH:mm')).toEqual('13:00')
+  })
+
+  it('rolls over into the next day when the nearer boundary is midnight', () => {
+    expect(snap('2026-01-01T23:53:00', 'YYYY-MM-DD HH:mm')).toEqual('2026-01-02 00:00')
+  })
+
+  it('passes a cleared field through unchanged', () => {
+    expect(snapToNearestQuarterHour(null)).toBeNull()
   })
 })

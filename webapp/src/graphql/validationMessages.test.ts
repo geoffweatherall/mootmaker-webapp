@@ -32,6 +32,7 @@ describe('ROOM_ERROR_MESSAGES', () => {
 describe('PERSON_ERROR_MESSAGES', () => {
   const codes: PersonError[] = [
     'NameRequired',
+    'NameAlreadyExists',
     'PersonNotFound',
     'NoLinkedPerson',
     'CannotDeleteSelf',

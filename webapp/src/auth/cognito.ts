@@ -6,6 +6,7 @@ import {
   type CognitoUserSession,
 } from 'amazon-cognito-identity-js'
 import { runtimeConfig } from '../config'
+import { readableSignUpError } from './signUpErrors'
 
 const userPool = new CognitoUserPool({
   UserPoolId: runtimeConfig.COGNITO_USER_POOL_ID,
@@ -119,7 +120,7 @@ export function signUp(email: string, password: string, name: string): Promise<v
       // via Terraform, bypassing this call entirely).
       [new CognitoUserAttribute({ Name: 'name', Value: name })],
       [],
-      (error) => (error ? reject(error) : resolve()),
+      (error) => (error ? reject(readableSignUpError(error)) : resolve()),
     )
   })
 }

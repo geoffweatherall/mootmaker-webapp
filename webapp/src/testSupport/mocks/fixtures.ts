@@ -13,9 +13,9 @@ import { ADMIN_USER, DEMO_USER } from '../../auth/cognito.mock'
 import type { MeetingDetails as Meeting, MyPerson, Person, Room } from '../../graphql/types'
 
 export const rooms: Room[] = [
-  { id: 'room-boardroom', name: 'Boardroom', capacity: 4 },
-  { id: 'room-focus-pod', name: 'Focus Pod', capacity: 2 },
-  { id: 'room-garden-room', name: 'Garden Room', capacity: 5 },
+  { id: 'room-boardroom', name: 'Boardroom', capacity: 4, color: null },
+  { id: 'room-focus-pod', name: 'Focus Pod', capacity: 2, color: null },
+  { id: 'room-garden-room', name: 'Garden Room', capacity: 5, color: null },
 ]
 
 export const people: Person[] = [
@@ -36,8 +36,18 @@ export const people: Person[] = [
 // undefined where the real API guarantees a value. Left at the defaults, matching a fresh
 // account - a test wanting a non-default format sets it through the Settings page like a user.
 export const linkedPersonByEmail: Record<string, MyPerson> = {
-  [DEMO_USER.email]: { ...people[4], dateFormat: 'Iso', timeFormat: 'TwentyFourHour' },
-  [ADMIN_USER.email]: { ...people[3], dateFormat: 'Iso', timeFormat: 'TwentyFourHour' },
+  [DEMO_USER.email]: {
+    ...people[4],
+    dateFormat: 'Iso',
+    timeFormat: 'TwentyFourHour',
+    weekStart: 'Monday',
+  },
+  [ADMIN_USER.email]: {
+    ...people[3],
+    dateFormat: 'Iso',
+    timeFormat: 'TwentyFourHour',
+    weekStart: 'Monday',
+  },
 }
 
 // Created meetings, persisted to sessionStorage (not just an in-memory variable) so they survive

@@ -93,6 +93,8 @@ export type {
   PersonError,
   PreferencesError,
   RespondToMeetingError,
+  RoomColor,
   RoomError,
   TimeFormat,
+  WeekStart,
 } from './generated/graphql'

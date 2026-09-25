@@ -30,7 +30,7 @@ import { formatLocalTime } from '../graphql/formatDateTime'
 import { RESPOND_TO_MEETING } from '../graphql/mutations'
 import { DAYS, PAGE_LOAD } from '../graphql/queries'
 import type { Attendee, AttendeeStatus, Person, RespondToMeetingResult, Room } from '../graphql/types'
-import { roomColorAt } from '../theme/roomColor'
+import { roomColorFor } from '../theme/roomColor'
 import {
   formatRangeLabel,
   mergeNeedsResponseEntries,
@@ -581,7 +581,11 @@ export default function HomePage() {
                       )
                     ) : (
                       dayMeetings.map((meeting) => {
-                        const roomColor = roomColorAt(roomIndexById.get(meeting.room.id) ?? 0, theme.palette.mode)
+                        const roomColor = roomColorFor(
+                          roomsById.get(meeting.room.id) ?? { color: null },
+                          roomIndexById.get(meeting.room.id) ?? 0,
+                          theme.palette.mode,
+                        )
                         const myAttendee: Attendee | undefined = meeting.attendees.find(
                           (attendee) => attendee.person.id === personId,
                         )

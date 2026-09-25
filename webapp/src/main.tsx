@@ -1,8 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ApolloProvider } from '@apollo/client/react'
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { BrowserRouter } from 'react-router-dom'
 // Self-hosted (via @fontsource, not a Google Fonts CDN link) so the app has no external font
 // request at runtime - see theme/theme.ts for where these are wired into the MUI typography
@@ -19,6 +17,7 @@ import '@fontsource/outfit/800.css'
 import { apolloClient } from './apolloClient.ts'
 import { AuthProvider } from './auth/AuthProvider.tsx'
 import { ThemeModeProvider } from './theme/ThemeModeProvider.tsx'
+import { LocalizedPickersProvider } from './theme/LocalizedPickersProvider.tsx'
 import App from './App.tsx'
 
 function renderApp() {
@@ -26,13 +25,13 @@ function renderApp() {
     <StrictMode>
       <ApolloProvider client={apolloClient}>
         <ThemeModeProvider>
-          <LocalizationProvider dateAdapter={AdapterDayjs}>
-            <AuthProvider>
+          <AuthProvider>
+            <LocalizedPickersProvider>
               <BrowserRouter>
                 <App />
               </BrowserRouter>
-            </AuthProvider>
-          </LocalizationProvider>
+            </LocalizedPickersProvider>
+          </AuthProvider>
         </ThemeModeProvider>
       </ApolloProvider>
     </StrictMode>,

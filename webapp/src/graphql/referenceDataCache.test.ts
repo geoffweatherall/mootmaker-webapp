@@ -3,7 +3,7 @@ import { InMemoryCache } from '@apollo/client'
 import { REFERENCE_DATA } from './queries'
 import { cachePeople, cacheRooms } from './referenceDataCache'
 
-function cacheWith(rooms: { id: string; name: string; capacity: number }[]): InMemoryCache {
+function cacheWith(rooms: { id: string; name: string; capacity: number; color?: null }[]): InMemoryCache {
   const cache = new InMemoryCache({
     typePolicies: {
       Workspace: { keyFields: false },
@@ -17,7 +17,7 @@ function cacheWith(rooms: { id: string; name: string; capacity: number }[]): InM
     data: {
       workspace: {
         __typename: 'Workspace',
-        rooms: rooms.map((r) => ({ __typename: 'Room', ...r })),
+        rooms: rooms.map((r) => ({ __typename: 'Room', color: null, ...r })),
         people: [{ __typename: 'Person', id: 'p1', name: 'Ada Lovelace', isAdmin: false, linkedEmails: [] }],
       },
     } as never,
@@ -38,8 +38,8 @@ describe('referenceDataCache', () => {
     const cache = cacheWith([{ id: 'r1', name: 'Kaikoura', capacity: 8 }])
 
     cacheRooms(cache, [
-      { id: 'r1', name: 'Kaikoura', capacity: 8 },
-      { id: 'r2', name: 'Wanaka', capacity: 4 },
+      { id: 'r1', name: 'Kaikoura', capacity: 8, color: null },
+      { id: 'r2', name: 'Wanaka', capacity: 4, color: null },
     ] as never)
 
     expect(readRooms(cache)).toEqual(['Kaikoura', 'Wanaka'])
@@ -53,7 +53,7 @@ describe('referenceDataCache', () => {
       typePolicies: { Workspace: { keyFields: false }, Query: { fields: { workspace: { keyArgs: false } } } },
     })
 
-    cacheRooms(cache, [{ id: 'r1', name: 'Kaikoura', capacity: 8 }] as never)
+    cacheRooms(cache, [{ id: 'r1', name: 'Kaikoura', capacity: 8, color: null }] as never)
 
     expect(cache.readQuery({ query: REFERENCE_DATA })).toBeNull()
   })
@@ -61,7 +61,7 @@ describe('referenceDataCache', () => {
   it('leaves people untouched when writing rooms', () => {
     const cache = cacheWith([{ id: 'r1', name: 'Kaikoura', capacity: 8 }])
 
-    cacheRooms(cache, [{ id: 'r1', name: 'Kaikoura', capacity: 8 }] as never)
+    cacheRooms(cache, [{ id: 'r1', name: 'Kaikoura', capacity: 8, color: null }] as never)
 
     const data = cache.readQuery({ query: REFERENCE_DATA }) as { workspace: { people: { name: string }[] } }
     expect(data.workspace.people.map((p) => p.name)).toEqual(['Ada Lovelace'])

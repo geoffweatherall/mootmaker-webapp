@@ -146,6 +146,28 @@ test.describe('P. Rooms (admin only)', () => {
     await expect(page.getByText(roomName)).toBeVisible()
   })
 
+  // mootmaker-api#75. Not a numbered use case - a small enhancement to the create/edit flow
+  // P.125 already covers, not a distinct scenario of its own.
+  test('an admin can choose a room colour from the fixed palette, and it persists', async ({ page }) => {
+    const runId = uniqueId()
+    const roomName = `Colour Room ${runId}`
+
+    await signInAsDemo(page)
+    await page.goto('/rooms')
+    await page.getByRole('button', { name: 'Add room' }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByLabel('Name').fill(roomName)
+    await dialog.getByLabel('Capacity').fill('4')
+    await dialog.getByRole('button', { name: 'Violet' }).click()
+    await dialog.getByRole('button', { name: 'Save' }).click()
+    await expect(roomCard(page, roomName)).toBeVisible()
+
+    // Re-opening Edit shows the same choice already selected - proves it round-tripped through
+    // the real API and back, not just that the button could be clicked.
+    await page.getByLabel(`Edit ${roomName}`).click()
+    await expect(dialog.getByRole('button', { name: 'Violet', pressed: true })).toBeVisible()
+  })
+
   test('P.126 - blank room name is rejected', async ({ page }) => {
     await signInAsDemo(page)
     await page.goto('/rooms')

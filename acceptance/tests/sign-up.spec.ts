@@ -212,3 +212,33 @@ test('can immediately schedule a meeting as themselves right after signing up', 
   const organiserRow = page.getByText('Organiser', { exact: true }).locator('xpath=following-sibling::*[1]')
   await expect(organiserRow.getByText(account.name, { exact: true })).toBeVisible()
 })
+
+// mootmaker-api#70: production once ended up with two "Willy Wombat" Persons - one created
+// directly, the other by signing up with the same name - because nothing checked for a collision at
+// either entry point. The decided fix (see PreSignUpNameCollisionHandler) is outright rejection at
+// sign-up, not silent reuse or a merge step: this is the real-Cognito half of that coverage, in the
+// same spirit as case 3's already-registered-email rejection above. The mocked-layer equivalent
+// (webapp/tests/persons-page.spec.ts and its q-persons.spec.ts sibling in this same directory) cover
+// the person-create-page half and the case/whitespace-matching rule itself; this only needs to prove
+// the PreSignUp Lambda trigger actually blocks account creation before any Cognito user exists -
+// unlike PostConfirmation, which fires only after the account is already real (see cognito.tf and
+// PostConfirmationCreatePersonHandler's own doc comment).
+test('signing up with a name that collides with an existing person is rejected, not silently duplicated', async ({
+  page,
+}) => {
+  const existingAccount = freshTestAccount()
+  await createConfirmedTestAccount(existingAccount)
+
+  const collidingAccount = freshTestAccount()
+  await page.goto('/signup')
+  // Case/whitespace-insensitive on purpose - proves the rule, not just an exact-string match.
+  await page.getByLabel('Name').fill(`  ${existingAccount.name.toUpperCase()}  `)
+  await page.getByLabel('Email').fill(collidingAccount.email)
+  await page.getByLabel('Password').fill(collidingAccount.password)
+  await page.getByRole('button', { name: 'Sign up' }).click()
+
+  await expect(page.getByText('A person with this name already exists.')).toBeVisible()
+  // Rejected before any Cognito user was created - never reaches the verification-code step, and a
+  // fresh attempt with the same email still starts clean rather than hitting UsernameExistsException.
+  await expect(page.getByLabel('Verification code')).not.toBeVisible()
+})

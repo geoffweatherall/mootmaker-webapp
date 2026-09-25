@@ -15,11 +15,13 @@ export const CREATE_ROOM = graphql(`
         id
         name
         capacity
+        color
       }
       room {
         id
         name
         capacity
+        color
       }
       errors
     }
@@ -33,11 +35,13 @@ export const UPDATE_ROOM = graphql(`
         id
         name
         capacity
+        color
       }
       room {
         id
         name
         capacity
+        color
       }
       errors
     }
@@ -51,6 +55,7 @@ export const DELETE_ROOM = graphql(`
         id
         name
         capacity
+        color
       }
       errors
     }
@@ -86,6 +91,7 @@ export const UPDATE_MY_NAME = graphql(`
         name
         dateFormat
         timeFormat
+        weekStart
       }
       errors
     }
@@ -172,6 +178,7 @@ export const UPDATE_MY_PREFERENCES = graphql(`
         name
         dateFormat
         timeFormat
+        weekStart
       }
       errors
     }
@@ -210,6 +217,7 @@ export const CREATE_MEETING = graphql(`
           id
           name
           capacity
+          color
         }
         organiser {
           id
@@ -270,6 +278,7 @@ export const RESPOND_TO_MEETING = graphql(`
           id
           name
           capacity
+          color
         }
         organiser {
           id
@@ -307,6 +316,7 @@ export const UPDATE_MEETING = graphql(`
           id
           name
           capacity
+          color
         }
         organiser {
           id

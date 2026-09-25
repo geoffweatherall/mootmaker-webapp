@@ -50,9 +50,21 @@ import { PersonsIcon } from '../icons'
 export default function PersonsPage() {
   const [dialogPerson, setDialogPerson] = useState<Person | 'new' | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Person | null>(null)
+  const [filter, setFilter] = useState('')
   const { data, loading, error } = useQuery(REFERENCE_DATA, { fetchPolicy: 'cache-and-network' })
 
-  const people = [...(data?.workspace.people ?? [])].sort((a, b) => a.name.localeCompare(b.name))
+  const allPeople = [...(data?.workspace.people ?? [])].sort((a, b) => a.name.localeCompare(b.name))
+  // Matches name or any linked email - an admin is as likely to search by one as the other.
+  // Client-side only: the whole list is already in cache (see REFERENCE_DATA), so there is no
+  // query to narrow server-side.
+  const normalizedFilter = filter.trim().toLowerCase()
+  const people = normalizedFilter
+    ? allPeople.filter(
+        (person) =>
+          person.name.toLowerCase().includes(normalizedFilter) ||
+          person.linkedEmails.some((email) => email.toLowerCase().includes(normalizedFilter)),
+      )
+    : allPeople
   const showSpinner = loading && !data
   // `loading` disables the FAB and every card's Edit/Remove below - see RoomsPage's identical guard
   // for why: a create/edit/delete fired while this initial cache-and-network fetch is still in
@@ -71,12 +83,24 @@ export default function PersonsPage() {
 
       <ErrorBanner messages={errorMessages(error)} onDismiss={() => {}} />
 
+      {allPeople.length > 0 && (
+        <TextField
+          label="Filter"
+          placeholder="Search by name or email"
+          value={filter}
+          onChange={(event) => setFilter(event.target.value)}
+          fullWidth
+        />
+      )}
+
       {showSpinner ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress />
         </Box>
-      ) : people.length === 0 ? (
+      ) : allPeople.length === 0 ? (
         !error && <EmptyState message="No people exist yet." icon={PersonsIcon} />
+      ) : people.length === 0 ? (
+        <EmptyState message="No people match that filter." icon={PersonsIcon} />
       ) : (
         <Box
           sx={{

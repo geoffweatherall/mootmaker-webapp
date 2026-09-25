@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { DateFormat, TimeFormat } from '../graphql/formatDateTime'
+import type { DateFormat, TimeFormat, WeekStart } from '../graphql/formatDateTime'
 
 export interface AuthContextValue {
   /** Signed-in user's email, or null when signed out. Used to gate access, not for display. */
@@ -19,6 +19,10 @@ export interface AuthContextValue {
   dateFormat: DateFormat
   /** The signed-in viewer's own time format, with the same defaulting as dateFormat. */
   timeFormat: TimeFormat
+  /** The signed-in viewer's own date-picker week-start preference, with the same defaulting as
+   * dateFormat. Only affects a date-picker calendar grid's first column - see the schema's own
+   * doc on Person.weekStart. */
+  weekStart: WeekStart
   /** True until the initial session check completes on page load. */
   initialising: boolean
   /** True if the signed-in user's class (from the ID token) is "admin". Presentation only - see

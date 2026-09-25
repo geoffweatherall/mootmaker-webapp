@@ -304,4 +304,43 @@ test.describe('Q. Persons (admin only)', () => {
     await dialog.getByRole('button', { name: 'Cancel' }).click()
     await expect(personCard(page, 'Demo Strater')).toBeVisible()
   })
+
+  // mootmaker-webapp#125. Not a numbered use case - a small addition to the page P/Q already
+  // cover, not a distinct scenario of its own.
+  test('a filter narrows the list by name or linked email', async ({ page }) => {
+    const runId = uniqueId()
+    const guestName = `Filter Guest ${runId}`
+
+    await signInAsDemo(page)
+    await createPerson(page, guestName)
+
+    await page.getByRole('textbox', { name: 'Filter' }).fill(guestName)
+    await expect(personCard(page, guestName)).toBeVisible()
+    await expect(page.getByRole('main').getByText('Demo Strater')).toHaveCount(0)
+
+    const demoEmail = requireEnv('DEMO_USER_EMAIL')
+    await page.getByRole('textbox', { name: 'Filter' }).fill(demoEmail)
+    await expect(page.getByRole('main').getByText('Demo Strater')).toBeVisible()
+    await expect(personCard(page, guestName)).toHaveCount(0)
+  })
+
+  // mootmaker-api#70. Sign-up's own half of this rule is covered separately, in
+  // acceptance/tests/sign-up.spec.ts, since it needs a real Cognito sign-up rather than this
+  // admin-only page.
+  test('rejects adding a person whose name collides with an existing one', async ({ page }) => {
+    const runId = uniqueId()
+    const guestName = `Collision Guest ${runId}`
+
+    await signInAsDemo(page)
+    await createPerson(page, guestName)
+
+    await page.goto('/persons')
+    await page.getByRole('button', { name: 'Add person' }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByLabel('Name').fill(`  ${guestName.toUpperCase()}  `)
+    await dialog.getByRole('button', { name: 'Save' }).click()
+
+    await expect(dialog.getByText('A person with this name already exists.')).toBeVisible()
+    await expect(dialog).toBeVisible()
+  })
 })

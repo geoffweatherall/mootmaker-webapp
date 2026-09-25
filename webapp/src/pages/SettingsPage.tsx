@@ -8,7 +8,13 @@ import { SubmitButton } from '../components/SubmitButton'
 import { SuccessToast } from '../components/SuccessToast'
 import { errorMessages } from '../graphql/errorMessages'
 import { DELETE_MY_ACCOUNT, UPDATE_MY_NAME, UPDATE_MY_PREFERENCES } from '../graphql/mutations'
-import { type DateFormat, type TimeFormat, type UpdateMyNameResult, type UpdateMyPreferencesResult } from '../graphql/types'
+import {
+  type DateFormat,
+  type TimeFormat,
+  type UpdateMyNameResult,
+  type UpdateMyPreferencesResult,
+  type WeekStart,
+} from '../graphql/types'
 import { PERSON_ERROR_MESSAGES, PREFERENCES_ERROR_MESSAGES } from '../graphql/validationMessages'
 
 export default function SettingsPage() {
@@ -130,9 +136,10 @@ function NameSection() {
  * renders in the *viewer's* own format, never the organiser's - see the design doc.
  */
 function DateTimeFormatSection() {
-  const { dateFormat, timeFormat, personId, personLoading, refreshPerson } = useAuth()
+  const { dateFormat, timeFormat, weekStart, personId, personLoading, refreshPerson } = useAuth()
   const [pendingDateFormat, setPendingDateFormat] = useState<DateFormat>(dateFormat)
   const [pendingTimeFormat, setPendingTimeFormat] = useState<TimeFormat>(timeFormat)
+  const [pendingWeekStart, setPendingWeekStart] = useState<WeekStart>(weekStart)
   const [fieldErrors, setFieldErrors] = useState<string[]>([])
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [updateMyPreferences, { loading, error, reset }] =
@@ -144,8 +151,9 @@ function DateTimeFormatSection() {
     if (personId) {
       setPendingDateFormat(dateFormat)
       setPendingTimeFormat(timeFormat)
+      setPendingWeekStart(weekStart)
     }
-  }, [personId, dateFormat, timeFormat])
+  }, [personId, dateFormat, timeFormat, weekStart])
 
   const bannerMessages = [...fieldErrors, ...errorMessages(error)]
 
@@ -159,10 +167,16 @@ function DateTimeFormatSection() {
     if (!personId) return
     setFieldErrors([])
 
-    // Both formats go every time - the mutation replaces the pair rather than patching one, and
-    // both are non-null in the schema.
+    // All three go every time - the mutation replaces the whole set rather than patching one, and
+    // all three are non-null in the schema.
     const result = await updateMyPreferences({
-      variables: { preferences: { dateFormat: pendingDateFormat, timeFormat: pendingTimeFormat } },
+      variables: {
+        preferences: {
+          dateFormat: pendingDateFormat,
+          timeFormat: pendingTimeFormat,
+          weekStart: pendingWeekStart,
+        },
+      },
     })
     const payload = result.data?.updateMyPreferences
     if (payload?.errors.length) {
@@ -182,8 +196,9 @@ function DateTimeFormatSection() {
           Date and time format
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          How dates and times are shown to you, and how you type them in. This only changes what
-          you see - it doesn&apos;t change anyone else&apos;s view.
+          How dates and times are shown to you, how you type them in, and which day a date picker
+          starts its weeks on. This only changes what you see - it doesn&apos;t change anyone
+          else&apos;s view.
         </Typography>
         <ErrorBanner messages={bannerMessages} onDismiss={dismissBanner} />
         <Stack
@@ -215,6 +230,17 @@ function DateTimeFormatSection() {
           >
             <MenuItem value="TwentyFourHour">14:30</MenuItem>
             <MenuItem value="AmPm">02:30 PM</MenuItem>
+          </TextField>
+          <TextField
+            select
+            label="Week starts on"
+            value={pendingWeekStart}
+            onChange={(event) => setPendingWeekStart(event.target.value as WeekStart)}
+            disabled={!personId}
+            sx={{ flexGrow: 1, minWidth: 240 }}
+          >
+            <MenuItem value="Monday">Monday</MenuItem>
+            <MenuItem value="Sunday">Sunday</MenuItem>
           </TextField>
           <SubmitButton loading={loading} disabled={!personId} hasError={bannerMessages.length > 0}>
             Save

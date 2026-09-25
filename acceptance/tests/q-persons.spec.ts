@@ -43,8 +43,13 @@ async function signOut(page: Page) {
 }
 
 /** The Persons page's card for a given person name. */
+/** Scoped to `main`, not just the nearest MuiPaper-root ancestor - the signed-in admin's own name
+ * (always "Demo Strater" in this catalog's tests) also appears in the nav sidebar's account area,
+ * itself inside a MuiPaper-root (the Drawer), so an unscoped search is ambiguous whenever a test
+ * looks up the demo admin's own card (Q.137, Q.140, Q.142). */
 function personCard(page: Page, name: string) {
   return page
+    .getByRole('main')
     .getByText(name, { exact: true })
     .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
 }

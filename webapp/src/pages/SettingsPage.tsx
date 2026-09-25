@@ -1,62 +1,15 @@
-import { useMutation, useQuery } from '@apollo/client/react'
-import AddIcon from '@mui/icons-material/Add'
-import EditIcon from '@mui/icons-material/Edit'
-import {
-  Box,
-  Button,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  IconButton,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  MenuItem,
-  Paper,
-  Stack,
-  TextField,
-  Typography,
-  useTheme,
-} from '@mui/material'
+import { useMutation } from '@apollo/client/react'
+import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material'
 import { useEffect, useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/authContext'
 import { ErrorBanner } from '../components/ErrorBanner'
-import { PersonAvatar } from '../components/PersonAvatar'
 import { SubmitButton } from '../components/SubmitButton'
 import { SuccessToast } from '../components/SuccessToast'
-import type { ErrorLike } from '@apollo/client'
 import { errorMessages } from '../graphql/errorMessages'
-import { cachePeople, cacheRooms } from '../graphql/referenceDataCache'
-import { roomColorAt } from '../theme/roomColor'
-import {
-  CREATE_PERSON,
-  CREATE_ROOM,
-  DELETE_MY_ACCOUNT,
-  UPDATE_MY_PREFERENCES,
-  UPDATE_PERSON,
-  UPDATE_ROOM,
-} from '../graphql/mutations'
-import { REFERENCE_DATA } from '../graphql/queries'
-import {
-  type CreateRoomResult,
-  type DateFormat,
-  type Person,
-  type Room,
-  type TimeFormat,
-  type UpdateMyPreferencesResult,
-  type CreatePersonResult,
-  type UpdatePersonResult,
-  type UpdateRoomResult,
-} from '../graphql/types'
-import {
-  PERSON_ERROR_MESSAGES,
-  PREFERENCES_ERROR_MESSAGES,
-  ROOM_ERROR_MESSAGES,
-} from '../graphql/validationMessages'
+import { DELETE_MY_ACCOUNT, UPDATE_MY_NAME, UPDATE_MY_PREFERENCES } from '../graphql/mutations'
+import { type DateFormat, type TimeFormat, type UpdateMyNameResult, type UpdateMyPreferencesResult } from '../graphql/types'
+import { PERSON_ERROR_MESSAGES, PREFERENCES_ERROR_MESSAGES } from '../graphql/validationMessages'
 
 export default function SettingsPage() {
   const { isAdmin } = useAuth()
@@ -66,11 +19,25 @@ export default function SettingsPage() {
       <Typography variant="h4" component="h1">
         Settings
       </Typography>
+      {isAdmin && <MovedToAdminPagesBanner />}
       <NameSection />
       <DateTimeFormatSection />
-      {isAdmin && <AdminSections />}
       <DeleteAccountSection />
     </Stack>
+  )
+}
+
+/**
+ * Admin only. Room and Person management used to live inline in this page (AdminSections) -
+ * they're now their own top-level pages, reachable from the sidebar's Admin section. This is
+ * purely a pointer for anyone who still expects to find them here.
+ */
+function MovedToAdminPagesBanner() {
+  return (
+    <Alert severity="info">
+      Room and person management has moved. You&apos;ll find them under{' '}
+      <Link to="/rooms">Rooms</Link> and <Link to="/persons">Persons</Link> in the menu.
+    </Alert>
   )
 }
 
@@ -80,7 +47,7 @@ function NameSection() {
   const [name, setName] = useState(displayName ?? '')
   const [fieldErrors, setFieldErrors] = useState<string[]>([])
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
-  const [updatePerson, { loading, error, reset }] = useMutation<{ updatePerson: UpdatePersonResult }>(UPDATE_PERSON)
+  const [updateMyName, { loading, error, reset }] = useMutation<{ updateMyName: UpdateMyNameResult }>(UPDATE_MY_NAME)
 
   // displayName resolves asynchronously (Cognito name first, then the myPerson query overrides it
   // once it loads) - reseed the field whenever the linked person becomes known so it doesn't get
@@ -101,8 +68,8 @@ function NameSection() {
     if (!personId) return
     setFieldErrors([])
 
-    const result = await updatePerson({ variables: { id: personId, person: { name } } })
-    const payload = result.data?.updatePerson
+    const result = await updateMyName({ variables: { name } })
+    const payload = result.data?.updateMyName
     if (payload?.errors.length) {
       setFieldErrors(payload.errors.map((code) => PERSON_ERROR_MESSAGES[code]))
       return
@@ -269,328 +236,6 @@ function DateTimeFormatSection() {
       </Stack>
       <SuccessToast message={successMessage} onClose={() => setSuccessMessage(null)} />
     </Paper>
-  )
-}
-
-/**
- * Admin only. Owns both admin queries so the two sections appear together, rather than each
- * arriving whenever its own query happens to resolve.
- *
- * That matters for more than tidiness. Rooms renders above People, so a rooms list arriving late
- * grows from a spinner to a full list - hundreds of pixels in a real environment - and pushes
- * People's "Add person" button down. A control that moves under the cursor silently eats a click
- * already in progress: mousedown lands on the button, the layout shifts, mouseup lands elsewhere,
- * and the browser fires click on the common ancestor rather than the button, so onClick never
- * runs. mootmaker-webapp#43 cost a 120-second acceptance timeout to exactly that mechanism.
- *
- * The rule this follows: an async result must never change the size of anything above an
- * interactive control that is already clickable. Either the space is reserved, or the control is
- * not there yet. A list of unknown length cannot reserve its space, so this takes the other
- * option - neither Add button exists until both lists are ready.
- *
- * The queries live here rather than in the sections so this costs no extra requests. Leaving them
- * in the children and merely gating the parent would fire each `cache-and-network` query a second
- * time.
- */
-function AdminSections() {
-    // One query for both sections, so they can no longer settle independently and appear one at a
-  // time - the layout-shift problem webapp#50 was about.
-  const referenceData = useQuery(REFERENCE_DATA, { fetchPolicy: 'cache-and-network' })
-
-  // An errored query has settled, even though it has no data - so this waits for the network, not
-  // for success, and a failure still renders the section with its ErrorBanner.
-  if (referenceData.loading && !referenceData.data) {
-    return (
-      <Paper component="section" sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-          <CircularProgress size={24} />
-        </Box>
-      </Paper>
-    )
-  }
-
-  return (
-    <>
-      <RoomsSection rooms={referenceData.data?.workspace.rooms ?? []} error={referenceData.error} refetch={referenceData.refetch} />
-      <PeopleSection people={referenceData.data?.workspace.people ?? []} error={referenceData.error} refetch={referenceData.refetch} />
-    </>
-  )
-}
-
-interface AdminSectionProps<T> {
-  items: T[]
-  error: ErrorLike | undefined
-  refetch: () => void
-}
-
-/** Admin only - lists every room, with an edit dialog per row and an "Add room" dialog. */
-function RoomsSection({ rooms: roomList, error, refetch }: { rooms: Room[] } & Omit<AdminSectionProps<Room>, 'items'>) {
-  const [dialogRoom, setDialogRoom] = useState<Room | 'new' | null>(null)
-  const theme = useTheme()
-
-  const rooms = [...roomList].sort((a, b) => a.name.localeCompare(b.name))
-
-  return (
-    <Paper component="section" sx={{ p: 3 }}>
-      <Stack spacing={2}>
-        <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6" component="h2">
-            Rooms
-          </Typography>
-          <Button startIcon={<AddIcon />} onClick={() => setDialogRoom('new')}>
-            Add room
-          </Button>
-        </Stack>
-        <ErrorBanner messages={errorMessages(error)} onDismiss={() => {}} />
-        {rooms.length === 0 ? (
-          !error && <Typography color="text.secondary">No rooms exist yet.</Typography>
-        ) : (
-          <List dense disablePadding>
-            {rooms.map((room, index) => {
-              // Same roomColorAt(sorted-index, mode) scheme as RoomAvailabilityPage/PersonCalendarPage,
-              // so a room gets the same colour here as everywhere else it's shown (see theme/roomColor.ts).
-              const roomColor = roomColorAt(index, theme.palette.mode)
-              return (
-                <ListItem
-                  key={room.id}
-                  secondaryAction={
-                    <IconButton edge="end" aria-label={`Edit ${room.name}`} onClick={() => setDialogRoom(room)}>
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                  }
-                  disableGutters
-                >
-                  <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexGrow: 1 }}>
-                    <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: roomColor, flexShrink: 0 }} />
-                    <ListItemText primary={room.name} secondary={`Capacity ${room.capacity}`} />
-                  </Stack>
-                </ListItem>
-              )
-            })}
-          </List>
-        )}
-      </Stack>
-      {dialogRoom !== null && (
-        <RoomDialog
-          room={dialogRoom === 'new' ? null : dialogRoom}
-          onClose={() => setDialogRoom(null)}
-          onSaved={() => {
-            setDialogRoom(null)
-            refetch()
-          }}
-        />
-      )}
-    </Paper>
-  )
-}
-
-interface RoomDialogProps {
-  /** null means "create a new room" - otherwise the room being edited. */
-  room: Room | null
-  onClose: () => void
-  onSaved: () => void
-}
-
-function RoomDialog({ room, onClose, onSaved }: RoomDialogProps) {
-  const [name, setName] = useState(room?.name ?? '')
-  const [capacity, setCapacity] = useState(room ? String(room.capacity) : '')
-  const [fieldErrors, setFieldErrors] = useState<string[]>([])
-  // No update function, and no refetch to race it.
-  //
-  // createRoom now returns the whole `rooms` collection alongside the created room, so the cached
-  // list is replaced by an authoritative one that came back with the write. The old version merged
-  // the single created room into the cached list by hand, because a room had been observed missing
-  // from the list immediately after a successful create - a race between concurrent fetches of the
-  // list query, where a response issued before the write landed after the refetch's and overwrote
-  // it. There is no read to lose that race now. See mootmaker-webapp#1 and #12.
-  const [createRoom, createState] = useMutation<{ createRoom: CreateRoomResult }>(CREATE_ROOM, {
-    // The returned collection has to be written into workspace.rooms explicitly - see
-    // referenceDataCache. Without it the new room never reaches Add Meeting's dropdown.
-    update: (cache, { data }) => cacheRooms(cache, data?.createRoom.rooms),
-  })
-  const [updateRoom, updateState] = useMutation<{ updateRoom: UpdateRoomResult }>(UPDATE_ROOM, {
-    update: (cache, { data }) => cacheRooms(cache, data?.updateRoom.rooms),
-  })
-  const loading = createState.loading || updateState.loading
-  const bannerMessages = [...fieldErrors, ...errorMessages(createState.error), ...errorMessages(updateState.error)]
-
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    setFieldErrors([])
-    const roomInput = { name, capacity: Number(capacity) }
-
-    if (room) {
-      const result = await updateRoom({ variables: { id: room.id, room: roomInput } })
-      const payload = result.data?.updateRoom
-      if (payload?.errors.length) {
-        setFieldErrors(payload.errors.map((code) => ROOM_ERROR_MESSAGES[code]))
-        return
-      }
-      if (payload?.room) onSaved()
-    } else {
-      const result = await createRoom({ variables: { room: roomInput } })
-      const payload = result.data?.createRoom
-      if (payload?.errors.length) {
-        setFieldErrors(payload.errors.map((code) => ROOM_ERROR_MESSAGES[code]))
-        return
-      }
-      if (payload?.room) onSaved()
-    }
-  }
-
-  return (
-    <Dialog open onClose={loading ? undefined : onClose} fullWidth maxWidth="xs">
-      <DialogTitle>{room ? 'Edit room' : 'Add room'}</DialogTitle>
-      <Stack component="form" onSubmit={handleSubmit}>
-        <DialogContent>
-          <Stack spacing={3}>
-            <ErrorBanner messages={bannerMessages} onDismiss={() => setFieldErrors([])} />
-            <TextField label="Name" value={name} onChange={(event) => setName(event.target.value)} autoFocus fullWidth />
-            <TextField
-              label="Capacity"
-              type="number"
-              value={capacity}
-              onChange={(event) => setCapacity(event.target.value)}
-              slotProps={{ htmlInput: { min: 0 } }}
-              fullWidth
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose} disabled={loading}>
-            Cancel
-          </Button>
-          <SubmitButton loading={loading} hasError={bannerMessages.length > 0}>
-            Save
-          </SubmitButton>
-        </DialogActions>
-      </Stack>
-    </Dialog>
-  )
-}
-
-/** Admin only - lists every person, with an edit dialog per row and an "Add person" dialog. */
-function PeopleSection({
-  people: peopleList,
-  error,
-  refetch,
-}: { people: Person[] } & Omit<AdminSectionProps<Person>, 'items'>) {
-  const [dialogPerson, setDialogPerson] = useState<Person | 'new' | null>(null)
-
-  const people = [...peopleList].sort((a, b) => a.name.localeCompare(b.name))
-
-  return (
-    <Paper component="section" sx={{ p: 3 }}>
-      <Stack spacing={2}>
-        <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6" component="h2">
-            People
-          </Typography>
-          <Button startIcon={<AddIcon />} onClick={() => setDialogPerson('new')}>
-            Add person
-          </Button>
-        </Stack>
-        <ErrorBanner messages={errorMessages(error)} onDismiss={() => {}} />
-        {people.length === 0 ? (
-          !error && <Typography color="text.secondary">No people exist yet.</Typography>
-        ) : (
-          <List dense disablePadding>
-            {people.map((person) => (
-              <ListItem
-                key={person.id}
-                secondaryAction={
-                  <IconButton edge="end" aria-label={`Edit ${person.name}`} onClick={() => setDialogPerson(person)}>
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                }
-                disableGutters
-              >
-                <ListItemAvatar sx={{ minWidth: 44 }}>
-                  <PersonAvatar name={person.name} size={32} />
-                </ListItemAvatar>
-                <ListItemText primary={person.name} />
-              </ListItem>
-            ))}
-          </List>
-        )}
-      </Stack>
-      {dialogPerson !== null && (
-        <PersonDialog
-          person={dialogPerson === 'new' ? null : dialogPerson}
-          onClose={() => setDialogPerson(null)}
-          onSaved={() => {
-            setDialogPerson(null)
-            refetch()
-          }}
-        />
-      )}
-    </Paper>
-  )
-}
-
-interface PersonDialogProps {
-  /** null means "create a new person" - otherwise the person being edited. */
-  person: Person | null
-  onClose: () => void
-  onSaved: () => void
-}
-
-function PersonDialog({ person, onClose, onSaved }: PersonDialogProps) {
-  const [name, setName] = useState(person?.name ?? '')
-  const [fieldErrors, setFieldErrors] = useState<string[]>([])
-  // No update function here either - createPerson returns the whole `people` collection with the
-  // write, so there is no cached list to merge into and no read that could lose a race with it.
-  const [createPerson, createState] = useMutation<{ createPerson: CreatePersonResult }>(CREATE_PERSON, {
-    update: (cache, { data }) => cachePeople(cache, data?.createPerson.people),
-  })
-  const [updatePerson, updateState] = useMutation<{ updatePerson: UpdatePersonResult }>(UPDATE_PERSON, {
-    update: (cache, { data }) => cachePeople(cache, data?.updatePerson.people),
-  })
-  const loading = createState.loading || updateState.loading
-  const bannerMessages = [...fieldErrors, ...errorMessages(createState.error), ...errorMessages(updateState.error)]
-
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    setFieldErrors([])
-
-    if (person) {
-      const result = await updatePerson({ variables: { id: person.id, person: { name } } })
-      const payload = result.data?.updatePerson
-      if (payload?.errors.length) {
-        setFieldErrors(payload.errors.map((code) => PERSON_ERROR_MESSAGES[code]))
-        return
-      }
-      if (payload?.person) onSaved()
-    } else {
-      if (!name.trim()) {
-        setFieldErrors([PERSON_ERROR_MESSAGES.NameRequired])
-        return
-      }
-      const result = await createPerson({ variables: { person: { name } } })
-      if (result.data?.createPerson) onSaved()
-    }
-  }
-
-  return (
-    <Dialog open onClose={loading ? undefined : onClose} fullWidth maxWidth="xs">
-      <DialogTitle>{person ? 'Edit person' : 'Add person'}</DialogTitle>
-      <Stack component="form" onSubmit={handleSubmit}>
-        <DialogContent>
-          <Stack spacing={3}>
-            <ErrorBanner messages={bannerMessages} onDismiss={() => setFieldErrors([])} />
-            <TextField label="Name" value={name} onChange={(event) => setName(event.target.value)} autoFocus fullWidth />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose} disabled={loading}>
-            Cancel
-          </Button>
-          <SubmitButton loading={loading} hasError={bannerMessages.length > 0}>
-            Save
-          </SubmitButton>
-        </DialogActions>
-      </Stack>
-    </Dialog>
   )
 }
 

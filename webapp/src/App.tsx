@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './auth/authContext'
 import { useDaysInvalidated } from './realtime/useDaysInvalidated'
 import { Layout } from './components/Layout'
+import { RequireAdmin } from './components/RequireAdmin'
 import { RequireAuth } from './components/RequireAuth'
 import AboutPage from './pages/AboutPage'
 import AddMeetingPage from './pages/AddMeetingPage'
@@ -9,7 +10,9 @@ import MeetingDetailsPage from './pages/MeetingDetailsPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import HomePage from './pages/HomePage'
 import PersonCalendarPage from './pages/PersonCalendarPage'
+import PersonsPage from './pages/PersonsPage'
 import RoomAvailabilityPage from './pages/RoomAvailabilityPage'
+import RoomsPage from './pages/RoomsPage'
 import SettingsPage from './pages/SettingsPage'
 import SignInPage from './pages/SignInPage'
 import SignUpPage from './pages/SignUpPage'
@@ -38,6 +41,10 @@ function App() {
           <Route path="/meetings/:meetingId/edit" element={<AddMeetingPage />} />
           <Route path="/meetings/:meetingId" element={<MeetingDetailsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route element={<RequireAdmin />}>
+            <Route path="/rooms" element={<RoomsPage />} />
+            <Route path="/persons" element={<PersonsPage />} />
+          </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

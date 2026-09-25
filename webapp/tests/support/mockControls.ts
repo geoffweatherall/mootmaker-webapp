@@ -84,6 +84,18 @@ export async function gateMyPersonQueryNow(page: Page): Promise<() => Promise<vo
 }
 
 /**
+ * Arms the mock's `SetPersonAdmin` handler (src/testSupport/mocks/handlers.ts) to report
+ * `cognitoSyncFailed: true` on its next response despite a successful write, then clear itself -
+ * so PersonsPage's retry/cancel prompt can be driven deterministically without a real Cognito
+ * failure. Call before the Save/Retry click that should trigger it.
+ */
+export async function forceCognitoSyncFailureOnce(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    window.__mockControls = { ...window.__mockControls, cognitoSyncFailsOnce: true }
+  })
+}
+
+/**
  * Seeds a meeting directly into the mock's `meetings` fixture (see
  * src/testSupport/mocks/browser.ts's seedMeeting wiring), for a test that needs one on a specific
  * date the Add Meeting form isn't a convenient way to reach - e.g. several days beyond the

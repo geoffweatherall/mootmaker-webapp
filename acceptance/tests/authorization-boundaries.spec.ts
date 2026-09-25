@@ -141,8 +141,8 @@ test('L.90 - a standard user directly calling createRoom/updateRoom/createPerson
   const createPersonResponse = await request.post(graphqlUrl, {
     headers: { Authorization: token },
     data: {
-      query: `mutation ($person: PersonInput!) { createPerson(person: $person) { id name } }`,
-      variables: { person: { name: `L90 Person ${runId}` } },
+      query: `mutation ($name: String!) { createPerson(name: $name) { person { id name } errors } }`,
+      variables: { name: `L90 Person ${runId}` },
     },
   })
   const createPersonBody = await createPersonResponse.json()
@@ -217,25 +217,25 @@ test('L.91 - a standard user cannot rename another user\'s Person, even by forci
     throw new Error(`Could not find accountB's Person ("${accountB.name}") via the people query.`)
   }
 
-  // (c) forcing a raw updatePerson mutation, as accountA, targeting accountB's Person id.
-  const updatePersonResponse = await request.post(graphqlUrl, {
+  // (c) forcing a raw renamePerson mutation, as accountA, targeting accountB's Person id.
+  // renamePerson is the admin-invoked half of the old self-or-admin updatePerson (see
+  // RenamePersonHandler's own doc comment) - accountA's self-rename path is now the separate,
+  // self-only updateMyName mutation, which takes no id at all and so has no way to even attempt
+  // targeting someone else. There's no longer an "isAdmin-OR-self, fails both ways" check to
+  // reason about: renamePerson is unconditionally Identity.requireAdmin, so this rejection is
+  // the exact same shape as L.90's above (a thrown Forbidden, surfaced as a top-level GraphQL
+  // `errors` array, not a structured RenamePersonResult.errors entry) - confirmed, not assumed.
+  const renamePersonResponse = await request.post(graphqlUrl, {
     headers: { Authorization: token },
     data: {
-      query: `mutation ($id: ID!, $person: PersonInput!) { updatePerson(id: $id, person: $person) { person { id name } errors } }`,
-      variables: { id: personB.id, person: { name: `Hijacked ${runId}` } },
+      query: `mutation ($id: ID!, $name: String!) { renamePerson(id: $id, name: $name) { person { id name } errors } }`,
+      variables: { id: personB.id, name: `Hijacked ${runId}` },
     },
   })
-  const updatePersonBody = await updatePersonResponse.json()
+  const renamePersonBody = await renamePersonResponse.json()
 
-  // UpdatePersonHandler's isAdmin-OR-self check fails both ways for this combination and throws
-  // (IllegalStateException: "Forbidden: can only update your own name unless you are admin"),
-  // which - like requireAdmin's hard rejections above - surfaces as a top-level GraphQL `errors`
-  // array, not a structured UpdatePersonResult.errors entry (confirmed by reading
-  // UpdatePersonHandler.java directly: both the admin-only and the isAdmin-or-self checks throw
-  // the same way, just with different messages, so this rejection is the *same shape* as L.90's,
-  // not a differently-shaped one as this catalog entry's own Notes flagged as worth confirming).
-  expect(Array.isArray(updatePersonBody.errors) && updatePersonBody.errors.length > 0).toBe(true)
-  expect(updatePersonBody.data?.updatePerson ?? null).toBeNull()
+  expect(Array.isArray(renamePersonBody.errors) && renamePersonBody.errors.length > 0).toBe(true)
+  expect(renamePersonBody.data?.renamePerson ?? null).toBeNull()
 
   // accountB's Person name is unchanged afterward.
   const afterResponse = await request.post(graphqlUrl, {

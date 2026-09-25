@@ -55,7 +55,7 @@ test('M.92 - a first cold visit shows a full spinner; a same-session revisit sho
   // add-meeting.spec.ts. This also happens to warm LIST_ROOMS' cache-first cache, which is fine:
   // this use case's "first load" half is specifically about *meetings* for a not-yet-visited day,
   // not rooms - see this test's own comments below for why that still exercises showSpinner.
-  await page.goto('/settings')
+  await page.goto('/rooms')
   await page.getByRole('button', { name: 'Add room' }).click()
   const addRoomDialog = page.getByRole('dialog')
   await addRoomDialog.getByLabel('Name').fill(roomName)
@@ -192,13 +192,13 @@ test('M.94 - a corrupted/expired session fails gracefully on the next API call, 
   })
   expect(corruptedKeys.length).toBeGreaterThan(0)
 
-  // Trigger a fresh API call by navigating to another authenticated page - SettingsPage's
-  // RoomsSection issues its own LIST_ROOMS query on mount (the demo user is meant to be admin;
-  // see this file's sibling authorization-boundaries.spec.ts for a note on this environment's
-  // demo user's custom:class currently being broken - that account being non-admin right now
-  // doesn't change this test's own reasoning below, since NameSection alone is proof enough of
-  // "no crash", and any query erroring is proof enough of "the next API call fails gracefully").
-  await page.goto('/settings')
+  // Trigger a fresh API call by navigating to another authenticated page - HomePage issues its own
+  // PAGE_LOAD query on mount. Deliberately not an admin-only page (Rooms/Persons): if this
+  // environment's demo user isn't actually flagged admin right now (see this file's sibling
+  // authorization-boundaries.spec.ts), RequireAdmin's own client-side redirect would confound this
+  // test's redirect-vs-stayed-put outcome, which is supposed to be decided solely by the corrupted
+  // session, not by authorization.
+  await page.goto('/')
 
   // Which of the two acceptable outcomes happens depends on amazon-cognito-identity-js's own
   // internals, confirmed against a real run's network trace: getSession() finds the (corrupted but
@@ -210,13 +210,13 @@ test('M.94 - a corrupted/expired session fails gracefully on the next API call, 
   // RequireAuth (which renders nothing while initialising) doesn't decide "no email -> redirect to
   // /signin" until then either.
   //
-  // The original version of this test asserted the Settings/Your name headings unconditionally
-  // *before* checking for a redirect - which contradicts the redirect outcome it's supposed to
-  // tolerate: if the app redirects (confirmed to be exactly what happens here, and the "ideal"
-  // outcome the use case itself asks for), SettingsPage never mounts, so those headings correctly
-  // never appear, and the original hard assertion just timed out first. Wait for the redirect (with
-  // enough headroom for the ~7.5s retry storm above) before deciding which branch applies, rather
-  // than assuming the page always stays put.
+  // The original version of this test asserted the Home heading unconditionally *before* checking
+  // for a redirect - which contradicts the redirect outcome it's supposed to tolerate: if the app
+  // redirects (confirmed to be exactly what happens here, and the "ideal" outcome the use case
+  // itself asks for), HomePage never mounts, so that heading correctly never appears, and the
+  // original hard assertion just timed out first. Wait for the redirect (with enough headroom for
+  // the ~7.5s retry storm above) before deciding which branch applies, rather than assuming the
+  // page always stays put.
   const redirectedToSignIn = await page
     .waitForURL('**/signin', { timeout: 15_000 })
     .then(() => true)
@@ -225,10 +225,10 @@ test('M.94 - a corrupted/expired session fails gracefully on the next API call, 
   let bannerVisible = false
   if (!redirectedToSignIn) {
     // Didn't redirect - the other acceptable outcome still requires proof the page rendered safely
-    // (no unhandled crash/blank page): the heading and the (still-admin-or-not) "Your name" section
-    // both render regardless of what the corrupted session does to any query.
-    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Your name' })).toBeVisible()
+    // (no unhandled crash/blank page). Both branches of HomePage's own render logic (the demo
+    // user's linked Person resolves, or PAGE_LOAD itself errors) reach a heading, regardless of
+    // what the corrupted session does to any query.
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
     bannerVisible = await page
       .getByRole('alert')
       .first()
@@ -368,7 +368,7 @@ test('M.99 - a hard reload picks up a room created in another session; a stale c
     }
 
     // Session A creates a sentinel room BEFORE session B ever loads. This is what makes session B's
-    // precondition meaningful: LIST_ROOMS is `cache-and-network` (see SettingsPage), so session B
+    // precondition meaningful: REFERENCE_DATA is `cache-and-network` (see RoomsPage), so session B
     // fetches from the network exactly once, on mount, and never again - there is no polling, and
     // refetch() only fires after a save in the same session.
     //
@@ -377,10 +377,10 @@ test('M.99 - a hard reload picks up a room created in another session; a stale c
     // blank, still-loading page, so a slow session B could take its first fetch AFTER session A
     // created the room and legitimately receive it. That produced real failures under full-suite
     // load while passing in isolation.
-    await pageA.goto('/settings')
+    await pageA.goto('/rooms')
     await createRoom(pageA, sentinelName)
 
-    await pageB.goto('/settings')
+    await pageB.goto('/rooms')
     await expect(pageB.getByText(sentinelName)).toBeVisible()
     await expect(pageB.getByText(roomName)).toHaveCount(0)
 

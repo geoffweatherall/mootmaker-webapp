@@ -110,7 +110,7 @@ async function signOut(page: Page): Promise<void> {
 }
 
 async function createRoom(page: Page, name: string, capacity: number): Promise<void> {
-  await page.goto('/settings')
+  await page.goto('/rooms')
   await page.getByRole('button', { name: 'Add room' }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByLabel('Name').fill(name)
@@ -120,7 +120,7 @@ async function createRoom(page: Page, name: string, capacity: number): Promise<v
 }
 
 async function createPerson(page: Page, name: string): Promise<void> {
-  await page.goto('/settings')
+  await page.goto('/persons')
   await page.getByRole('button', { name: 'Add person' }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByLabel('Name').fill(name)
@@ -285,10 +285,8 @@ test('add a meeting with all required fields succeeds and it appears on the room
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page.getByText('Sign out')).toBeVisible()
 
-  // Precondition: a room to book (see the file-level comment above). Scoped to the dialog - the
-  // Settings page's own "Your name" section also has a field labelled "Name", so an unscoped
-  // getByLabel('Name') matches both once the "Add room" dialog is open.
-  await page.goto('/settings')
+  // Precondition: a room to book (see the file-level comment above).
+  await page.goto('/rooms')
   await page.getByRole('button', { name: 'Add room' }).click()
   const addRoomDialog = page.getByRole('dialog')
   await addRoomDialog.getByLabel('Name').fill(roomName)

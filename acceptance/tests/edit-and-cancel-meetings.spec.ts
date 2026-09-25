@@ -52,7 +52,7 @@ async function signIn(page: Page, email: string, password: string): Promise<void
 }
 
 async function createRoom(page: Page, name: string, capacity: number): Promise<void> {
-  await page.goto('/settings')
+  await page.goto('/rooms')
   await page.getByRole('button', { name: 'Add room' }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByLabel('Name').fill(name)

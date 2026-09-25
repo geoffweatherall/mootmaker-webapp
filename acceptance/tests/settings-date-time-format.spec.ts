@@ -459,7 +459,7 @@ test("N.106: a meeting's time in Room Availability's expanded list follows the t
   await expect(roomCard().getByRole('button', { name: subject, exact: false })).toContainText('09:00 AM')
 })
 
-// mootmaker-api#76/mootmaker-webapp#124. Deliberately not folded into N.100-106 above: those cases
+// mootmaker-api#76. Deliberately not folded into N.100-106 above: those cases
 // are about the two formats read out of PreferencesInput's dateFormat/timeFormat and share a single
 // account/save flow; weekStart is a third, independent field on the same mutation (see
 // UpdateMyPreferencesHandler and SettingsPage's DateTimeFormatSection) that changes a different

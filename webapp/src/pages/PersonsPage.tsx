@@ -54,6 +54,9 @@ export default function PersonsPage() {
 
   const people = [...(data?.workspace.people ?? [])].sort((a, b) => a.name.localeCompare(b.name))
   const showSpinner = loading && !data
+  // `loading` disables the FAB and every card's Edit/Remove below - see RoomsPage's identical guard
+  // for why: a create/edit/delete fired while this initial cache-and-network fetch is still in
+  // flight can have its own cache write overwritten when that now-stale response lands after it.
 
   return (
     <Stack spacing={3}>
@@ -113,10 +116,20 @@ export default function PersonsPage() {
                   )}
                 </Stack>
                 <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end', borderTop: 1, borderColor: 'divider', pt: 1 }}>
-                  <IconButton size="small" aria-label={`Edit ${person.name}`} onClick={() => setDialogPerson(person)}>
+                  <IconButton
+                    size="small"
+                    aria-label={`Edit ${person.name}`}
+                    disabled={loading}
+                    onClick={() => setDialogPerson(person)}
+                  >
                     <EditIcon fontSize="small" />
                   </IconButton>
-                  <IconButton size="small" aria-label={`Remove ${person.name}`} onClick={() => setDeleteTarget(person)}>
+                  <IconButton
+                    size="small"
+                    aria-label={`Remove ${person.name}`}
+                    disabled={loading}
+                    onClick={() => setDeleteTarget(person)}
+                  >
                     <DeleteIcon fontSize="small" />
                   </IconButton>
                 </Stack>
@@ -140,7 +153,13 @@ export default function PersonsPage() {
           pointerEvents: 'none',
         }}
       >
-        <Fab color="primary" aria-label="Add person" onClick={() => setDialogPerson('new')} sx={{ pointerEvents: 'auto' }}>
+        <Fab
+          color="primary"
+          aria-label="Add person"
+          disabled={loading}
+          onClick={() => setDialogPerson('new')}
+          sx={{ pointerEvents: 'auto' }}
+        >
           <AddIcon />
         </Fab>
       </Box>
@@ -166,8 +185,10 @@ function PersonDialog({ person, onClose }: PersonDialogProps) {
   const [fieldErrors, setFieldErrors] = useState<string[]>([])
   const [syncFailedFor, setSyncFailedFor] = useState<{ id: string; name: string; isAdmin: boolean } | null>(null)
 
-  // No update function here either - both mutations return the whole `people` collection with the
-  // write, so there is no cached list to merge into and no read that could lose a race with it.
+  // No refetch to race it deliberately - both mutations return the whole `people` collection, which
+  // replaces the cached list wholesale (see referenceDataCache.ts). The remaining race, against the
+  // page's OWN initial cache-and-network fetch, is closed by disabling the triggering buttons in
+  // the parent until that fetch settles - see the comment there.
   const [createPerson, createState] = useMutation<{ createPerson: CreatePersonResult }>(CREATE_PERSON, {
     update: (cache, { data }) => cachePeople(cache, data?.createPerson.people),
   })

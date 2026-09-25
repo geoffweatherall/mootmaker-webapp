@@ -45,6 +45,17 @@ export default function RoomsPage() {
 
   const rooms = [...(data?.workspace.rooms ?? [])].sort((a, b) => a.name.localeCompare(b.name))
   const showSpinner = loading && !data
+  // `cache-and-network` always fires its network leg on mount, even with a warm cache to show in
+  // the meantime (that's the whole point - see M.99). A create/edit/delete fired while that leg is
+  // still in flight writes the mutation's own returned `rooms` into the cache first, then loses it
+  // when the OLDER, now-stale network response for the SAME field lands after and overwrites it
+  // wholesale (Query.workspace's merge policy in apolloClient.ts is a shallow spread, so whichever
+  // write to `rooms` lands last wins - there's no positional/id-aware reconciliation). `loading`
+  // only stays true for that one initial leg per mount, so disabling these three actions until it
+  // settles closes the window without needing the FAB to move or disappear (see the layout-
+  // stability rationale on the FAB below) - found via a real deployed environment where the race
+  // only showed up once enough rooms existed for a first visit's fetch to still be in flight when
+  // an action-hungry Playwright test collided with it.
 
   return (
     <Stack spacing={3}>
@@ -89,10 +100,20 @@ export default function RoomsPage() {
                     <Chip label={`Capacity ${room.capacity}`} size="small" variant="outlined" />
                   </Stack>
                   <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end', borderTop: 1, borderColor: 'divider', pt: 1 }}>
-                    <IconButton size="small" aria-label={`Edit ${room.name}`} onClick={() => setDialogRoom(room)}>
+                    <IconButton
+                      size="small"
+                      aria-label={`Edit ${room.name}`}
+                      disabled={loading}
+                      onClick={() => setDialogRoom(room)}
+                    >
                       <EditIcon fontSize="small" />
                     </IconButton>
-                    <IconButton size="small" aria-label={`Remove ${room.name}`} onClick={() => setDeleteTarget(room)}>
+                    <IconButton
+                      size="small"
+                      aria-label={`Remove ${room.name}`}
+                      disabled={loading}
+                      onClick={() => setDeleteTarget(room)}
+                    >
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </Stack>
@@ -117,7 +138,13 @@ export default function RoomsPage() {
           pointerEvents: 'none',
         }}
       >
-        <Fab color="primary" aria-label="Add room" onClick={() => setDialogRoom('new')} sx={{ pointerEvents: 'auto' }}>
+        <Fab
+          color="primary"
+          aria-label="Add room"
+          disabled={loading}
+          onClick={() => setDialogRoom('new')}
+          sx={{ pointerEvents: 'auto' }}
+        >
           <AddIcon />
         </Fab>
       </Box>
@@ -140,8 +167,10 @@ function RoomDialog({ room, onClose }: RoomDialogProps) {
   const [name, setName] = useState(room?.name ?? '')
   const [capacity, setCapacity] = useState(room ? String(room.capacity) : '')
   const [fieldErrors, setFieldErrors] = useState<string[]>([])
-  // No update function, and no refetch to race it - see referenceDataCache.ts's own comment for why:
-  // both mutations return the whole `rooms` collection, which replaces the cached list wholesale.
+  // No refetch to race it deliberately - both mutations return the whole `rooms` collection, which
+  // replaces the cached list wholesale (see referenceDataCache.ts). The remaining race, against the
+  // page's OWN initial cache-and-network fetch rather than a refetch, is closed by disabling the
+  // triggering buttons in the parent until that fetch settles - see the comment there.
   const [createRoom, createState] = useMutation<{ createRoom: CreateRoomResult }>(CREATE_ROOM, {
     update: (cache, { data }) => cacheRooms(cache, data?.createRoom.rooms),
   })

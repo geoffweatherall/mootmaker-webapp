@@ -46,6 +46,17 @@ function roomCard(page: Page, name: string) {
     .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
 }
 
+/** Creates a person via the real Persons page - used only by P.129, to give a meeting a headcount
+ * above 1 (see its own comment for why that matters). */
+async function createPerson(page: Page, name: string) {
+  await page.goto('/persons')
+  await page.getByRole('button', { name: 'Add person' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('Name').fill(name)
+  await dialog.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByText(name)).toBeVisible()
+}
+
 /** Creates a room via the real Rooms page - there's no data-seeding bypass (see README.md). */
 async function createRoom(page: Page, name: string, capacity: string) {
   await page.goto('/rooms')
@@ -60,15 +71,28 @@ async function createRoom(page: Page, name: string, capacity: string) {
 interface CreateMeetingOptions {
   subject: string
   roomName: string
+  /** Extra people beyond the signed-in organiser, so the meeting's headcount can exceed 1 - see
+   * P.129's own comment for why that matters. */
+  attendeeNames?: string[]
 }
 
 /** Same technique as settings-rooms.spec.ts's identical helper - see its own comment for why the
  * id is read off the Share button rather than a navigated-to URL. */
-async function createMeetingAndOpenDetails(page: Page, { subject, roomName }: CreateMeetingOptions): Promise<string> {
+async function createMeetingAndOpenDetails(
+  page: Page,
+  { subject, roomName, attendeeNames }: CreateMeetingOptions,
+): Promise<string> {
   await page.goto('/meetings/add')
   await page.getByLabel('Subject').fill(subject)
   await page.getByRole('combobox', { name: 'Room' }).click()
   await page.getByRole('option', { name: roomName, exact: false }).click()
+  if (attendeeNames?.length) {
+    await page.getByRole('combobox', { name: 'Attendees' }).click()
+    for (const name of attendeeNames) {
+      await page.getByRole('option', { name, exact: true }).click()
+    }
+    await page.keyboard.press('Escape')
+  }
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page).toHaveURL(/\/rooms\/.+\/availability/)
 
@@ -176,20 +200,26 @@ test.describe('P. Rooms (admin only)', () => {
     const runId = uniqueId()
     const roomName = `P129 Room ${runId}`
     const subject = `P129 Meeting ${runId}`
+    const attendeeName = `P129 Attendee ${runId}`
     await page.clock.setFixedTime(PINNED_NOW)
 
     await signInAsDemo(page)
+    await createPerson(page, attendeeName)
     await createRoom(page, roomName, '4')
-    const meetingId = await createMeetingAndOpenDetails(page, { subject, roomName })
+    // A headcount of 2 (organiser + this one attendee), so reducing to capacity 2 - the server's
+    // own absolute floor (see P.127) - genuinely puts the room's capacity at the meeting's headcount
+    // rather than below it. UpdateRoomHandler has no InsufficientCapacity-style check at all, so
+    // this proves that by going as low as the floor allows and still succeeding.
+    const meetingId = await createMeetingAndOpenDetails(page, { subject, roomName, attendeeNames: [attendeeName] })
 
     await page.goto('/rooms')
     await page.getByLabel(`Edit ${roomName}`).click()
     const dialog = page.getByRole('dialog')
-    await dialog.getByLabel('Capacity').fill('1')
+    await dialog.getByLabel('Capacity').fill('2')
     await dialog.getByRole('button', { name: 'Save' }).click()
 
     await expect(dialog).toHaveCount(0)
-    await expect(roomCard(page, roomName).getByText('Capacity 1')).toBeVisible()
+    await expect(roomCard(page, roomName).getByText('Capacity 2')).toBeVisible()
     await page.goto(`/meetings/${meetingId}`)
     await expect(page.getByText(subject)).toBeVisible()
   })
@@ -216,7 +246,12 @@ test.describe('P. Rooms (admin only)', () => {
     const runId = uniqueId()
     const roomName = `P131 Room ${runId}`
     const subject = `P131 Meeting ${runId}`
-    await page.clock.setFixedTime(PINNED_NOW)
+    // Unlike this file's other tests, PINNED_NOW itself won't do here: DeleteRoomHandler's
+    // "upcoming" check compares against the server's real clock, not this test's faked browser
+    // clock, and PINNED_NOW (the current week's Wednesday) is already in the past by the later
+    // half of any given week. A week ahead is always genuinely in the future.
+    const pinnedFuture = pinnedWeekday('Wednesday', { weeks: 1 })
+    await page.clock.setFixedTime(pinnedFuture)
 
     await signInAsDemo(page)
     await createRoom(page, roomName, '4')

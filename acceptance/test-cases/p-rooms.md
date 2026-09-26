@@ -5,7 +5,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 Supersedes section [J](j-settings-rooms.md) — Rooms moved out of Settings to its own top-level
 `/rooms` page, reachable from a new "Admin" nav section, per
-[the admin-rooms-and-people design doc](https://github.com/geoffweatherall/mootmaker/blob/main/designs/admin-rooms-and-people.md).
+[the admin-rooms-and-people design doc](https://github.com/geoffweatherall/mootmaker/blob/main/designs/archive/admin-rooms-and-people.md).
 Cases P.124–P.129 cover the same functional ground J.77–J.82 did, against the new page. J.83
 ("standard user forcing `createRoom`/`updateRoom` directly") is not repeated here — it's folded
 into [L.90](l-authorization-boundaries.md#tc-l90), which now covers every admin mutation this way,

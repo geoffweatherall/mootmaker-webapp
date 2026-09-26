@@ -5,7 +5,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 Supersedes section [K](k-settings-people.md) — People moved out of Settings to its own top-level
 `/persons` page, per
-[the admin-rooms-and-people design doc](https://github.com/geoffweatherall/mootmaker/blob/main/designs/admin-rooms-and-people.md),
+[the admin-rooms-and-people design doc](https://github.com/geoffweatherall/mootmaker/blob/main/designs/archive/admin-rooms-and-people.md),
 which also adds admin badges/linked-email display, grant/revoke admin, and delete-with-cascade —
 none of which existed before this design. K.84–K.88's own cases carry over as Q.132–Q.136; a
 standard user forcing `renamePerson`/`setPersonAdmin`/`deletePerson` directly is folded into

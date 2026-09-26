@@ -2,7 +2,7 @@
 
 **Superseded by [Q. Persons](q-persons.md).** People moved out of Settings to its own top-level
 `/persons` page — see
-[the admin-rooms-and-people design doc](https://github.com/geoffweatherall/mootmaker/blob/main/designs/admin-rooms-and-people.md).
+[the admin-rooms-and-people design doc](https://github.com/geoffweatherall/mootmaker/blob/main/designs/archive/admin-rooms-and-people.md).
 Kept as a file (rather than deleted) so history and inbound links stay resolvable; its content no
 longer describes the current UI and should not be used to write new tests.
 

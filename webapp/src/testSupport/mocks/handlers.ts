@@ -529,7 +529,13 @@ export const handlers: HttpHandler[] = [
             },
           })
         }
-        const person = { id: nextId('person', people), name, isAdmin: false, linkedEmails: [] as string[] }
+        const person = {
+          id: nextId('person', people),
+          name,
+          isAdmin: false,
+          linkedEmails: [] as string[],
+          photoUrl: null,
+        }
         people.push(person)
         return HttpResponse.json({
           data: {

@@ -32,9 +32,17 @@ export function resolveMeetingDetails(
       capacity: room?.capacity ?? 0,
       color: room?.color ?? null,
     },
-    organiser: { id: meeting.organiser.id, name: peopleById.get(meeting.organiser.id)?.name ?? '' },
+    organiser: {
+      id: meeting.organiser.id,
+      name: peopleById.get(meeting.organiser.id)?.name ?? '',
+      photoUrl: peopleById.get(meeting.organiser.id)?.photoUrl ?? null,
+    },
     attendees: meeting.attendees.map((attendee) => ({
-      person: { id: attendee.person.id, name: peopleById.get(attendee.person.id)?.name ?? '' },
+      person: {
+        id: attendee.person.id,
+        name: peopleById.get(attendee.person.id)?.name ?? '',
+        photoUrl: peopleById.get(attendee.person.id)?.photoUrl ?? null,
+      },
       status: attendee.status,
     })),
   }

@@ -202,7 +202,7 @@ export function MeetingDetailContent({
           Organiser
         </Typography>
         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-          <PersonAvatar name={current.organiser.name} size={26} />
+          <PersonAvatar name={current.organiser.name} photoUrl={current.organiser.photoUrl} size={26} />
           <Typography variant="body2" sx={{ flexGrow: 1 }}>
             {current.organiser.name}
           </Typography>
@@ -233,7 +233,11 @@ export function MeetingDetailContent({
                 spacing={1.5}
                 sx={{ alignItems: 'center' }}
               >
-                <PersonAvatar name={attendee.person.name} size={26} />
+                <PersonAvatar
+                  name={attendee.person.name}
+                  photoUrl={attendee.person.photoUrl}
+                  size={26}
+                />
                 <Typography variant="body2" sx={{ flexGrow: 1 }}>
                   {attendee.person.name}
                 </Typography>

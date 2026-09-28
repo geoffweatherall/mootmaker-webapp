@@ -28,6 +28,7 @@ export const PAGE_LOAD = graphql(`
         name
         isAdmin
         linkedEmails
+        photoUrl
       }
       rooms {
         id
@@ -120,6 +121,7 @@ export const REFERENCE_DATA = graphql(`
         name
         isAdmin
         linkedEmails
+        photoUrl
       }
     }
   }
@@ -148,11 +150,13 @@ export const MEETING_BY_ID = graphql(`
       organiser {
         id
         name
+        photoUrl
       }
       attendees {
         person {
           id
           name
+          photoUrl
         }
         status
       }
@@ -222,11 +226,13 @@ export const MEETING_LIVE_FIELDS_FRAGMENT = graphql(`
     organiser {
       id
       name
+      photoUrl
     }
     attendees {
       person {
         id
         name
+        photoUrl
       }
       status
     }

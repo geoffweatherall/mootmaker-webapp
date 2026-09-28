@@ -6,28 +6,40 @@ interface PersonAvatarProps {
   // Nullable because some callers (e.g. AccountBox, before the signed-in Person has loaded) hold
   // a name that starts out null - render an empty avatar rather than forcing every caller to guard.
   name: string | null | undefined
+  // Path to a bundled stock photo, relative to the webapp's own origin (e.g. "avatars/female-01.jpg")
+  // - see designs/person-avatar-photos.md. Set today only for people mootmaker-demo-data created;
+  // there is no upload feature, so every real sign-up leaves this null and gets initials.
+  photoUrl?: string | null
   size?: number
 }
 
 /**
- * A person's avatar: their initials on a tonal wash of the theme's primary colour, so it stays
- * correct in both light and dark mode without a second hardcoded colour pair to maintain (see
- * theme/avatarInitials.ts for how the initials themselves are derived from a free-text name).
- * Deliberately not a solid primary fill, and not drawn from the room categorical palette
- * (theme/roomColor.ts): this is a passive identity marker, not a call to action, so a low-alpha
- * tonal wash keeps it from competing with either meaning. Initials only for now - user-uploadable
- * photos are a known future feature, and this component is the natural place to add them later.
+ * A person's avatar: their photo if they have one, else their initials on a tonal wash of the
+ * theme's primary colour, so the fallback stays correct in both light and dark mode without a
+ * second hardcoded colour pair to maintain (see theme/avatarInitials.ts for how the initials
+ * themselves are derived from a free-text name). The initials circle is deliberately not a solid
+ * primary fill, and not drawn from the room categorical palette (theme/roomColor.ts): this is a
+ * passive identity marker, not a call to action, so a low-alpha tonal wash keeps it from competing
+ * with either meaning.
  */
-export function PersonAvatar({ name, size = 32 }: PersonAvatarProps) {
+export function PersonAvatar({ name, photoUrl, size = 32 }: PersonAvatarProps) {
   const theme = useTheme()
+
   return (
     // aria-hidden: purely decorative. Without it, the initials text ("BB") gets concatenated into
     // the accessible name of whatever interactive ancestor it sits inside - confirmed against a
     // real Autocomplete option, whose computed name became "BBBob Brown" instead of "Bob Brown"
     // and broke every test locating it by exact name. The adjacent visible name text already
     // conveys identity; this avatar adds nothing a screen reader needs to hear separately.
+    //
+    // MUI's Avatar falls back to its children (the initials below) on its own if `src` fails to
+    // load, not just when it's absent - see its own useLoaded hook. There is nothing enforcing that
+    // mootmaker-demo-data's photo filenames agree with what this webapp build actually bundles
+    // under public/avatars/ (see designs/person-avatar-photos.md's Risks), so this fallback is load
+    // bearing, not just a null guard - confirmed in person-avatar.spec.ts.
     <Avatar
       aria-hidden="true"
+      src={photoUrl ?? undefined}
       sx={{
         width: size,
         height: size,

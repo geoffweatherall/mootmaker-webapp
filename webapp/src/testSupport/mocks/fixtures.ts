@@ -19,13 +19,46 @@ export const rooms: Room[] = [
 ]
 
 export const people: Person[] = [
-  { id: 'person-alice', name: 'Alice Anderson', isAdmin: false, linkedEmails: [] },
-  { id: 'person-bob', name: 'Bob Brown', isAdmin: false, linkedEmails: [] },
-  { id: 'person-carol', name: 'Carol Chen', isAdmin: false, linkedEmails: [] },
+  { id: 'person-alice', name: 'Alice Anderson', isAdmin: false, linkedEmails: [], photoUrl: null },
+  { id: 'person-bob', name: 'Bob Brown', isAdmin: false, linkedEmails: [], photoUrl: null },
+  // The one fixture person with a photo - see designs/person-avatar-photos.md and
+  // person-avatar.spec.ts, which exercises both this and the initials fallback the other fixture
+  // people (with photoUrl: null) already give every other test for free.
+  {
+    id: 'person-carol',
+    name: 'Carol Chen',
+    isAdmin: false,
+    linkedEmails: [],
+    photoUrl: 'avatars/female-05.jpg',
+  },
   // Linked to ADMIN_USER below - the one fixture person with admin access.
-  { id: 'person-dana', name: 'Dana Diaz', isAdmin: true, linkedEmails: [ADMIN_USER.email] },
+  {
+    id: 'person-dana',
+    name: 'Dana Diaz',
+    isAdmin: true,
+    linkedEmails: [ADMIN_USER.email],
+    photoUrl: null,
+  },
   // Linked to DEMO_USER below.
-  { id: 'person-demo', name: 'Demo User', isAdmin: false, linkedEmails: [DEMO_USER.email] },
+  {
+    id: 'person-demo',
+    name: 'Demo User',
+    isAdmin: false,
+    linkedEmails: [DEMO_USER.email],
+    photoUrl: null,
+  },
+  // A photoUrl pointing at a file this webapp build doesn't actually have - the filename-drift risk
+  // designs/person-avatar-photos.md calls out (mootmaker-demo-data and mootmaker-webapp's photo
+  // libraries have nothing enforcing they agree). person-avatar.spec.ts checks this degrades to the
+  // initials fallback rather than a broken image icon. Appended, not inserted, so the two indexed
+  // lookups below (people[3]/people[4]) keep pointing at Dana/Demo.
+  {
+    id: 'person-erin',
+    name: 'Erin Fisher',
+    isAdmin: false,
+    linkedEmails: [],
+    photoUrl: 'avatars/does-not-exist.jpg',
+  },
 ]
 
 // The only account with a linked Person - see cognito.mock.ts's MOCK_USERS doc comment.

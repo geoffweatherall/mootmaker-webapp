@@ -6,11 +6,27 @@ interface PersonAvatarProps {
   // Nullable because some callers (e.g. AccountBox, before the signed-in Person has loaded) hold
   // a name that starts out null - render an empty avatar rather than forcing every caller to guard.
   name: string | null | undefined
-  // Path to a bundled stock photo, relative to the webapp's own origin (e.g. "avatars/female-01.jpg")
+  // Path to a bundled stock photo, relative to the webapp's own ORIGIN (e.g. "/avatars/female-01.jpg")
   // - see designs/person-avatar-photos.md. Set today only for people mootmaker-demo-data created;
   // there is no upload feature, so every real sign-up leaves this null and gets initials.
   photoUrl?: string | null
   size?: number
+}
+
+/**
+ * Anchors a stored path at the origin root, so it resolves the same from every route.
+ *
+ * Without the leading slash the browser resolves `avatars/x.jpg` against the current DOCUMENT, not
+ * the origin: from `/rooms/2026-09-28/availability` it asks for
+ * `/rooms/2026-09-28/avatars/x.jpg`. That is not even a visible 404 here - this is an SPA, so
+ * CloudFront answers any unmatched path with index.html at status 200, the <img> gets HTML it
+ * cannot decode, and the initials fallback quietly takes over. Photos appeared to be "missing"
+ * everywhere except depth-1 routes like /persons, where document-relative happens to resolve
+ * correctly. mootmaker-demo-data now stores the leading slash, but nothing across the two repos
+ * enforces that, so this component owns the contract rather than trusting it.
+ */
+function originRelative(photoUrl: string): string {
+  return photoUrl.startsWith('/') ? photoUrl : `/${photoUrl}`
 }
 
 /**
@@ -39,7 +55,7 @@ export function PersonAvatar({ name, photoUrl, size = 32 }: PersonAvatarProps) {
     // bearing, not just a null guard - confirmed in person-avatar.spec.ts.
     <Avatar
       aria-hidden="true"
-      src={photoUrl ?? undefined}
+      src={photoUrl == null ? undefined : originRelative(photoUrl)}
       sx={{
         width: size,
         height: size,

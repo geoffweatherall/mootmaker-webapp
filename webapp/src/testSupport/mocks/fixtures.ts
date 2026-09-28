@@ -19,7 +19,16 @@ export const rooms: Room[] = [
 ]
 
 export const people: Person[] = [
-  { id: 'person-alice', name: 'Alice Anderson', isAdmin: false, linkedEmails: [], photoUrl: null },
+  // Deliberately stored WITHOUT a leading slash, unlike Carol below. PersonAvatar anchors it at the
+  // origin root either way - a bare path would otherwise resolve against the current document and
+  // silently break on every route deeper than one segment (see PersonAvatar.tsx's originRelative).
+  {
+    id: 'person-alice',
+    name: 'Alice Anderson',
+    isAdmin: false,
+    linkedEmails: [],
+    photoUrl: 'avatars/female-02.jpg',
+  },
   { id: 'person-bob', name: 'Bob Brown', isAdmin: false, linkedEmails: [], photoUrl: null },
   // The one fixture person with a photo - see designs/person-avatar-photos.md and
   // person-avatar.spec.ts, which exercises both this and the initials fallback the other fixture
@@ -29,7 +38,7 @@ export const people: Person[] = [
     name: 'Carol Chen',
     isAdmin: false,
     linkedEmails: [],
-    photoUrl: 'avatars/female-05.jpg',
+    photoUrl: '/avatars/female-05.jpg',
   },
   // Linked to ADMIN_USER below - the one fixture person with admin access.
   {
@@ -57,7 +66,7 @@ export const people: Person[] = [
     name: 'Erin Fisher',
     isAdmin: false,
     linkedEmails: [],
-    photoUrl: 'avatars/does-not-exist.jpg',
+    photoUrl: '/avatars/does-not-exist.jpg',
   },
 ]
 

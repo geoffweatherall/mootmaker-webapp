@@ -13,9 +13,9 @@ import {
 } from './addMeetingLogic'
 import type { Person, Room } from '../graphql/types'
 
-const alice: Person = { id: 'p1', name: 'Alice', isAdmin: false, linkedEmails: [], photoUrl: null }
-const bob: Person = { id: 'p2', name: 'Bob', isAdmin: false, linkedEmails: [], photoUrl: null }
-const carol: Person = { id: 'p3', name: 'Carol', isAdmin: false, linkedEmails: [], photoUrl: null }
+const alice: Person = { id: 'p1', name: 'Alice', isAdmin: false, linkedEmails: [], avatarUrl: null }
+const bob: Person = { id: 'p2', name: 'Bob', isAdmin: false, linkedEmails: [], avatarUrl: null }
+const carol: Person = { id: 'p3', name: 'Carol', isAdmin: false, linkedEmails: [], avatarUrl: null }
 const people: Person[] = [alice, bob, carol]
 
 const roomA: Room = { id: 'r1', name: 'Room A', capacity: 4, color: null }

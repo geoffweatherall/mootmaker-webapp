@@ -74,7 +74,7 @@ function pageLoadData(dates: string[]) {
           name: 'Me',
           isAdmin: false,
           linkedEmails: [],
-          photoUrl: null,
+          avatarUrl: null,
         },
       ],
       rooms: [{ __typename: 'Room', id: 'room-1', name: 'Room 1', capacity: 4, color: null }],

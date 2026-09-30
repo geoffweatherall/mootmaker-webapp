@@ -16,10 +16,9 @@ function personCard(page: Page, name: string) {
 }
 
 /**
- * The assertion that matters. An <img> being PRESENT proves nothing: the bug this guards against
- * left the element in place and merely failed to decode, because an SPA serves index.html (HTTP
- * 200, text/html) for an unmatched path rather than a visible 404. Only naturalWidth proves real
- * image bytes arrived and decoded.
+ * The assertion that matters. An <img> being PRESENT proves nothing: MUI's Avatar swaps in the
+ * initials when its image fails, and before it does the element is simply there, undecoded. Only
+ * naturalWidth proves real image bytes arrived and decoded.
  */
 async function expectImageActuallyLoaded(img: Locator) {
   await expect(img).toHaveCount(1)
@@ -28,37 +27,32 @@ async function expectImageActuallyLoaded(img: Locator) {
     .toBeGreaterThan(0)
 }
 
-// See designs/archive/person-avatar-photos.md. fixtures.ts gives Carol Chen a leading-slash photo,
-// Alice Anderson a bare one, Erin Fisher one pointing at a file that doesn't exist, and everyone
-// else none - between them they cover every branch PersonAvatar has.
-test.describe('Person avatar photos', () => {
+// fixtures.ts gives Alice Anderson and Carol Chen an avatar, Erin Fisher one the avatar host
+// refuses, and everyone else none - between them they cover every branch PersonAvatar has. The
+// URLs are absolute and on another origin, as the API returns them; handlers.ts plays the host.
+test.describe('Person avatars', () => {
   test.use({ storageState: { cookies: [], origins: [] } })
 
-  test('shows a photo for a person who has one, and initials for one who does not', async ({ page }) => {
+  test('shows an avatar for a person who has one, and initials for one who does not', async ({ page }) => {
     await signIn(page, ADMIN_USER)
     await page.getByRole('link', { name: 'Persons' }).click()
 
     await expectImageActuallyLoaded(personCard(page, 'Carol Chen').locator('img'))
-    // Bob Brown has no photoUrl - PersonAvatar falls back to initials, with no <img> at all.
+    // Bob Brown has no avatarUrl - PersonAvatar falls back to initials, with no <img> at all.
     await expect(personCard(page, 'Bob Brown').locator('img')).toHaveCount(0)
     await expect(personCard(page, 'Bob Brown').getByText('BB', { exact: true })).toBeVisible()
   })
 
-  // Regression test for the bug that shipped in the first cut of this feature: the stored path was
-  // resolved against the current DOCUMENT, so it only worked on depth-1 routes like /persons. From
-  // anything deeper the browser requested e.g. /persons/<id>/avatars/x.jpg, got index.html back at
-  // status 200, and the initials fallback hid the failure. Both stored forms are checked from a
-  // two-segment route, since nothing across the repo boundary enforces which one arrives.
-  test('a photo still loads from a route deeper than one segment, leading slash or not', async ({
-    page,
-  }) => {
+  // An avatar is an absolute URL, so where it is rendered from cannot matter - which is the point.
+  // This used to be a regression test for a path resolved against the current document, which
+  // only worked on routes one segment deep; that rule is gone, and with it the failure. What is
+  // left is the plain check that an avatar appears somewhere other than the Persons page.
+  test('shows avatars in the person picker too', async ({ page }) => {
     await signIn(page, ADMIN_USER)
     await page.goto('/persons/person-carol/calendar')
-    expect(new URL(page.url()).pathname.split('/').filter(Boolean).length).toBeGreaterThan(1)
 
     await page.getByRole('combobox', { name: 'Person' }).click()
 
-    // Carol's fixture path carries the leading slash; Alice's deliberately does not.
     await expectImageActuallyLoaded(
       page.getByRole('option', { name: 'Carol Chen', exact: true }).locator('img'),
     )
@@ -67,10 +61,10 @@ test.describe('Person avatar photos', () => {
     )
   })
 
-  test('falls back to initials if the photo fails to load', async ({ page }) => {
-    // Erin Fisher's fixture photoUrl points at a file this webapp build doesn't actually have (see
-    // fixtures.ts) - a real 404 from the dev server, not a mocked one, so this exercises the same
-    // MUI Avatar load-failure path a real deployment would hit on a filename drift.
+  test('falls back to initials if the avatar fails to load', async ({ page }) => {
+    // Erin Fisher's avatarUrl names an image the mocked avatar host refuses (see fixtures.ts and
+    // handlers.ts), as the real host does for a key that is not there. That exercises the same
+    // MUI Avatar load-failure path a deployment would hit on a deleted or unreachable avatar.
     await signIn(page, ADMIN_USER)
     await page.getByRole('link', { name: 'Persons' }).click()
 

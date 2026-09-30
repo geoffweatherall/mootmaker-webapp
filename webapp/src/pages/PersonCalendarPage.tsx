@@ -87,14 +87,14 @@ export default function PersonCalendarPage() {
     if (fromList) return fromList
     if (personId && personId === ownPersonId && ownDisplayName) {
       // Placeholder for the viewer's own Person before the people list has loaded - isAdmin/
-      // linkedEmails/photoUrl aren't known yet, so this defaults them the same way the schema does
+      // linkedEmails/avatarUrl aren't known yet, so this defaults them the same way the schema does
       // for a Person it hasn't loaded a real value for.
       return {
         id: personId,
         name: ownDisplayName,
         isAdmin: false,
         linkedEmails: [] as string[],
-        photoUrl: null,
+        avatarUrl: null,
       }
     }
     return undefined
@@ -236,7 +236,7 @@ export default function PersonCalendarPage() {
         autoHighlight
         renderOption={(props, option) => (
           <Box component="li" {...props} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <PersonAvatar name={option.name} photoUrl={option.photoUrl} size={24} />
+            <PersonAvatar name={option.name} avatarUrl={option.avatarUrl} size={24} />
             {option.name}
           </Box>
         )}

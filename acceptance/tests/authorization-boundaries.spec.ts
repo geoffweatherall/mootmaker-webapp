@@ -197,6 +197,55 @@ test('L.90 - a standard user directly calling any admin mutation is rejected ser
   })
   const deletePersonBody = await deletePersonResponse.json()
 
+  // The avatar mutations are "admin, or the caller's own person" rather than admin-only, so aimed
+  // at someone ELSE's person they belong in this list. This is the only place that rule meets a
+  // real standard user's token: mootmaker-api's own acceptance suite authenticates as the tooling
+  // client, which is admin-equivalent and so can only ever exercise the other half.
+  const requestAvatarUploadResponse = await request.post(graphqlUrl, {
+    headers: { Authorization: token },
+    data: {
+      query: `mutation ($personId: ID!) { requestAvatarUpload(personId: $personId, contentType: "image/png", contentLength: 1000) { upload { url } errors } }`,
+      variables: { personId: existingPersonId },
+    },
+  })
+  const requestAvatarUploadBody = await requestAvatarUploadResponse.json()
+
+  const confirmAvatarUploadResponse = await request.post(graphqlUrl, {
+    headers: { Authorization: token },
+    data: {
+      query: `mutation ($personId: ID!) { confirmAvatarUpload(personId: $personId, uploadId: "AAAAAAAA") { person { id } errors } }`,
+      variables: { personId: existingPersonId },
+    },
+  })
+  const confirmAvatarUploadBody = await confirmAvatarUploadResponse.json()
+
+  const removeAvatarResponse = await request.post(graphqlUrl, {
+    headers: { Authorization: token },
+    data: {
+      query: `mutation ($personId: ID!) { removeAvatar(personId: $personId) { person { id } errors } }`,
+      variables: { personId: existingPersonId },
+    },
+  })
+  const removeAvatarBody = await removeAvatarResponse.json()
+
+  // And the other half of that rule, so the rejections above are shown to be about WHOSE person it
+  // is rather than about standard users being refused outright: the same token, aimed at the
+  // caller's own person, is given an upload URL.
+  const ownPersonId: string = JSON.parse(
+    Buffer.from(token.split('.')[1], 'base64url').toString('utf8'),
+  )['custom:personId']
+  const ownAvatarUploadResponse = await request.post(graphqlUrl, {
+    headers: { Authorization: token },
+    data: {
+      query: `mutation ($personId: ID!) { requestAvatarUpload(personId: $personId, contentType: "image/png", contentLength: 1000) { upload { url } errors } }`,
+      variables: { personId: ownPersonId },
+    },
+  })
+  const ownAvatarUploadBody = await ownAvatarUploadResponse.json()
+  expect(ownAvatarUploadBody.errors, 'a standard user may request an upload for themselves').toBeUndefined()
+  expect(ownAvatarUploadBody.data.requestAvatarUpload.errors).toEqual([])
+  expect(ownAvatarUploadBody.data.requestAvatarUpload.upload.url).toMatch(/^https:\/\//)
+
   // Identity.requireAdmin throws, which AppSync surfaces as a top-level GraphQL `errors` array -
   // a different channel than each mutation's own structured Result.errors field used for ordinary
   // validation failures. Every request above should be rejected this way, with no data payload
@@ -211,6 +260,9 @@ test('L.90 - a standard user directly calling any admin mutation is rejected ser
     renamePerson: renamePersonBody,
     setPersonAdmin: setPersonAdminBody,
     deletePerson: deletePersonBody,
+    requestAvatarUpload: requestAvatarUploadBody,
+    confirmAvatarUpload: confirmAvatarUploadBody,
+    removeAvatar: removeAvatarBody,
   }
   for (const [name, body] of Object.entries(results)) {
     expect(Array.isArray(body.errors) && body.errors.length > 0, `${name} should be rejected`).toBe(true)

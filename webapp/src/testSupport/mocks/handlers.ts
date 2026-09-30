@@ -26,6 +26,8 @@ import {
   createMeetingFixture,
   linkedPersonByEmail,
   meetings,
+  MOCK_AVATARS_ORIGIN,
+  MOCK_MISSING_AVATAR_HASH,
   people,
   rooms,
   saveMeetings,
@@ -243,7 +245,33 @@ function daysFor(dates: string[]) {
   }))
 }
 
+/**
+ * A real, decodable 16x16 JPEG. Real because the avatar tests assert on `naturalWidth`, which only
+ * a genuinely decoded image has - a stub body would load as "present but broken", the exact state
+ * those tests exist to tell apart from working.
+ */
+const MOCK_AVATAR_JPEG_BASE64 =
+  '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAoHBwgHBgoICAgLCgoLDhgQDg0NDh0VFhEYIx8lJCIfIiEmKzcvJik0KSEiMEExNDk7Pj4+JS5ESUM8SDc9Pjv/2wBDAQoLCw4NDhwQEBw7KCIoOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozv/wAARCAAQABADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwCrRRRXnn2B/9k='
+
+function mockAvatarJpeg(): Uint8Array<ArrayBuffer> {
+  const binary = atob(MOCK_AVATAR_JPEG_BASE64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return bytes
+}
+
 export const handlers: HttpHandler[] = [
+  // The mocked avatar host. Stands in for the distribution mootmaker-api owns: an image for any
+  // avatar path, and - like the real thing, which has no error page to fall back to - a genuine
+  // refusal for one that does not exist, rather than something that merely looks like a response.
+  http.get(`${MOCK_AVATARS_ORIGIN}/*`, ({ request }) => {
+    if (request.url.includes(MOCK_MISSING_AVATAR_HASH)) {
+      return new HttpResponse(null, { status: 403 })
+    }
+    return new HttpResponse(mockAvatarJpeg(), {
+      headers: { 'Content-Type': 'image/jpeg' },
+    })
+  }),
   http.post(GRAPHQL_ENDPOINT, async ({ request }) => {
     const body = (await request.json()) as GraphQLRequestBody
     const variables = body.variables ?? {}
@@ -534,7 +562,7 @@ export const handlers: HttpHandler[] = [
           name,
           isAdmin: false,
           linkedEmails: [] as string[],
-          photoUrl: null,
+          avatarUrl: null,
         }
         people.push(person)
         return HttpResponse.json({

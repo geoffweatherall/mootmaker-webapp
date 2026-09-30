@@ -144,6 +144,28 @@ manual refetch. Both pages disable their own Add/Edit/Remove controls until thei
 reference-data fetch first settles, closing a real race where an action fired before that fetch
 resolved could have its cache write overwritten by the still-in-flight, pre-mutation response.
 
+### Person avatars
+
+Wherever a person appears, [`PersonAvatar`](webapp/src/components/PersonAvatar.tsx) shows their
+avatar if they have one and their initials if they do not.
+
+**This webapp neither stores nor serves avatars, and does not know where they are hosted.**
+`Person.avatarUrl` arrives from the API as an absolute URL, on a host mootmaker-api owns, and is
+used as the image's `src` exactly as given. There is no avatar directory in this repository and no
+path logic in the component. (There used to be both: 24 photos under `public/avatars/` and a rule
+for resolving a stored path against this origin. The two halves of that arrangement lived in
+different repositories and agreed only by convention, which is how avatars once shipped broken on
+every route more than one segment deep.)
+
+There is no upload feature. An avatar is set only through the API, which today means only for
+people mootmaker-demo-data creates.
+
+The initials are also what shows if an image fails to load - MUI's `Avatar` does that on its own.
+So a broken avatar looks exactly like a person who has none, and a test that checks an avatar is
+merely *present* proves nothing. The tests assert the image's `naturalWidth` instead: see
+[`person-avatar.spec.ts`](webapp/tests/person-avatar.spec.ts) against the mocked API and case Q.143
+in [`q-persons.spec.ts`](acceptance/tests/q-persons.spec.ts) against a deployed one.
+
 ### Error handling
 
 Two kinds of errors reach the user, both rendered by the dismissible [ErrorBanner](webapp/src/components/ErrorBanner.tsx) (an MUI `Alert`) at the top of the page:

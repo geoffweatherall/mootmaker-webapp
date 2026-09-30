@@ -216,3 +216,39 @@ thing not worth risking against a real environment for a guard already unit-test
 **Notes:** None.
 
 ---
+
+<a id="tc-q143"></a>
+### Q.143 — A person with an avatar is shown with it; a person without gets initials
+
+**Use case:** [use-cases.md#uc-143](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-143) — "A person who has an avatar is shown with it wherever people appear; a person who has none is shown with their initials."
+**Status:** ✅ Automated — [`tests/q-persons.spec.ts`](../tests/q-persons.spec.ts)
+**Android:** not yet automated
+
+**Given** one person who has an avatar and one who has none
+**When** an admin views the Persons page, and then the person picker on a Person Calendar
+**Then** the first is shown with their avatar image, genuinely loaded, and the second with their initials
+
+**Steps:**
+1. Create both people through the API, and set an avatar on the first through the API's upload
+   flow (`requestAvatarUpload`, `PUT`, `confirmAvatarUpload`) — the webapp has no upload feature.
+2. Sign in as the demo admin and open `/persons`.
+3. Open `/persons/<id>/calendar` and open the Person picker.
+
+**Assertions:**
+- The avatar `<img>`'s `src` is exactly the `avatarUrl` the API returned, and is not on the
+  webapp's own origin.
+- Its `naturalWidth` is greater than zero — on the Persons page and again in the picker.
+- The person with no avatar has no `<img>` at all, and shows their initials.
+
+**Out of scope:** uploading an avatar through the UI (no such feature exists); what the API accepts
+and rejects as an image (mootmaker-api's `AvatarUploadAcceptanceIT`); that seeded demo people have
+distinct, working avatars (mootmaker-demo-data's `GeneratedDataInvariantsAcceptanceIT`, which
+fetches every one).
+
+**Notes:** `naturalWidth`, not presence, is the assertion that matters. MUI's `Avatar` replaces a
+failed image with the person's initials, so a broken avatar is indistinguishable by eye — and by
+any presence check — from a person who simply has none. That is how avatars once shipped broken on
+every route deeper than one segment while this whole suite stayed green
+([mootmaker-webapp#131](https://github.com/geoffweatherall/mootmaker-webapp/issues/131)).
+
+---

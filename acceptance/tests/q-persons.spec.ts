@@ -1,11 +1,12 @@
 import { expect, test, type Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { freshTestAccount } from '../../support/testAccount'
+import { createPersonViaApi, setAvatarViaApi } from './support/avatarApi'
 import { formatDateParam, pinnedWeekday } from './support/pinnedDates'
 
 const PINNED_NOW = pinnedWeekday('Wednesday')
 
-// mootmaker/docs/reference/use-cases.md, section Q (Persons, admin only), cases 132-141. See
+// mootmaker/docs/reference/use-cases.md, section Q (Persons, admin only), cases 132-143. See
 // acceptance/test-cases/q-persons.md for the full per-case Given/When/Then/Steps/Assertions this
 // file implements one at a time. Supersedes section K (k-settings-people.md /
 // settings-people.spec.ts) now that People has moved out of Settings to its own top-level Persons
@@ -342,5 +343,44 @@ test.describe('Q. Persons (admin only)', () => {
 
     await expect(dialog.getByText('A person with this name already exists.')).toBeVisible()
     await expect(dialog).toBeVisible()
+  })
+
+  // The case that would have caught avatars shipping broken (mootmaker-webapp#131). Everything else
+  // in this suite stayed green throughout that bug, because nothing looked at an avatar at all -
+  // and "an avatar is rendered" would not have caught it either. MUI's Avatar swaps in the
+  // person's initials when its image fails to load, so a broken avatar looks exactly like a
+  // deliberate initials one. Only naturalWidth proves real image bytes arrived and decoded.
+  test('Q.143 - a person with an avatar is shown with it, and a person without gets initials', async ({ page }) => {
+    const withAvatar = `Avatar Holder ${uniqueId()}`
+    const without = `Zed Quill ${uniqueId()}`
+    const personId = await createPersonViaApi(withAvatar)
+    await createPersonViaApi(without)
+
+    await signInAsDemo(page)
+    // Any real PNG will do: the API decodes and re-encodes whatever it is given. A screenshot of
+    // the page is the cheapest way to get one without committing a binary fixture.
+    const png = await page.screenshot({ clip: { x: 0, y: 0, width: 128, height: 128 } })
+    const avatarUrl = await setAvatarViaApi(personId, png)
+    // Absolute, and not this webapp's own origin: avatars come from a host mootmaker-api owns.
+    expect(new URL(avatarUrl).origin).not.toBe(new URL(page.url()).origin)
+
+    await page.goto('/persons')
+    const image = personCard(page, withAvatar).locator('img')
+    await expect(image).toHaveAttribute('src', avatarUrl)
+    await expect
+      .poll(() => image.evaluate((el) => (el as HTMLImageElement).naturalWidth), { timeout: 10_000 })
+      .toBeGreaterThan(0)
+
+    await expect(personCard(page, without).locator('img')).toHaveCount(0)
+    await expect(personCard(page, without).getByText('ZQ', { exact: true })).toBeVisible()
+
+    // And somewhere other than the Persons page, from a route several segments deep - the routes
+    // where the original bug showed, when an avatar was a path resolved against the document.
+    await page.goto(`/persons/${personId}/calendar`)
+    await page.getByRole('combobox', { name: 'Person' }).click()
+    const optionImage = page.getByRole('option', { name: withAvatar, exact: true }).locator('img')
+    await expect
+      .poll(() => optionImage.evaluate((el) => (el as HTMLImageElement).naturalWidth), { timeout: 10_000 })
+      .toBeGreaterThan(0)
   })
 })

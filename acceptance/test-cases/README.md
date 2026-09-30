@@ -46,7 +46,7 @@ One file per lettered section of `use-cases.md`, same letters, same case numbers
 | [n-date-time-format-settings.md](n-date-time-format-settings.md) | N. Settings — Date and time format | 100–106 |
 | [o-edit-and-cancel-meetings.md](o-edit-and-cancel-meetings.md) | O. Edit and Cancel Meetings | 112–123 |
 | [p-rooms.md](p-rooms.md) | P. Rooms *(supersedes J)* | 124–131 |
-| [q-persons.md](q-persons.md) | Q. Persons *(supersedes K)* | 132–142 |
+| [q-persons.md](q-persons.md) | Q. Persons *(supersedes K)* | 132–143 |
 
 Case numbering matches `use-cases.md` exactly (global 1–99, not restarting per section), so a test
 case's ID is always `<SectionLetter>.<N>` — e.g. `F.38` — with no separate numbering scheme to keep

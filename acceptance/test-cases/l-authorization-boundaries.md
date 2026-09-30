@@ -33,18 +33,19 @@ specific P/Q/I mechanics, not because they need wholly separate test code.
 **Preconditions:** A confirmed standard test account, signed in (for its auth token). A real room and person fixture, created via the M2M admin-equivalent token.
 
 **Given** a standard user's real auth token
-**When** `createRoom`, `updateRoom`, `deleteRoom`, `createPerson`, `renamePerson`, `setPersonAdmin`, and `deletePerson` are each called directly (bypassing the UI)
-**Then** all seven are rejected server-side by `Identity.requireAdmin`, and none of the targeted rooms/people were actually changed
+**When** `createRoom`, `updateRoom`, `deleteRoom`, `createPerson`, `renamePerson`, `setPersonAdmin`, and `deletePerson` are each called directly (bypassing the UI), and `requestAvatarUpload`, `confirmAvatarUpload` and `removeAvatar` are each called against **someone else's** person
+**Then** all ten are rejected server-side, and none of the targeted rooms/people were actually changed; and `requestAvatarUpload` for the caller's **own** person succeeds
 
-**Steps:** One test, one standard account, all seven mutations attempted in sequence against real fixtures, then a spot-check query confirming nothing changed.
+**Steps:** One test, one standard account, all ten mutations attempted in sequence against real fixtures, then the one permitted call, then a spot-check query confirming nothing changed.
 
 **Assertions:**
 - Every attempt returns a top-level GraphQL `errors` array (not a structured `Result.errors` field) and no data for that mutation.
 - The fixture room's name and the fixture person's name are unchanged afterward; neither was deleted.
+- `requestAvatarUpload` aimed at the caller's own person returns an upload URL and no errors - so the three avatar rejections are shown to be about *whose* person it is, not about standard users being refused outright.
 
 **Out of scope:** `updateMyName`, which is deliberately **not** admin-only (self-only, no `id` argument at all — see L.91) — including it here would misrepresent it as symmetric with the other seven when it isn't.
 
-**Notes:** This use case explicitly frames itself as "belongs more in API-level testing" — `mootmaker-api/verify/` already covers this authoritatively; this entry exists per this catalog's no-gatekeeping scope, as a smoke-test-level duplicate one layer up. Widened from three mutations (`createRoom`/`updateRoom`/`createPerson`) to all seven admin mutations this design adds, specifically so P/Q don't each need their own "forced direct call" case.
+**Notes:** This use case explicitly frames itself as "belongs more in API-level testing" — `mootmaker-api/verify/` already covers this authoritatively; this entry exists per this catalog's no-gatekeeping scope, as a smoke-test-level duplicate one layer up. Widened from three mutations (`createRoom`/`updateRoom`/`createPerson`) to all seven admin mutations this design adds, specifically so P/Q don't each need their own "forced direct call" case. Widened again for the three avatar mutations, which are "admin, or the caller's own person" rather than admin-only: this is the only place that rule meets a real standard user's token, because `mootmaker-api/verify/` authenticates as the admin-equivalent tooling client and can only ever exercise the admin half.
 
 ---
 

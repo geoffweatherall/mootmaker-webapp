@@ -350,17 +350,19 @@ test.describe('Q. Persons (admin only)', () => {
   // and "an avatar is rendered" would not have caught it either. MUI's Avatar swaps in the
   // person's initials when its image fails to load, so a broken avatar looks exactly like a
   // deliberate initials one. Only naturalWidth proves real image bytes arrived and decoded.
-  test('Q.143 - a person with an avatar is shown with it, and a person without gets initials', async ({ page }) => {
+  test('Q.143 - a person with an avatar is shown with it, and a person without gets initials', async ({ page, request }) => {
     const withAvatar = `Avatar Holder ${uniqueId()}`
-    const without = `Zed Quill ${uniqueId()}`
-    const personId = await createPersonViaApi(withAvatar)
-    await createPersonViaApi(without)
+    // Initials are the first letters of the first and last words, so the unique part goes in the
+    // middle - at the end it would become one of the initials.
+    const without = `Zed ${uniqueId()} Quill`
+    const personId = await createPersonViaApi(request, withAvatar)
+    await createPersonViaApi(request, without)
 
     await signInAsDemo(page)
     // Any real PNG will do: the API decodes and re-encodes whatever it is given. A screenshot of
     // the page is the cheapest way to get one without committing a binary fixture.
     const png = await page.screenshot({ clip: { x: 0, y: 0, width: 128, height: 128 } })
-    const avatarUrl = await setAvatarViaApi(personId, png)
+    const avatarUrl = await setAvatarViaApi(request, personId, png)
     // Absolute, and not this webapp's own origin: avatars come from a host mootmaker-api owns.
     expect(new URL(avatarUrl).origin).not.toBe(new URL(page.url()).origin)
 

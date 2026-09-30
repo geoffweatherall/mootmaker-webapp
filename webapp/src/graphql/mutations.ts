@@ -70,14 +70,14 @@ export const CREATE_PERSON = graphql(`
         name
         isAdmin
         linkedEmails
-        photoUrl
+        avatarUrl
       }
       person {
         id
         name
         isAdmin
         linkedEmails
-        photoUrl
+        avatarUrl
       }
       errors
     }
@@ -113,14 +113,14 @@ export const SET_PERSON_ADMIN = graphql(`
         name
         isAdmin
         linkedEmails
-        photoUrl
+        avatarUrl
       }
       person {
         id
         name
         isAdmin
         linkedEmails
-        photoUrl
+        avatarUrl
       }
       cognitoSyncFailed
       errors
@@ -147,14 +147,14 @@ export const EDIT_PERSON = graphql(`
         name
         isAdmin
         linkedEmails
-        photoUrl
+        avatarUrl
       }
       person {
         id
         name
         isAdmin
         linkedEmails
-        photoUrl
+        avatarUrl
       }
       cognitoSyncFailed
       errors
@@ -170,7 +170,7 @@ export const DELETE_PERSON = graphql(`
         name
         isAdmin
         linkedEmails
-        photoUrl
+        avatarUrl
       }
       errors
     }

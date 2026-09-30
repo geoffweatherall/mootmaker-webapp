@@ -25,7 +25,7 @@ function cacheWith(rooms: { id: string; name: string; capacity: number; color?: 
             name: 'Ada Lovelace',
             isAdmin: false,
             linkedEmails: [],
-            photoUrl: null,
+            avatarUrl: null,
           },
         ],
       },
@@ -80,8 +80,8 @@ describe('referenceDataCache', () => {
     const cache = cacheWith([{ id: 'r1', name: 'Kaikoura', capacity: 8 }])
 
     cachePeople(cache, [
-      { id: 'p1', name: 'Ada Lovelace', isAdmin: false, linkedEmails: [], photoUrl: null },
-      { id: 'p2', name: 'Alan Turing', isAdmin: false, linkedEmails: [], photoUrl: null },
+      { id: 'p1', name: 'Ada Lovelace', isAdmin: false, linkedEmails: [], avatarUrl: null },
+      { id: 'p2', name: 'Alan Turing', isAdmin: false, linkedEmails: [], avatarUrl: null },
     ] as never)
 
     const data = cache.readQuery({ query: REFERENCE_DATA }) as { workspace: { people: { name: string }[] } }

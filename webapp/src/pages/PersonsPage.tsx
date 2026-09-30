@@ -114,7 +114,7 @@ export default function PersonsPage() {
             <Paper key={person.id} sx={{ p: 2.5 }}>
               <Stack spacing={1.5}>
                 <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-                  <PersonAvatar name={person.name} photoUrl={person.photoUrl} size={36} />
+                  <PersonAvatar name={person.name} avatarUrl={person.avatarUrl} size={36} />
                   <Typography variant="subtitle1" sx={{ flexGrow: 1, fontWeight: 700 }}>
                     {person.name}
                   </Typography>

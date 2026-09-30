@@ -35,13 +35,13 @@ export function resolveMeetingDetails(
     organiser: {
       id: meeting.organiser.id,
       name: peopleById.get(meeting.organiser.id)?.name ?? '',
-      photoUrl: peopleById.get(meeting.organiser.id)?.photoUrl ?? null,
+      avatarUrl: peopleById.get(meeting.organiser.id)?.avatarUrl ?? null,
     },
     attendees: meeting.attendees.map((attendee) => ({
       person: {
         id: attendee.person.id,
         name: peopleById.get(attendee.person.id)?.name ?? '',
-        photoUrl: peopleById.get(attendee.person.id)?.photoUrl ?? null,
+        avatarUrl: peopleById.get(attendee.person.id)?.avatarUrl ?? null,
       },
       status: attendee.status,
     })),

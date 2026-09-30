@@ -403,7 +403,7 @@ export default function AddMeetingPage() {
                 const { key, ...optionProps } = props
                 return (
                   <Box component="li" key={key} {...optionProps} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <PersonAvatar name={option.name} photoUrl={option.photoUrl} size={24} />
+                    <PersonAvatar name={option.name} avatarUrl={option.avatarUrl} size={24} />
                     <ListItemText primary={option.name} />
                   </Box>
                 )
@@ -426,7 +426,7 @@ export default function AddMeetingPage() {
                 return (
                   <li key={key} {...optionProps}>
                     <Checkbox checked={selected} />
-                    <PersonAvatar name={option.name} photoUrl={option.photoUrl} size={24} />
+                    <PersonAvatar name={option.name} avatarUrl={option.avatarUrl} size={24} />
                     <ListItemText primary={option.name} sx={{ ml: 1 }} />
                   </li>
                 )

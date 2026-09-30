@@ -18,27 +18,34 @@ export const rooms: Room[] = [
   { id: 'room-garden-room', name: 'Garden Room', capacity: 5, color: null },
 ]
 
+/**
+ * Where the mocked suite's avatars live. Absolute and on another origin, as in a real deployment,
+ * where avatars come from a distribution mootmaker-api owns. `.test` is reserved and never
+ * resolves, so a request the mock fails to intercept fails loudly instead of reaching anything.
+ */
+export const MOCK_AVATARS_ORIGIN = 'https://avatars.mootmaker.test'
+
+/** The one hash the mocked avatar host has no image for. */
+export const MOCK_MISSING_AVATAR_HASH = '0'.repeat(64)
+
 export const people: Person[] = [
-  // Deliberately stored WITHOUT a leading slash, unlike Carol below. PersonAvatar anchors it at the
-  // origin root either way - a bare path would otherwise resolve against the current document and
-  // silently break on every route deeper than one segment (see PersonAvatar.tsx's originRelative).
   {
     id: 'person-alice',
     name: 'Alice Anderson',
     isAdmin: false,
     linkedEmails: [],
-    photoUrl: 'avatars/female-02.jpg',
+    avatarUrl: `${MOCK_AVATARS_ORIGIN}/v1/person-alice/${'a'.repeat(64)}.jpg`,
   },
-  { id: 'person-bob', name: 'Bob Brown', isAdmin: false, linkedEmails: [], photoUrl: null },
-  // The one fixture person with a photo - see designs/person-avatar-photos.md and
-  // person-avatar.spec.ts, which exercises both this and the initials fallback the other fixture
-  // people (with photoUrl: null) already give every other test for free.
+  { id: 'person-bob', name: 'Bob Brown', isAdmin: false, linkedEmails: [], avatarUrl: null },
+  // Alice and Carol have avatars - absolute URLs, the shape the API returns - and handlers.ts
+  // serves a real image for them. person-avatar.spec.ts exercises both those and the initials
+  // fallback that the other fixture people (avatarUrl: null) give every other test for free.
   {
     id: 'person-carol',
     name: 'Carol Chen',
     isAdmin: false,
     linkedEmails: [],
-    photoUrl: '/avatars/female-05.jpg',
+    avatarUrl: `${MOCK_AVATARS_ORIGIN}/v1/person-carol/${'c'.repeat(64)}.jpg`,
   },
   // Linked to ADMIN_USER below - the one fixture person with admin access.
   {
@@ -46,7 +53,7 @@ export const people: Person[] = [
     name: 'Dana Diaz',
     isAdmin: true,
     linkedEmails: [ADMIN_USER.email],
-    photoUrl: null,
+    avatarUrl: null,
   },
   // Linked to DEMO_USER below.
   {
@@ -54,19 +61,18 @@ export const people: Person[] = [
     name: 'Demo User',
     isAdmin: false,
     linkedEmails: [DEMO_USER.email],
-    photoUrl: null,
+    avatarUrl: null,
   },
-  // A photoUrl pointing at a file this webapp build doesn't actually have - the filename-drift risk
-  // designs/person-avatar-photos.md calls out (mootmaker-demo-data and mootmaker-webapp's photo
-  // libraries have nothing enforcing they agree). person-avatar.spec.ts checks this degrades to the
-  // initials fallback rather than a broken image icon. Appended, not inserted, so the two indexed
-  // lookups below (people[3]/people[4]) keep pointing at Dana/Demo.
+  // An avatarUrl the mocked avatar host answers with a 404 (see handlers.ts) - an avatar deleted
+  // out from under a stale record, or a host that is misconfigured. person-avatar.spec.ts checks
+  // this degrades to the initials fallback rather than a broken image icon. Appended, not inserted,
+  // so the two indexed lookups below (people[3]/people[4]) keep pointing at Dana/Demo.
   {
     id: 'person-erin',
     name: 'Erin Fisher',
     isAdmin: false,
     linkedEmails: [],
-    photoUrl: '/avatars/does-not-exist.jpg',
+    avatarUrl: `${MOCK_AVATARS_ORIGIN}/v1/person-erin/${MOCK_MISSING_AVATAR_HASH}.jpg`,
   },
 ]
 

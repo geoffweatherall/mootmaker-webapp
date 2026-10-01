@@ -7,7 +7,7 @@ originally flagged a 5-vs-15-minute doc drift here too; that's now fixed system-
 2026-08-22 — see README.md's "Resolved" section — and F.40/F.41 below describe the fixed
 behaviour.)
 
-Every case signs in as the demo user unless stated otherwise, and every case that touches
+Every case signs in as the standard user unless stated otherwise, and every case that touches
 `RoomAvailabilityPage` (to confirm a meeting landed) needs `page.clock.setFixedTime` pinned inside
 business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 
@@ -20,14 +20,14 @@ business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. A uniquely-named room created as this test's own precondition (no seeding bypass exists — see README.md).
+**Preconditions:** Signed in as the standard user. A uniquely-named room created as this test's own precondition (no seeding bypass exists — see README.md).
 
 **Given** a signed-in user with a linked Person, a room, and the form's own sensible defaults for everything else
 **When** they fill in only Subject and Room and submit
 **Then** the meeting is created, the app navigates to that day's Room Availability for the meeting's room, a success toast appears, and the new meeting is visible on the grid
 
 **Steps:** (already implemented — see the spec file for the exact selectors used)
-1. Sign in as the demo user.
+1. Sign in as the standard user.
 2. Create a uniquely-named room via Settings.
 3. Pin the clock inside business hours.
 4. Navigate to `/meetings/add`; fill **Subject**; select the room; leave everything else on its default; click **Save**.
@@ -50,19 +50,19 @@ business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user (linked Person "Demo Strater").
+**Preconditions:** Signed in as the standard user (linked Person "E2E Standard").
 
 **Given** a signed-in user with a resolved linked Person
 **When** they open Add Meeting without touching the Organiser field
 **Then** it already shows their own name
 
 **Steps:**
-1. Sign in as the demo user.
+1. Sign in as the standard user.
 2. Navigate to `/meetings/add`.
 3. Read the **Organiser** select's displayed value without interacting with it.
 
 **Assertions:**
-- Organiser field's text equals "Demo Strater".
+- Organiser field's text equals "E2E Standard".
 
 **Out of scope:** the no-linked-Person case (leaves it blank — D.24); the organiser/attendee-pick race (documented as not automatable anywhere, see A.6's Notes); a user who has manually changed it (implicit in "not already changed" — not separately tested, since it's the *absence* of interaction that's the point here).
 
@@ -77,14 +77,14 @@ business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. Clock pinned to a known, non-boundary time.
+**Preconditions:** Signed in as the standard user. Clock pinned to a known, non-boundary time.
 
 **Given** the current time is `10:07:00`
 **When** the user opens Add Meeting
 **Then** Start time defaults to `10:15` (the next 15-minute boundary) and End time defaults to `11:15` (exactly one hour later, same day)
 
 **Steps:**
-1. Sign in as the demo user; `page.clock.setFixedTime(new Date('2026-08-24T10:07:00'))`.
+1. Sign in as the standard user; `page.clock.setFixedTime(new Date('2026-08-24T10:07:00'))`.
 2. Navigate to `/meetings/add`.
 3. Read **Start time** and **End time** field values.
 
@@ -105,7 +105,7 @@ business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user.
+**Preconditions:** Signed in as the standard user.
 
 **Given** the Add Meeting form's Start/End time pickers
 **When** the minute selection list is opened
@@ -133,7 +133,7 @@ business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts) (two tests: end-before-start, end-equals-start)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. A room.
+**Preconditions:** Signed in as the standard user. A room.
 
 **Given** a user who sets an end time earlier than (or equal to) the start time
 **When** they submit
@@ -170,7 +170,7 @@ now automated and pass against the real, deployed, fixed API.
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts) (direct GraphQL call — see Notes)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. A room.
+**Preconditions:** Signed in as the standard user. A room.
 
 **Given** a user picks a start time late in the day and an end time that would fall after midnight
 **When** they submit
@@ -219,14 +219,14 @@ values rather than colliding on the same one.
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user (admin). Two other people exist (create via Settings → People — "Alice", "Bob").
+**Preconditions:** Signed in as the standard user (admin). Two other people exist (create via Settings → People — "Alice", "Bob").
 
 **Given** the Add Meeting form with at least two selectable people besides the current organiser
 **When** the user picks Alice as an attendee, then picks Bob as organiser, then removes Alice as an attendee
 **Then** at each step the Organiser/Attendees option lists update per the mutual-exclusivity rule
 
 **Steps:**
-1. Sign in as the demo user; create people "Alice" and "Bob" via Settings.
+1. Sign in as the standard user; create people "Alice" and "Bob" via Settings.
 2. Navigate to `/meetings/add`.
 3. Open **Attendees**; select "Alice"; close.
 4. Open **Organiser**; assert "Alice" is NOT in the option list; select "Bob".
@@ -252,7 +252,7 @@ values rather than colliding on the same one.
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. A room. Ability to call the GraphQL API directly (bypassing the UI) for the "forced" half.
+**Preconditions:** Signed in as the standard user. A room. Ability to call the GraphQL API directly (bypassing the UI) for the "forced" half.
 
 **Given (a)** the ordinary UI, which structurally can't let the same person be both organiser and attendee (F.44's filtering)
 **Then (a)** there is nothing to click that would even attempt it — this half is a negative UI-shape assertion, not a submission
@@ -282,7 +282,7 @@ values rather than colliding on the same one.
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. A room.
+**Preconditions:** Signed in as the standard user. A room.
 
 **Given** a form filled in except Subject
 **When** submitted
@@ -309,7 +309,7 @@ values rather than colliding on the same one.
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user.
+**Preconditions:** Signed in as the standard user.
 
 **Given** a form filled in except Room
 **When** submitted
@@ -334,14 +334,14 @@ values rather than colliding on the same one.
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the **e2e user** (no linked Person, so Organiser starts genuinely blank — see D.24). A room (create it as the demo user first, since the e2e user is a standard, non-admin account).
+**Preconditions:** Signed in as the **e2e user** (no linked Person, so Organiser starts genuinely blank — see D.24). A room (create it as the standard user first, since the e2e user is a standard, non-admin account).
 
 **Given** a signed-in user with no linked Person, on a form with everything else filled in
 **When** they submit without picking an Organiser
 **Then** `OrganiserRequired` is shown as "Please select an organiser."; no meeting is created
 
 **Steps:**
-1. Sign in as the demo user; create a room; sign out.
+1. Sign in as the standard user; create a room; sign out.
 2. Sign in as the e2e user.
 3. Navigate to `/meetings/add`; fill Subject; select the room; leave Organiser unselected; click **Save**.
 
@@ -350,7 +350,7 @@ values rather than colliding on the same one.
 
 **Out of scope:** N/A.
 
-**Notes:** Deliberately uses the e2e user rather than the demo user, since the demo user's Organiser field is never blank to begin with (F.39) — this is the one case in the section that specifically needs the no-linked-Person account as its starting point, not just as an option.
+**Notes:** Deliberately uses the e2e user rather than the standard user, since the standard user's Organiser field is never blank to begin with (F.39) — this is the one case in the section that specifically needs the no-linked-Person account as its starting point, not just as an option.
 
 ---
 
@@ -361,7 +361,7 @@ values rather than colliding on the same one.
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. A room with capacity 2. Two other people (attendees).
+**Preconditions:** Signed in as the standard user. A room with capacity 2. Two other people (attendees).
 
 **Given** a room that holds 2 and a meeting with 1 organiser + 2 attendees (3 distinct people)
 **When** submitted
@@ -369,7 +369,7 @@ values rather than colliding on the same one.
 
 **Steps:**
 1. Sign in; create a capacity-2 room; create two people ("Carol", "Dave").
-2. Navigate to `/meetings/add`; fill Subject; select the room; leave Organiser on its default (the demo user); add both Carol and Dave as Attendees.
+2. Navigate to `/meetings/add`; fill Subject; select the room; leave Organiser on its default (the standard user); add both Carol and Dave as Attendees.
 3. Click **Save**.
 
 **Assertions:**
@@ -388,7 +388,7 @@ values rather than colliding on the same one.
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. A room with an existing meeting 10:00–11:00.
+**Preconditions:** Signed in as the standard user. A room with an existing meeting 10:00–11:00.
 
 **Given** a room already booked 10:00–11:00
 **When** a second meeting is submitted for the same room at 10:30–11:30 (genuinely overlapping, not just touching — contrast with E.34's legal touching case)
@@ -441,7 +441,7 @@ values rather than colliding on the same one.
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. One room, capacity 2, already fully booked for the exact time window this test will request (an existing meeting covering that whole window).
+**Preconditions:** Signed in as the standard user. One room, capacity 2, already fully booked for the exact time window this test will request (an existing meeting covering that whole window).
 
 **Given** no room has both sufficient capacity and a free slot for the requested time
 **When** "Suggest a room" is clicked
@@ -469,7 +469,7 @@ values rather than colliding on the same one.
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts) — now passing live (fixed 2026-08-27, see Notes)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. Three free rooms with distinct capacities (5, 7, 9; e.g. "Suggest Room 5", "Suggest Room 7", "Suggest Room 9"), none booked at the test's chosen time. Four attendees created, so the meeting's required capacity (organiser + 4 attendees = 5) sits above every capacity any earlier test in this file creates (observed max 4) and at or below the smallest of this test's own three rooms.
+**Preconditions:** Signed in as the standard user. Three free rooms with distinct capacities (5, 7, 9; e.g. "Suggest Room 5", "Suggest Room 7", "Suggest Room 9"), none booked at the test's chosen time. Four attendees created, so the meeting's required capacity (organiser + 4 attendees = 5) sits above every capacity any earlier test in this file creates (observed max 4) and at or below the smallest of this test's own three rooms.
 
 **Given** three qualifying rooms of capacities 5/7/9, for a meeting that needs capacity 5 (organiser + 4 attendees)
 **When** "Suggest a room" is pressed four times in a row
@@ -502,7 +502,7 @@ values rather than colliding on the same one.
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts) — now passing live (fixed 2026-08-27, see Notes)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. Two free rooms of capacities 11 and 13 ("Cache Room Small"/"Cache Room Large"). Eleven attendees created: the first press selects 9 of them (required capacity 10 — clears F.53's own leftover rooms, capacity ≤ 9, and this file's cross-test baseline, capacity ≤ 4), the remaining 2 are added before the second press (required capacity 12 — clears the capacity-11 small room).
+**Preconditions:** Signed in as the standard user. Two free rooms of capacities 11 and 13 ("Cache Room Small"/"Cache Room Large"). Eleven attendees created: the first press selects 9 of them (required capacity 10 — clears F.53's own leftover rooms, capacity ≤ 9, and this file's cross-test baseline, capacity ≤ 4), the remaining 2 are added before the second press (required capacity 12 — clears the capacity-11 small room).
 
 **Given** a suggestion already cached from a first press
 **When** the attendee count is changed (e.g. one attendee added) and "Suggest a room" is pressed again
@@ -533,7 +533,7 @@ values rather than colliding on the same one.
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user.
+**Preconditions:** Signed in as the standard user.
 
 **Given** a user who navigated to Add Meeting from Room Availability and typed into the form
 **When** they click **Cancel**
@@ -562,7 +562,7 @@ values rather than colliding on the same one.
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. A room.
+**Preconditions:** Signed in as the standard user. A room.
 
 **Given** a valid, ready-to-submit form
 **When** the Save button is double-clicked in quick succession
@@ -591,7 +591,7 @@ values rather than colliding on the same one.
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts) — fix applied 2026-08-27, pending live re-verification (see Notes)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user.
+**Preconditions:** Signed in as the standard user.
 
 **Given** a narrow viewport
 **When** the Add Meeting form is viewed
@@ -636,7 +636,7 @@ values rather than colliding on the same one.
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user.
+**Preconditions:** Signed in as the standard user.
 
 **Given** a form submitted with a validation error (e.g. blank Subject), with the page scrolled so the banner (which is `position: sticky`) is not in the initial viewport
 **When** submission is rejected

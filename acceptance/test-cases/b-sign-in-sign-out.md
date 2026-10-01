@@ -12,15 +12,15 @@ See [README.md](README.md) for the entry format and test-data conventions.
 **Status:** ✅ Automated — [`tests/sign-in-sign-out.spec.ts`](../tests/sign-in-sign-out.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed out. The demo user's credentials.
+**Preconditions:** Signed out. The standard user's credentials.
 
 **Given** a signed-out visitor on `/signin`
-**When** they enter the demo user's correct email and password and submit
+**When** they enter the standard user's correct email and password and submit
 **Then** they're signed in and land on the destination `RequireAuth` would otherwise have sent them from (here, straight back to `/` since they navigated to `/signin` directly, not via a redirect)
 
 **Steps:**
 1. Navigate to `/signin`.
-2. Fill **Email** and **Password** (`getByLabel('Email')`, `getByLabel('Password')`) with `DEMO_USER_EMAIL`/`DEMO_USER_PASSWORD`.
+2. Fill **Email** and **Password** (`getByLabel('Email')`, `getByLabel('Password')`) with the standard user's credentials (`E2E_STANDARD_USER_EMAIL`/`E2E_STANDARD_USER_PASSWORD`).
 3. Click **Sign in** (`getByRole('button', { name: 'Sign in' })`).
 
 **Assertions:**
@@ -40,7 +40,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 **Status:** ✅ Automated — [`tests/sign-in-sign-out.spec.ts`](../tests/sign-in-sign-out.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed out. The demo user's credentials.
+**Preconditions:** Signed out. The standard user's credentials.
 
 **Given** a signed-out visitor on `/` (the marketing/landing content)
 **When** they fill in and submit the `SignInForm` embedded on that page
@@ -48,7 +48,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Steps:**
 1. Navigate to `/`.
-2. Within the "Try it now" `Paper` section, fill **Email**/**Password** with the demo user's credentials (there are two forms with `Email`/`Password` labels only if the sidebar has none — confirm this is the only match, or scope via the section's heading text `getByRole('heading', { name: 'Try it now — no account needed' })`'s container).
+2. Within the "Try it now" `Paper` section, fill **Email**/**Password** with the standard user's credentials (there are two forms with `Email`/`Password` labels only if the sidebar has none — confirm this is the only match, or scope via the section's heading text `getByRole('heading', { name: 'Try it now — no account needed' })`'s container).
 3. Click **Sign in**.
 
 **Assertions:**
@@ -68,7 +68,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 **Status:** ✅ Automated — [`tests/sign-in-sign-out.spec.ts`](../tests/sign-in-sign-out.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed out. The demo user's email (a known-valid account), an intentionally wrong password.
+**Preconditions:** Signed out. The standard user's email (a known-valid account), an intentionally wrong password.
 
 **Given** a signed-out visitor entering a valid email with an incorrect password
 **When** they submit
@@ -76,7 +76,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Steps:**
 1. Navigate to `/signin`.
-2. Fill **Email** with `DEMO_USER_EMAIL`; fill **Password** with an obviously wrong value.
+2. Fill **Email** with `E2E_STANDARD_USER_EMAIL`; fill **Password** with an obviously wrong value.
 3. Click **Sign in**.
 
 **Assertions:**
@@ -156,14 +156,14 @@ See [README.md](README.md) for the entry format and test-data conventions.
 **Status:** ✅ Automated — [`tests/sign-in-sign-out.spec.ts`](../tests/sign-in-sign-out.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user.
+**Preconditions:** Signed in as the standard user.
 
 **Given** a signed-in user on any page
 **When** the browser is hard-reloaded (`page.reload()`, a full document reload, not client-side navigation)
 **Then** the session survives — the user is still shown as signed in, with no redirect to `/signin`
 
 **Steps:**
-1. Sign in as the demo user; navigate to `/settings` (an authenticated route, so the assertion below is meaningful).
+1. Sign in as the standard user; navigate to `/settings` (an authenticated route, so the assertion below is meaningful).
 2. `await page.reload()`.
 
 **Assertions:**
@@ -184,14 +184,14 @@ See [README.md](README.md) for the entry format and test-data conventions.
 **Status:** ✅ Automated — [`tests/sign-in-sign-out.spec.ts`](../tests/sign-in-sign-out.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user.
+**Preconditions:** Signed in as the standard user.
 
 **Given** a signed-in user
 **When** they click **Sign out** in the sidebar, then try to navigate to a protected route
 **Then** they're signed out immediately, and the protected route now redirects to `/signin` instead of loading
 
 **Steps:**
-1. Sign in as the demo user.
+1. Sign in as the standard user.
 2. Click **Sign out** (`getByRole('button', { name: 'Sign out' })` in `MenuContent`).
 3. Assert `getByText('Sign out')` is no longer visible and `getByRole('button', { name: 'Sign in' })` is visible instead.
 4. Navigate directly to `/settings` (`page.goto`, a fresh navigation, not relying on cached client state).
@@ -222,7 +222,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 **Steps:**
 1. Navigate directly to `/settings` while signed out.
 2. Assert URL is `/signin`.
-3. Fill and submit the demo user's credentials.
+3. Fill and submit the standard user's credentials.
 
 **Assertions:**
 - After step 1: URL is `/signin` (redirected by `RequireAuth`).

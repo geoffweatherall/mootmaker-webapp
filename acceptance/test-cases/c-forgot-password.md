@@ -44,7 +44,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 **Status:** ✅ Automated — [`tests/forgot-password.spec.ts`](../tests/forgot-password.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** None beyond a known-existing account (the demo user, or a freshly created one) to compare against, and a fresh never-registered email.
+**Preconditions:** None beyond a known-existing account (the standard user, or a freshly created one) to compare against, and a fresh never-registered email.
 
 **Given** an email address with no account at all
 **When** a user requests a reset code for it
@@ -54,7 +54,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 1. Navigate to `/forgot-password`.
 2. Fill **Email** with a fresh, never-registered `uniqueTestEmail()`.
 3. Click **Send code**.
-4. In the same test, repeat with a known account's email (e.g. the demo user's) for comparison.
+4. In the same test, repeat with a known account's email (e.g. the standard user's) for comparison.
 
 **Assertions:**
 - Both cases: the **Verification code** field becomes visible (advances to step 2) with no error shown.

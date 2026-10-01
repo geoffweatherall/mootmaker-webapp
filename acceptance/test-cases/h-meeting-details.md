@@ -20,20 +20,20 @@ OS share sheet can't be driven by Playwright) rather than a navigated-to URL. Se
 **Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. A room and a meeting organised by the demo user, with one attendee.
+**Preconditions:** Signed in as the standard user. A room and a meeting organised by the standard user, with one attendee.
 
 **Given** a meeting the signed-in user organises
 **When** they view its Details page
 **Then** every field (subject, room, organiser, attendees, date, time) is correct
 
 **Steps:**
-1. Sign in; create a room and an attendee Person; create a meeting with the demo user as organiser and that person as attendee.
+1. Sign in; create a room and an attendee Person; create a meeting with the standard user as organiser and that person as attendee.
 2. Open the meeting's row (from Room Availability), click Share, read its real URL off the clipboard, and visit it.
 
 **Assertions:**
 - Subject heading matches.
 - Room name visible (no capacity shown any more - `MeetingDetailContent` never showed it, and the full page now renders the same shared component - see 2026-09-20 update below).
-- "Demo Strater" is shown in the row directly below the "Organiser" caption.
+- "E2E Standard" is shown in the row directly below the "Organiser" caption.
 - The attendee's name is visible.
 - Date/Time: see H.71 for the exact format assertions.
 
@@ -54,19 +54,19 @@ OS share sheet can't be driven by Playwright) rather than a navigated-to URL. Se
 **Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user, but as the **attendee** this time. A room, another Person as organiser (created via Settings), the demo user added as an attendee.
+**Preconditions:** Signed in as the standard user, but as the **attendee** this time. A room, another Person as organiser (created via Settings), the standard user added as an attendee.
 
 **Given** a meeting the signed-in user attends but didn't organise
 **When** they view its Details page
 **Then** it loads and displays correctly, with the *other* person shown as Organiser and the signed-in user's own name among Attendees
 
 **Steps:**
-1. Sign in; create a room and a Person ("Organiser Person"); create a meeting with "Organiser Person" as organiser and the demo user's own personId as an attendee (requires knowing the demo user's personId — obtainable via the Settings "Your name" field's underlying data, or by first visiting Settings and reading the display name to select the matching Attendee option by name).
+1. Sign in; create a room and a Person ("Organiser Person"); create a meeting with "Organiser Person" as organiser and the standard user's own personId as an attendee (requires knowing the standard user's personId — obtainable via the Settings "Your name" field's underlying data, or by first visiting Settings and reading the display name to select the matching Attendee option by name).
 2. Open the meeting's row, click Share, read its real URL off the clipboard, and visit it.
 
 **Assertions:**
 - "Organiser Person" is shown in the row directly below the "Organiser" caption.
-- "Demo Strater" is visible (as an attendee).
+- "E2E Standard" is visible (as an attendee).
 - Page loads with no access error (proving attendee-only access works, distinct from organiser access).
 
 **Out of scope:** N/A.
@@ -82,14 +82,14 @@ OS share sheet can't be driven by Playwright) rather than a navigated-to URL. Se
 **Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. A meeting organised by and attended only by *other* people (two Persons created via Settings, neither the demo user).
+**Preconditions:** Signed in as the standard user. A meeting organised by and attended only by *other* people (two Persons created via Settings, neither the standard user).
 
 **Given** a meeting the signed-in user has no participant relationship to at all
 **When** they visit its `/meetings/<id>` URL directly (via Share - see this file's header note)
 **Then** it loads and shows full details anyway — `Query.meeting(id:)` has no per-caller filtering at the API level
 
 **Steps:**
-1. Sign in as the demo user; create two Persons ("Third Party A", "Third Party B") and a meeting between them (organiser A, attendee B) via the demo admin's own Add Meeting form (submitting on someone else's behalf).
+1. Sign in as the standard user; create two Persons ("Third Party A", "Third Party B") and a meeting between them (organiser A, attendee B) via the admin user's own Add Meeting form (submitting on someone else's behalf).
 2. Open the meeting's row, click Share, read its real URL off the clipboard, and visit it.
 
 **Assertions:**
@@ -108,7 +108,7 @@ OS share sheet can't be driven by Playwright) rather than a navigated-to URL. Se
 **Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. A room and a meeting with a known date/start/end (e.g. `2026-08-24`, `10:00`–`11:00`).
+**Preconditions:** Signed in as the standard user. A room and a meeting with a known date/start/end (e.g. `2026-08-24`, `10:00`–`11:00`).
 
 **Given** a meeting with a known date and time range
 **When** its Details page is viewed
@@ -164,7 +164,7 @@ H.72 would need to return.
 **Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user.
+**Preconditions:** Signed in as the standard user.
 
 **Given** a meeting id that doesn't correspond to any real meeting
 **When** the user navigates to `/meetings/<bogus-id>`
@@ -189,18 +189,18 @@ H.72 would need to return.
 
 **Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts), new 2026-09-20 — see `../../designs/meeting-detail-consolidation.md` in the hub repo.
 
-**Preconditions:** Signed in as the demo user (to create the meeting and its real Share link), then signed out.
+**Preconditions:** Signed in as the standard user (to create the meeting and its real Share link), then signed out.
 
 **Given** a real meeting link, produced by the app's own Share button, and a visitor who is not signed in
 **When** they follow that link
 **Then** `RequireAuth` redirects them to `/signin`; a real sign-in returns them to the exact meeting the link named, with no "Back" button shown
 
 **Steps:**
-1. Sign in as the demo user; create a room and a meeting.
+1. Sign in as the standard user; create a room and a meeting.
 2. Open the meeting's row, click Share, and read its real URL off the clipboard.
 3. Sign out.
 4. Visit the Share-produced URL directly.
-5. Assert the `/signin` redirect; sign in with the demo user's real credentials.
+5. Assert the `/signin` redirect; sign in with the standard user's real credentials.
 
 **Assertions:**
 - After step 4: on `/signin`.
@@ -221,7 +221,7 @@ a mocked test cannot stand in for. See H.72's removal note above for the full pi
 **Status:** ✅ Automated — [`tests/attendee-response-status.spec.ts`](../tests/attendee-response-status.spec.ts), new 2026-09-21 — see `../../designs/attendee-response-status.md` in the hub repo.
 **Android:** not yet automated
 
-**Preconditions:** Same setup as D.107 - a meeting with the demo user as an attendee, created via the API.
+**Preconditions:** Same setup as D.107 - a meeting with the standard user as an attendee, created via the API.
 
 **Given** a meeting-detail sheet open for a meeting the signed-in caller attends
 **When** they view their own attendee row and use the response control

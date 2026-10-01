@@ -14,7 +14,7 @@ otherwise-fast, hard-to-catch transient state reliably observable — each says 
 **Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. A room, so there's a real room to book into.
+**Preconditions:** Signed in as the standard user. A room, so there's a real room to book into.
 
 **Given (a)** a genuinely first, cold visit to a day's Room Availability — nothing has fetched or written anything about that day yet
 **Then (a)** a centred `CircularProgress` shows before content appears
@@ -49,14 +49,14 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 **Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user.
+**Preconditions:** Signed in as the standard user.
 
 **Given** the GraphQL API is unreachable
 **When** a page that depends on it is visited
 **Then** an `ErrorBanner` shows a readable message, and the page doesn't crash to a blank screen
 
 **Steps:**
-1. Sign in as the demo user (before breaking the network, so the session itself is established).
+1. Sign in as the standard user (before breaking the network, so the session itself is established).
 2. `page.route(GRAPHQL_API_URL, route => route.abort())` — simulate the API being unreachable, for this test only.
 3. Navigate to today's Room Availability.
 
@@ -77,14 +77,14 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 **Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user.
+**Preconditions:** Signed in as the standard user.
 
 **Given** a signed-in session whose cached tokens have been corrupted (simulating expiry, since waiting out Cognito's real token TTL isn't practical in a test)
 **When** the next API call is made
 **Then** it fails without crashing the page — ideally prompting re-authentication, per the use case's own "ideally" hedge (i.e. this may currently just show a generic error instead; the test should observe and report whichever actually happens, not assume the "ideal" outcome)
 
 **Steps:**
-1. Sign in as the demo user.
+1. Sign in as the standard user.
 2. Corrupt the cached Cognito session: `localStorage` keys under `amazon-cognito-identity-js`'s own naming convention (its id/access/refresh tokens) — overwrite the id token's value with a garbage string, or clear the refresh token specifically so `getSession()`'s transparent refresh can't succeed.
 3. Trigger a fresh API call: navigate to Home (`/`), which issues its own query on mount. Deliberately not an admin-only page (Rooms/Persons) or another `RequireAuth`-guarded page, so this test's outcome is decided solely by what the corrupted session itself resolves to, not by a route guard's own redirect target.
 
@@ -107,14 +107,14 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 **Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user (or signed out, for the redirect-to-signin variant — either proves the deep link itself resolved rather than 404ing).
+**Preconditions:** Signed in as the standard user (or signed out, for the redirect-to-signin variant — either proves the deep link itself resolved rather than 404ing).
 
 **Given** a fresh browser (no prior client-side navigation within the app this session)
 **When** the browser is pointed directly at a nested client-side route's URL
 **Then** the real page loads (the S3/CloudFront 403/404→`/index.html` rewrite, per this repo's own Hosting section, working correctly) — not a raw 404
 
 **Steps:**
-1. Sign in as the demo user.
+1. Sign in as the standard user.
 2. In a **fresh page/context** (not reusing one that's already loaded the SPA), `page.goto(<WEBAPP_URL>/meetings/add)` directly — a true hard navigation, not a client-side one.
 
 **Assertions:**
@@ -134,7 +134,7 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 **Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user.
+**Preconditions:** Signed in as the standard user.
 
 **Given** the OS-level colour-scheme preference
 **When** set to `dark`, then to `light`
@@ -162,7 +162,7 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 **Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. Narrow viewport.
+**Preconditions:** Signed in as the standard user. Narrow viewport.
 
 **Given** a signed-in user on a narrow viewport
 **When** they open the hamburger menu, then tap a nav item (once for an ordinary `MenuContent` item, once for the `AccountBox` Settings shortcut specifically, since it's called out by name in the use case's wording)
@@ -211,14 +211,14 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 **Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Two separate browser contexts (simulating two independent sessions/devices), both signed in as the demo user.
+**Preconditions:** Two separate browser contexts (simulating two independent sessions/devices), both signed in as the standard user.
 
 **Given** two independent sessions with the *same* page already loaded and cached (e.g. Room Availability, so rooms are `cache-first`-cached in each)
 **When** session A creates a new room, and session B — which never touched session A's tab/cache — hard-reloads
 **Then** session B's reload picks up the new room, proving a full reload resets Apollo's in-memory cache rather than serving stale `cache-first` data indefinitely
 
 **Steps:**
-1. Open two Playwright browser contexts, A and B; sign in as the demo user in both.
+1. Open two Playwright browser contexts, A and B; sign in as the standard user in both.
 2. In both, navigate to `/settings` (or any page that warms the `LIST_ROOMS` `cache-first` cache) — establishing each context's own independent in-memory cache.
 3. In context A only, create a new uniquely-named room.
 4. In context B, **without** navigating through the SPA (which wouldn't refetch a `cache-first` query anyway), perform a hard `page.reload()`.
@@ -243,21 +243,21 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 **Status:** ✅ Automated — [`tests/attendee-response-status.spec.ts`](../tests/attendee-response-status.spec.ts), new 2026-09-21 — see `../../designs/attendee-response-status.md` in the hub repo.
 **Android:** not yet automated
 
-**Preconditions:** Three real identities in three separate browser contexts: the demo user and two freshly-created, admin-confirmed accounts (`support/cognitoAdmin.ts`'s `createConfirmedTestAccount`, bypassing the email-code UI). One organises; the demo user and the other fresh account are both attendees of one meeting, created via the API.
+**Preconditions:** Three real identities in three separate browser contexts: the standard user and two freshly-created, admin-confirmed accounts (`support/cognitoAdmin.ts`'s `createConfirmedTestAccount`, bypassing the email-code UI). One organises; the standard user and the other fresh account are both attendees of one meeting, created via the API.
 
 **Given** two different real attendees of the same meeting
 **When** both call `respondToMeeting` for that meeting at the same moment (`Promise.all`, not sequential)
 **Then** both responses land - the day item's optimistic-lock retry (`DayRepository.mutate`) means the second writer re-reads and re-applies against the first's already-committed change rather than losing it
 
 **Steps:**
-1. Sign in as the demo user and two fresh accounts, each in its own browser context (a shared context would share localStorage and silently replace an earlier sign-in).
-2. Create a meeting via the API: fresh account 1 organises, the demo user and fresh account 2 attend.
-3. Fire `respondToMeeting` from the demo user (`Going`) and fresh account 2 (`Maybe`) together via `Promise.all`.
+1. Sign in as the standard user and two fresh accounts, each in its own browser context (a shared context would share localStorage and silently replace an earlier sign-in).
+2. Create a meeting via the API: fresh account 1 organises, the standard user and fresh account 2 attend.
+3. Fire `respondToMeeting` from the standard user (`Going`) and fresh account 2 (`Maybe`) together via `Promise.all`.
 4. Read the meeting back over the API.
 
 **Assertions:**
 - Both mutation calls return no errors.
-- The re-read shows the demo user's status as `Going` AND fresh account 2's status as `Maybe` - neither missing, neither holding the other's value.
+- The re-read shows the standard user's status as `Going` AND fresh account 2's status as `Maybe` - neither missing, neither holding the other's value.
 
 **Notes:** This is the real-infrastructure counterpart to `RespondToMeetingHandlerTest`'s `FakeDynamoDbClient`-based concurrency tests in `mootmaker-api` - those pin the handler's own retry *logic*; this is what actually proves a genuine DynamoDB `ConditionalCheckFailedException` gets hit and retried, not just reasoned about.
 
@@ -270,15 +270,15 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 **Status:** ✅ Automated — [`tests/attendee-response-status.spec.ts`](../tests/attendee-response-status.spec.ts), new 2026-09-21 — see `../../designs/attendee-response-status.md` in the hub repo.
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user, with two rooms and one other Person (organiser) already present. Two meetings on the same pinned day (different rooms/times), both via the API, with the demo user as the sole attendee of each.
+**Preconditions:** Signed in as the standard user, with two rooms and one other Person (organiser) already present. Two meetings on the same pinned day (different rooms/times), both via the API, with the standard user as the sole attendee of each.
 
 **Given** one person attending two different meetings on the same calendar day
 **When** they respond to both at the same moment (`Promise.all`)
 **Then** both responses land - even though these look independent from the API surface, storage is one DynamoDB item per *day*, not per meeting, so both writes contend on the exact same optimistic lock and this is the concurrency shape most likely to produce a real conflict in practice
 
 **Steps:**
-1. Sign in as the demo user; create two rooms and one organiser Person.
-2. Create two meetings via the API on the same day, different rooms/times, demo user attending both.
+1. Sign in as the standard user; create two rooms and one organiser Person.
+2. Create two meetings via the API on the same day, different rooms/times, standard user attending both.
 3. Fire `respondToMeeting` for both meetings together via `Promise.all` (`Going` / `NotGoing`).
 4. Read both meetings back over the API.
 
@@ -297,14 +297,14 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 **Status:** ✅ Automated — [`tests/attendee-response-status.spec.ts`](../tests/attendee-response-status.spec.ts), new 2026-09-21 — see `../../designs/attendee-response-status.md` in the hub repo.
 **Android:** not yet automated
 
-**Preconditions:** Two browser contexts: the demo user (observer, organiser) and one fresh account (the meeting's sole attendee). A meeting created via the API, on the pinned "today".
+**Preconditions:** Two browser contexts: the standard user (observer, organiser) and one fresh account (the meeting's sole attendee). A meeting created via the API, on the pinned "today".
 
 **Given** the observer has the meeting's detail sheet open, showing the attendee's status badge as "No response"
 **When** the attendee calls `respondToMeeting` from their own, separate session
 **Then** the observer's already-open sheet updates to show "Going" with no reload or navigation - the same `daysInvalidated` broadcast/refetch `createMeeting` already relies on, now proven for `respondToMeeting` too
 
 **Steps:**
-1. Sign in as the demo user (observer) and a fresh account (attendee), each in its own context.
+1. Sign in as the standard user (observer) and a fresh account (attendee), each in its own context.
 2. Observer creates a meeting via the API with the fresh account as the sole attendee.
 3. Observer opens the meeting's detail sheet; asserts the attendee's badge reads "No response".
 4. The attendee calls `respondToMeeting('Going')` directly over the API - not through the observer's browser.
@@ -324,14 +324,14 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 **Status:** ✅ Automated — [`tests/edit-and-cancel-meetings.spec.ts`](../tests/edit-and-cancel-meetings.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Two browser contexts: the demo user (observer) and a second confirmed account (the editor - an admin, or the meeting's organiser in another tab). A meeting created via the API, on the pinned "today".
+**Preconditions:** Two browser contexts: the standard user (observer) and a second confirmed account (the editor - an admin, or the meeting's organiser in another tab). A meeting created via the API, on the pinned "today".
 
 **Given** the observer has the meeting's detail sheet open, showing its original subject
 **When** the editor calls `updateMeeting` for that meeting from their own, separate session, changing the subject
 **Then** the observer's already-open sheet updates to show the new subject with no reload or navigation - the same `daysInvalidated` broadcast/refetch mechanism M.111 proves for `respondToMeeting`, now proven for `updateMeeting` too
 
 **Steps:**
-1. Sign in as the demo user (observer) and a second confirmed account (editor, admin), each in its own context.
+1. Sign in as the standard user (observer) and a second confirmed account (editor, admin), each in its own context.
 2. Observer creates a meeting via the API, organised by themselves.
 3. Observer opens the meeting's detail sheet; asserts the original subject is shown.
 4. The editor calls `updateMeeting` directly over the API, changing the subject - not through the observer's browser.
@@ -351,14 +351,14 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 **Status:** ✅ Automated — [`tests/edit-and-cancel-meetings.spec.ts`](../tests/edit-and-cancel-meetings.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Two browser contexts: the demo user (observer) and a second confirmed account (the canceller - an admin, or the meeting's organiser in another tab). A meeting created via the API, on the pinned "today".
+**Preconditions:** Two browser contexts: the standard user (observer) and a second confirmed account (the canceller - an admin, or the meeting's organiser in another tab). A meeting created via the API, on the pinned "today".
 
 **Given** the observer has the meeting's detail sheet open, showing its subject and details
 **When** the canceller calls `cancelMeeting` for that meeting from their own, separate session
 **Then** the observer's already-open sheet stops showing the meeting's content and instead shows that it was cancelled elsewhere, with no reload, navigation, or error dialog
 
 **Steps:**
-1. Sign in as the demo user (observer) and a second confirmed account (canceller, admin), each in its own context.
+1. Sign in as the standard user (observer) and a second confirmed account (canceller, admin), each in its own context.
 2. Observer creates a meeting via the API, organised by themselves.
 3. Observer opens the meeting's detail sheet; asserts the subject is shown.
 4. The canceller calls `cancelMeeting` directly over the API - not through the observer's browser.

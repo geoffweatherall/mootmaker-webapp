@@ -2,7 +2,7 @@
 
 Use cases [mootmaker/use-cases.md § A](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#a-sign-up).
 See [README.md](README.md) for the entry format and test-data conventions referenced below (the
-demo user, the e2e user, `freshTestAccount`/`waitForVerificationCode`, `createConfirmedTestAccount`).
+standard user, the e2e user, `freshTestAccount`/`waitForVerificationCode`, `createConfirmedTestAccount`).
 
 All six cases exercise the **real** Cognito pool and (for 1, 3, 4, 5) the real SES→SNS→SQS email
 pipeline — none of this section can be faked with the mocked-auth integration layer, since the
@@ -168,14 +168,14 @@ whole point is proving the real sign-up + email + PostConfirmation-trigger chain
 **Status:** ✅ Automated — [`tests/sign-up.spec.ts`](../tests/sign-up.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** A room must already exist (created by the demo user first, since a freshly signed-up standard user can't create one). A fresh email address for the sign-up itself.
+**Preconditions:** A room must already exist (created by the standard user first, since a freshly signed-up standard user can't create one). A fresh email address for the sign-up itself.
 
 **Given** a user who just confirmed their sign-up, with an existing room to book
 **When** they go straight to Add Meeting without visiting Settings first
 **Then** the Organiser field is already pre-filled with their own name, and submitting with just subject + room succeeds
 
 **Steps:**
-1. Sign in as the demo user; create a uniquely-named room via Settings → "Add room"; sign out.
+1. Sign in as the standard user; create a uniquely-named room via Settings → "Add room"; sign out.
 2. Complete a real sign-up + confirmation (as in A.1) with a fresh `freshTestAccount()`.
 3. Pin `page.clock.setFixedTime(...)` to a time safely inside business hours (08:00–17:00) before navigating to the form — see F.38's Notes for why.
 4. Navigate to `/meetings/add`.
@@ -190,4 +190,4 @@ whole point is proving the real sign-up + email + PostConfirmation-trigger chain
 
 **Out of scope:** the documented race between the organiser-defaulting effect and picking yourself as an attendee before your own `personId` resolves — explicitly called out as not automated anywhere yet (see the main webapp README's "Organiser/attendee mutual exclusivity" section); this case only needs the ordinary (non-racing) default to have resolved by the time the form is submitted, which a real navigation after a completed sign-in reliably allows time for.
 
-**Notes:** This is the one case in this section that also depends on F.38's/F.39's underlying mechanics (room creation as a precondition, organiser defaulting) — see [f-add-meeting.md](f-add-meeting.md) for those in isolation with the demo user instead.
+**Notes:** This is the one case in this section that also depends on F.38's/F.39's underlying mechanics (room creation as a precondition, organiser defaulting) — see [f-add-meeting.md](f-add-meeting.md) for those in isolation with the standard user instead.

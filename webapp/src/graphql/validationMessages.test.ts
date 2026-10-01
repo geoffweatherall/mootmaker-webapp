@@ -70,6 +70,7 @@ describe('MEETING_ERROR_MESSAGES', () => {
     'OutsideBookableRange',
     'TooManyMeetingsInOneCall',
     'MeetingNotFound',
+    'MeetingChanged',
   ]
 
   it('has a non-empty message for every MeetingError code, and no extra ones', () => {

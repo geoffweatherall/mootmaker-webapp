@@ -69,6 +69,9 @@ export const MEETING_ERROR_MESSAGES: Record<MeetingError, string> = {
   // updateMeeting/cancelMeeting only - same wording as RESPOND_TO_MEETING_ERROR_MESSAGES's own
   // MeetingNotFound below, for the same case.
   MeetingNotFound: 'This meeting no longer exists - it may have been deleted.',
+  // updateMeeting only: someone else changed the meeting after this form loaded it (#96).
+  MeetingChanged:
+    'Someone else changed this meeting after you opened it, so your changes were not saved. Reload the page to see their changes, then make yours again.',
 }
 
 export const RESPOND_TO_MEETING_ERROR_MESSAGES: Record<RespondToMeetingError, string> = {

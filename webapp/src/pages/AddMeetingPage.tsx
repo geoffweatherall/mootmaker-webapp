@@ -25,6 +25,7 @@ import { dayInvalidations } from '../apolloClient'
 import { errorMessages } from '../graphql/errorMessages'
 import { CREATE_MEETING, UPDATE_MEETING } from '../graphql/mutations'
 import { MEETING_BY_ID, REFERENCE_DATA, SUGGEST_ROOM } from '../graphql/queries'
+import { MEETING_VERSION } from '../graphql/meetingVersion'
 import {
   MEETING_ERROR_MESSAGES,
 } from '../graphql/validationMessages'
@@ -121,6 +122,15 @@ export default function AddMeetingPage() {
     fetchPolicy: 'network-only',
   })
   const existingMeeting = existingMeetingData?.meeting
+  // Fetched with the meeting, and sent back with the save - see MEETING_VERSION.
+  const { data: versionData } = useQuery(MEETING_VERSION, {
+    variables: { id: meetingId ?? '' },
+    skip: !isEdit,
+    fetchPolicy: 'network-only',
+  })
+  // Held from the moment the form is seeded, never refreshed: it must be the version the user's
+  // edits were made against, not whatever a later refetch returns.
+  const [editedVersion, setEditedVersion] = useState<string | null>(null)
 
   const [subject, setSubject] = useState('')
   const [roomId, setRoomId] = useState('')
@@ -149,7 +159,8 @@ export default function AddMeetingPage() {
   // lazy useState initializer because the fetch is asynchronous - the meeting isn't known yet on
   // this component's first render.
   useEffect(() => {
-    if (!isEdit || !existingMeeting || formSeeded) return
+    if (!isEdit || !existingMeeting || !versionData?.meeting || formSeeded) return
+    setEditedVersion(versionData.meeting.version)
     setSubject(existingMeeting.subject)
     setRoomId(existingMeeting.room.id)
     setOriginalRoomId(existingMeeting.room.id)
@@ -162,7 +173,7 @@ export default function AddMeetingPage() {
     setEndTime(dayjs(existingMeeting.endTime))
     setFormSeeded(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEdit, existingMeeting, formSeeded])
+  }, [isEdit, existingMeeting, versionData, formSeeded])
 
   const [createMeeting, { loading: creating, error: createError, reset: resetCreateError }] = useMutation<{
     createMeeting: CreateMeetingResult
@@ -300,7 +311,9 @@ export default function AddMeetingPage() {
     }
 
     if (isEdit) {
-      const result = await updateMeeting({ variables: { id: meetingId ?? '', meeting: meetingInput } })
+      const result = await updateMeeting({
+        variables: { id: meetingId ?? '', meeting: { ...meetingInput, expectedVersion: editedVersion } },
+      })
       const payload = result.data?.updateMeeting
       if (payload?.errors.length) {
         setMeetingErrors(payload.errors.map((code) => MEETING_ERROR_MESSAGES[code]))

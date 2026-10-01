@@ -277,6 +277,40 @@ test.describe('Edit and cancel meetings', () => {
       await expect(page.getByRole('heading', { name: newSubject, exact: true })).toBeVisible()
     })
 
+    test('saving an edit form opened before someone else changed the meeting is refused, not silently overwritten', async ({
+      page,
+    }) => {
+      // mootmaker-api#96: updateMeeting replaces every field, so without a version check this
+      // save would put the old time back and nobody would know.
+      await signIn(page, DEMO_USER)
+      const subject = `Stale edit test ${Date.now()}`
+      await createMeeting(page, subject)
+      const existing = await findFixtureMeeting(page, subject)
+      await page.goto(`/meetings/${existing.id}/edit`)
+      await expect(page.getByLabel('Subject')).toHaveValue(subject)
+
+      // Someone else renames it while this form is open.
+      const theirSubject = `${subject} (renamed elsewhere)`
+      await callMutationDirectly(page, 'UpdateMeeting', {
+        id: existing.id,
+        meeting: {
+          subject: theirSubject,
+          roomId: existing.room.id,
+          organiserId: existing.organiser.id,
+          attendeeIds: existing.attendees.map((attendee) => attendee.person.id),
+          startTime: existing.startTime,
+          endTime: existing.endTime,
+        },
+      })
+
+      await page.getByLabel('Subject').fill(`${subject} (mine)`)
+      await page.getByRole('button', { name: 'Save' }).click()
+
+      await expect(page.getByText('Someone else changed this meeting after you opened it')).toBeVisible()
+      await expect(page).toHaveURL(new RegExp(`/meetings/${existing.id}/edit$`))
+      expect((await findFixtureMeeting(page, theirSubject)).subject).toBe(theirSubject)
+    })
+
     test('a cancellation made elsewhere shows "This meeting was cancelled" on an already-open sheet', async ({
       page,
     }) => {

@@ -14,6 +14,7 @@ import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-
  * Learn more about it here: https://the-guild.dev/graphql/codegen/plugins/presets/preset-client#reducing-bundle-size
  */
 type Documents = {
+    "\n  query MeetingVersion($id: ID!) {\n    meeting(id: $id) {\n      id\n      version\n    }\n  }\n": typeof types.MeetingVersionDocument,
     "\n  mutation CreateRoom($room: RoomInput!) {\n    createRoom(room: $room) {\n      rooms {\n        id\n        name\n        capacity\n        color\n      }\n      room {\n        id\n        name\n        capacity\n        color\n      }\n      errors\n    }\n  }\n": typeof types.CreateRoomDocument,
     "\n  mutation UpdateRoom($id: ID!, $room: RoomInput!) {\n    updateRoom(id: $id, room: $room) {\n      rooms {\n        id\n        name\n        capacity\n        color\n      }\n      room {\n        id\n        name\n        capacity\n        color\n      }\n      errors\n    }\n  }\n": typeof types.UpdateRoomDocument,
     "\n  mutation DeleteRoom($id: ID!) {\n    deleteRoom(id: $id) {\n      rooms {\n        id\n        name\n        capacity\n        color\n      }\n      errors\n    }\n  }\n": typeof types.DeleteRoomDocument,
@@ -37,6 +38,7 @@ type Documents = {
     "\n  query SuggestRoom(\n    $startTime: String!\n    $endTime: String!\n    $requiredCapacity: Int!\n    $excludingMeetingId: ID\n  ) {\n    suggestRoom(\n      startTime: $startTime\n      endTime: $endTime\n      requiredCapacity: $requiredCapacity\n      excludingMeetingId: $excludingMeetingId\n    ) {\n      id\n      name\n      capacity\n      color\n    }\n  }\n": typeof types.SuggestRoomDocument,
 };
 const documents: Documents = {
+    "\n  query MeetingVersion($id: ID!) {\n    meeting(id: $id) {\n      id\n      version\n    }\n  }\n": types.MeetingVersionDocument,
     "\n  mutation CreateRoom($room: RoomInput!) {\n    createRoom(room: $room) {\n      rooms {\n        id\n        name\n        capacity\n        color\n      }\n      room {\n        id\n        name\n        capacity\n        color\n      }\n      errors\n    }\n  }\n": types.CreateRoomDocument,
     "\n  mutation UpdateRoom($id: ID!, $room: RoomInput!) {\n    updateRoom(id: $id, room: $room) {\n      rooms {\n        id\n        name\n        capacity\n        color\n      }\n      room {\n        id\n        name\n        capacity\n        color\n      }\n      errors\n    }\n  }\n": types.UpdateRoomDocument,
     "\n  mutation DeleteRoom($id: ID!) {\n    deleteRoom(id: $id) {\n      rooms {\n        id\n        name\n        capacity\n        color\n      }\n      errors\n    }\n  }\n": types.DeleteRoomDocument,
@@ -74,6 +76,10 @@ const documents: Documents = {
  */
 export function graphql(source: string): unknown;
 
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query MeetingVersion($id: ID!) {\n    meeting(id: $id) {\n      id\n      version\n    }\n  }\n"): (typeof documents)["\n  query MeetingVersion($id: ID!) {\n    meeting(id: $id) {\n      id\n      version\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

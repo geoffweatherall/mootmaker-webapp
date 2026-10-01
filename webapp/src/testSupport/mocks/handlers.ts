@@ -58,6 +58,22 @@ function asPerson<T extends { id: string; name: string }>(person: T) {
 }
 
 /** The full shape `meeting(id:)` selects - names resolved, not just ids. */
+/**
+ * The mock's stand-in for Meeting.version (mootmaker-api#96): changes whenever an editable field
+ * does, and not when an attendee responds - the same contract as the real fingerprint, without
+ * needing to match its format, which is opaque to clients anyway.
+ */
+function versionOf(meeting: MeetingDetails): string {
+  return JSON.stringify([
+    meeting.room.id,
+    meeting.organiser.id,
+    meeting.attendees.map((attendee) => attendee.person.id).sort(),
+    meeting.subject,
+    meeting.startTime,
+    meeting.endTime,
+  ])
+}
+
 function asMeetingDetails(meeting: MeetingDetails) {
   return {
     __typename: 'Meeting' as const,
@@ -171,6 +187,8 @@ interface MeetingInput {
   attendeeIds: string[]
   startTime: string
   endTime: string
+  /** updateMeeting only - see versionOf. */
+  expectedVersion?: string | null
 }
 
 // Mirrors the subset of mootmaker-api's createMeeting validation rules (see the API README's
@@ -326,6 +344,13 @@ export const handlers: HttpHandler[] = [
           },
         })
 
+      case 'MeetingVersion': {
+        const found = meetings.find((candidate) => candidate.id === variables.id) ?? null
+        return HttpResponse.json({
+          data: { meeting: found && { __typename: 'Meeting', id: found.id, version: versionOf(found) } },
+        })
+      }
+
       case 'MeetingById': {
         const found = meetings.find((candidate) => candidate.id === variables.id) ?? null
         return HttpResponse.json({ data: { meeting: found && asMeetingDetails(found) } })
@@ -398,6 +423,12 @@ export const handlers: HttpHandler[] = [
         const existing = meetings.find((candidate) => candidate.id === id)
         if (!existing) {
           const result: UpdateMeetingResult = { meeting: null, day: null, errors: ['MeetingNotFound'] }
+          return HttpResponse.json({ data: { updateMeeting: { __typename: 'UpdateMeetingResult', ...result } } })
+        }
+        // Optimistic concurrency, as the real API does it: an edit made from a copy that has
+        // since changed is rejected, and nothing is written.
+        if (input.expectedVersion && input.expectedVersion !== versionOf(existing)) {
+          const result: UpdateMeetingResult = { meeting: null, day: null, errors: ['MeetingChanged'] }
           return HttpResponse.json({ data: { updateMeeting: { __typename: 'UpdateMeetingResult', ...result } } })
         }
         const errors = validateMeetingInput(input, id)

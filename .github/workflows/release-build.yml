@@ -73,8 +73,10 @@ jobs:
     name: build
     runs-on: ubuntu-24.04
     # The acceptance stage stands up real infrastructure, including a CloudFront distribution;
-    # a hung step must not bill indefinitely.
-    timeout-minutes: 60
+    # a hung step must not bill indefinitely. A normal run is ~40 minutes, but creating that
+    # distribution has taken 28 minutes on its own (usually ~3), and running out of time after
+    # the tests pass cancels the build and leaves its teardown half done.
+    timeout-minutes: 90
     defaults:
       run:
         working-directory: mootmaker-webapp

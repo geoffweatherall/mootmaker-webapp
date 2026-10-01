@@ -15,9 +15,11 @@ structure, the build and deploy scripts, and how to run the tests. Keep it up to
   right tool for an ephemeral environment; it is no longer how `test` or `production` get updated.
   This repo's `release-build.yml` is a reusable workflow called by that pipeline — it is not
   something to dispatch directly except when proving the pipeline itself.
-- **Expect `../mootmaker-api` as a sibling checkout.** `deploy.sh` passes the environment name
-  through to the API's `authenticate.sh` to discover the GraphQL URL and Cognito IDs. Use the local
-  checkout rather than looking anything up on GitHub.
+- **Configuration comes from SSM, not from mootmaker-api's state.** `deploy.sh` and the
+  `e2e`/`acceptance` runners look up the API's URL, Cognito IDs, clients and test fixtures under
+  `/mootmaker/<environment>/` via `deploy/ssm-config.sh` (mootmaker-api#94). A sibling
+  `../mootmaker-api` checkout is still useful, for codegen against an in-progress schema; use it
+  rather than looking anything up on GitHub.
 - **`npm install` at the repository root as well as in `webapp/`.** They are separate `package.json`
   files. Missing the root one produces a silent `playwright: not found`, which has wasted time
   before.

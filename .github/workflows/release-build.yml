@@ -7,13 +7,14 @@
 # environment-agnostic because deploy.sh writes env-config.js into dist/ AFTER the build, so the
 # same files are correct for every environment.
 #
-# THREE sibling checkouts are needed, all with an explicit `path` so they land beside each other
+# TWO sibling checkouts are needed, both with an explicit `path` so they land beside each other
 # under the workspace root - the layout every mootmaker script expects:
-#   mootmaker-api             acceptance/run.sh sources its authenticate.sh, and deploy.sh needs
-#                             the API deployed to the same environment name first
+#   mootmaker-api             deployed into the ephemeral environment first, since the webapp's
+#                             deploy and tests need it; also the schema deploy.sh checks against
 #   mootmaker-ephemeral-envs  acceptance/run.sh resolves it even when it is not going to create an
 #                             environment itself
-#   mootmaker-email-testing   acceptance/run.sh reads SQS_QUEUE_URL from its Terraform outputs
+# Everything else - the API's endpoint and clients, the shared email queue - is looked up in SSM
+# (deploy/ssm-config.sh, mootmaker-api#94), so mootmaker-email-testing is no longer checked out.
 #                             (persistent shared infrastructure, never created per environment)
 #
 # acceptance/run.sh is deliberately given an EXPLICIT environment name. Called with no argument it
@@ -103,11 +104,6 @@ jobs:
         with:
           repository: geoffweatherall/mootmaker-ephemeral-envs
           path: mootmaker-ephemeral-envs
-
-      - uses: actions/checkout@v5
-        with:
-          repository: geoffweatherall/mootmaker-email-testing
-          path: mootmaker-email-testing
 
       # Read from the checkout rather than github.sha, which is the CALLER's commit when this
       # workflow is called - the same context rule that makes the explicit checkout above necessary.

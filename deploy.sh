@@ -52,19 +52,12 @@ fi
 
 echo "Deploying mootmaker-webapp to '${environment}'..."
 
-api_dir="../mootmaker-api"
-if [[ ! -f "${api_dir}/authenticate.sh" ]]; then
-  echo "Expected to find the mootmaker-api checkout at ${api_dir} (as a sibling of this directory)." >&2
-  exit 1
-fi
+# The API's endpoint, Cognito ids, demo credentials and machine-to-machine client are looked up in
+# SSM Parameter Store, where mootmaker-api's deploy publishes them (mootmaker-api#94). This deploy
+# does not need a mootmaker-api checkout or access to its Terraform state.
+source deploy/ssm-config.sh
+export_api_deploy_config "${environment}"
 
-# Populates GRAPHQL_API_URL, the COGNITO_* variables, and the DEMO_* demo-user
-# credentials from the deployed API's Terraform outputs for this same environment.
-source "${api_dir}/authenticate.sh" "${environment}"
-
-# Isolates this environment's Terraform provider cache/backend pointer from
-# other environments, so deploying two different environments from the same
-# checkout (even concurrently) can't cross-contaminate each other.
 export TF_DATA_DIR=".terraform-${environment}"
 
 terraform -chdir=deploy/terraform init -backend-config=backend.hcl -backend-config="key=${environment}/mootmaker-webapp/terraform.tfstate"
@@ -101,8 +94,15 @@ schema_access_token="$(curl -sS -X POST "${COGNITO_TOKEN_URL}" \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d "grant_type=client_credentials&client_id=${COGNITO_TEST_CLIENT_ID}&client_secret=${COGNITO_TEST_CLIENT_SECRET}&scope=${COGNITO_TEST_SCOPE}" \
   | jq -r .access_token)"
-./deploy/verify-schema-compatibility.sh "${GRAPHQL_API_URL}" "${schema_access_token}" \
-  "${api_dir}/api/mootmaker.graphql"
+# Checked against the schema this build was compiled against, chosen by the same rule as
+# webapp/codegen.ts: a sibling mootmaker-api checkout if there is one, otherwise the published
+# @mootmaker/schema package installed above. The sibling checkout is optional now - nothing else in
+# this deploy reads it.
+schema_file="../mootmaker-api/api/mootmaker.graphql"
+if [[ ! -f "${schema_file}" ]]; then
+  schema_file="webapp/node_modules/@mootmaker/schema/mootmaker.graphql"
+fi
+./deploy/verify-schema-compatibility.sh "${GRAPHQL_API_URL}" "${schema_access_token}" "${schema_file}"
 
 if [[ "${skip_build}" == "0" ]]; then
   npm --prefix webapp run build

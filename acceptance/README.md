@@ -80,7 +80,7 @@ outcome (data changed, something new is visible somewhere else), not just "no er
   verification-code flow itself** needs a fresh account and a real code — see
   `../support/testAccount.ts` and `../support/email.ts`.
 - **Every other case** should sign in as the **demo user** (`DEMO_USER_EMAIL`/`DEMO_USER_PASSWORD`,
-  populated by `run.sh` from `mootmaker-api`'s Terraform outputs) — a real, pre-verified,
+  populated by `run.sh` from SSM, where `mootmaker-api` publishes them) — a real, pre-verified,
   always-admin Cognito account that exists in every environment already (see
   `mootmaker-api/deploy/terraform/cognito.tf`), with a linked Person already resolved. No sign-up,
   no email, no `support/cognitoAdmin.ts` bypass needed. This is the "pre-verified Cognito user"

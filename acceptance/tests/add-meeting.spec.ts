@@ -239,15 +239,20 @@ test('start/end time pickers only ever offer 15-minute-boundary minutes', async 
   for (const groupName of ['Start time', 'End time'] as const) {
     const group = page.getByRole('group', { name: groupName })
     await group.getByRole('button', { name: /Choose time/i }).click()
-    // Both Start/End dialogs stay mounted in the DOM even when closed (only one is actually
-    // open at a time), so the listbox query must be scoped to this field's own dialog - an
-    // unscoped page-wide query matches both and trips Playwright's strict mode.
+    // The clock dial (mootmaker-webapp#147): hours first, then minutes. Both Start/End pickers stay
+    // mounted even when closed, so scope to this field's own dialog - an unscoped query matches
+    // both and trips Playwright's strict mode. The dial's listbox wrapper has no height of its
+    // own, so wait on its options rather than on it.
     const dialog = page.getByRole('dialog', { name: groupName })
-    const minuteOptions = dialog.getByRole('listbox', { name: 'Select minutes' })
-    await expect(minuteOptions).toBeVisible()
-    const minutes = await minuteOptions.getByRole('option').allTextContents()
-    // Exactly {00, 15, 30, 45} - not just "some multiple of 15" - see F.41's catalog Notes.
-    expect(minutes).toEqual(['00', '15', '30', '45'])
+    await expect(dialog.getByRole('listbox', { name: /^Select hours/ }).getByRole('option').first()).toBeVisible()
+    await dialog.getByRole('button', { name: 'Open next view' }).click()
+    const minuteDial = dialog.getByRole('listbox', { name: /^Select minutes/ })
+    await expect(minuteDial.getByRole('option').first()).toBeVisible()
+    // The dial draws all twelve 5-minute labels; exactly {00, 15, 30, 45} - not just "some
+    // multiple of 15" - are choosable. See F.41's catalog Notes.
+    await expect(minuteDial.getByRole('option')).toHaveCount(12)
+    const choosable = await minuteDial.getByRole('option', { disabled: false }).allTextContents()
+    expect(choosable.sort()).toEqual(['00', '15', '30', '45'])
     await page.keyboard.press('Escape')
   }
 })

@@ -108,17 +108,17 @@ business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 **Preconditions:** Signed in as the standard user.
 
 **Given** the Add Meeting form's Start/End time pickers
-**When** the minute selection list is opened
-**Then** only `:00, :15, :30, :45` are offered — never any other value
+**When** the picker's clock dial is moved on to its minutes
+**Then** only `:00, :15, :30, :45` can be chosen — the other 5-minute labels are drawn but disabled
 
 **Steps:**
 1. Sign in; navigate to `/meetings/add`.
-2. Open the **Start time** picker's minute view (MUI X `TimePicker`, `timeSteps={{ minutes: 15 }}`).
-3. Read all rendered minute option values.
+2. Open the **Start time** picker (MUI X `TimePicker` with the clock-dial view renderers on every device, mootmaker-webapp#147) and press **Open next view** to reach the minutes dial.
+3. Read the dial's minute options, and which of them are enabled.
 4. Repeat for **End time**.
 
 **Assertions:**
-- The rendered minute options equal exactly `['00', '15', '30', '45']` — not just "every option is a multiple of 15," since a 15-minute step over 60 minutes has a small, fully-enumerable set worth pinning down precisely (matching the tightened assertion in `webapp/tests/meeting-form.spec.ts`'s mocked-layer equivalent).
+- The dial has twelve minute options, and the enabled ones equal exactly `['00', '15', '30', '45']` — not just "every option is a multiple of 15," since a 15-minute step over 60 minutes has a small, fully-enumerable set worth pinning down precisely (matching the tightened assertion in `webapp/tests/meeting-form.spec.ts`'s mocked-layer equivalent).
 
 **Out of scope:** the server-side `StartMissaligned`/`EndMissaligned` rule this UI restriction mirrors (not directly reachable through the picker, since it structurally can't select a non-boundary minute — see F.45's Notes for how a server-side rule gets tested when the UI itself can't produce the invalid input).
 

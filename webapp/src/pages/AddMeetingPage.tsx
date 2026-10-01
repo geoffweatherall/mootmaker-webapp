@@ -13,6 +13,8 @@ import {
 } from '@mui/material'
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import { TimePicker } from '@mui/x-date-pickers/TimePicker'
+import { renderTimeViewClock } from '@mui/x-date-pickers/timeViewRenderers'
+import type { TimeView } from '@mui/x-date-pickers/models'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useEffect, useState, type FormEvent } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -47,6 +49,17 @@ import {
 // Only offer minutes on a 15-minute boundary in the time picker, matching the
 // API's requirement that meeting start/end times fall on a 15 minute boundary.
 const MEETING_TIME_STEPS = { minutes: 15 }
+
+// The clock dial in every mode (mootmaker-webapp#147). Left to its defaults, the picker shows the
+// dial only on touch devices and scrolling hour/minute lists with a mouse - the mode follows the
+// pointer, so the popover still matches the desktop DatePicker.
+const CLOCK_DIAL_VIEWS = { hours: renderTimeViewClock, minutes: renderTimeViewClock }
+
+// The dial draws all twelve 5-minute labels whatever the step, so grey out the ones a meeting
+// can't start or end on rather than leaving them looking choosable.
+function isOffQuarterHour(value: Dayjs, view: TimeView): boolean {
+  return view === 'minutes' && value.minute() % MEETING_TIME_STEPS.minutes !== 0
+}
 
 const NO_ROOM_AVAILABLE_MESSAGE = 'No suitable room is available for that time - try adjusting the attendees or time.'
 
@@ -464,6 +477,8 @@ export default function AddMeetingPage() {
               value={startTime}
               onChange={(value) => setStartTime(snapToNearestQuarterHour(value))}
               timeSteps={MEETING_TIME_STEPS}
+              viewRenderers={CLOCK_DIAL_VIEWS}
+              shouldDisableTime={isOffQuarterHour}
               slotProps={{ textField: { fullWidth: true } }}
             />
             <TimePicker
@@ -472,6 +487,8 @@ export default function AddMeetingPage() {
               value={endTime}
               onChange={(value) => setEndTime(snapToNearestQuarterHour(value))}
               timeSteps={MEETING_TIME_STEPS}
+              viewRenderers={CLOCK_DIAL_VIEWS}
+              shouldDisableTime={isOffQuarterHour}
               slotProps={{ textField: { fullWidth: true } }}
             />
 

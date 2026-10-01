@@ -28,6 +28,7 @@ import { useMeetingDetailOverlay } from '../components/useMeetingDetailOverlay'
 import { errorMessages } from '../graphql/errorMessages'
 import { formatLocalTime } from '../graphql/formatDateTime'
 import { PAGE_LOAD, REFERENCE_DATA } from '../graphql/queries'
+import { keepDaysWhileRefreshing } from '../graphql/keepDaysWhileRefreshing'
 import type { Meeting, Person } from '../graphql/types'
 import { PersonIcon } from '../icons'
 import { roomColorFor } from '../theme/roomColor'
@@ -114,7 +115,8 @@ export default function PersonCalendarPage() {
   const visibleDates = useMemo(() => days.map((day) => day.format(DATE_KEY_FORMAT)), [days])
 
   const {
-    data: meetingsData,
+    data: pageData,
+    previousData: previousPageData,
     loading: meetingsLoading,
     error: meetingsError,
   } = useQuery(PAGE_LOAD, {
@@ -122,6 +124,8 @@ export default function PersonCalendarPage() {
     skip: !personId,
     fetchPolicy: 'cache-and-network',
   })
+  // A day being refetched after a live update keeps its last-known meetings on screen (#136).
+  const meetingsData = keepDaysWhileRefreshing(pageData, previousPageData, meetingsLoading, visibleDates)
 
   /**
    * The window this calendar may navigate in, published by the server and never computed here -

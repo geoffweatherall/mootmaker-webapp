@@ -29,6 +29,7 @@ import { useMeetingDetailOverlay } from '../components/useMeetingDetailOverlay'
 import { formatLocalTime } from '../graphql/formatDateTime'
 import { RESPOND_TO_MEETING } from '../graphql/mutations'
 import { DAYS, PAGE_LOAD } from '../graphql/queries'
+import { keepDaysWhileRefreshing } from '../graphql/keepDaysWhileRefreshing'
 import type { Attendee, AttendeeStatus, Person, RespondToMeetingResult, Room } from '../graphql/types'
 import { roomColorFor } from '../theme/roomColor'
 import {
@@ -175,11 +176,17 @@ export default function HomePage() {
     return [0, 1, 2].map((offset) => todayStart.add(offset, 'day').format(DATE_KEY_FORMAT))
   }, [])
 
-  const { data, loading: meetingsLoading } = useQuery(PAGE_LOAD, {
+  const {
+    data: pageData,
+    previousData: previousPageData,
+    loading: meetingsLoading,
+  } = useQuery(PAGE_LOAD, {
     variables: { dates: agendaDates },
     fetchPolicy: 'cache-and-network',
     skip: !email,
   })
+  // A day being refetched after a live update keeps its last-known meetings on screen (#136).
+  const data = keepDaysWhileRefreshing(pageData, previousPageData, meetingsLoading, agendaDates)
 
   // "Search further ahead" extends the dates asked for via the same DAYS query
   // RoomAvailabilityPage reads a single day from, so a click here and a later visit to Room

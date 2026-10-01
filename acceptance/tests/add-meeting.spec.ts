@@ -1,90 +1,23 @@
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { pinnedFutureWeekday, pinnedWeekday } from './support/pinnedDates'
+import { requireEnv, uniqueId } from './support/env'
+import { STANDARD_USER_NAME, signInAsNoPersonUser, signInAsStandardUser } from './support/accounts'
+import type { SetupApi } from './support/setupApi'
+import { expect, test } from './support/test'
 
-/**
- * Credentials for the account that deliberately has NO linked Person.
- *
- * A separate account from the e2e user, which used to have no Person only by accident: it is
- * created directly rather than through sign-up, so PostConfirmationCreatePersonHandler never ran.
- * Giving it one was right - the whole suite had been running as a degraded identity - but it left
- * the degraded path itself with no fixture, and these tests with no premise. See
- * mootmaker-api's cognito.tf and mootmaker-webapp#54.
- *
- * Skips rather than fails where the account does not exist. It is not created in production, where
- * a personless account would not be a fixture but a real person's broken login.
- */
-function noPersonCredentials(): { email: string; password: string } {
-  const email = process.env.NO_PERSON_USER_EMAIL
-  const password = process.env.NO_PERSON_USER_PASSWORD
-  test.skip(
-    !email || !password,
-    'This environment has no personless account (deliberately absent in production).',
-  )
-  return { email: email as string, password: password as string }
-}
-
-/** Signs in as the personless account. See noPersonCredentials for why it is a separate account. */
-async function signInAsNoPersonUser(page: Page): Promise<void> {
-  const { email, password } = noPersonCredentials()
-  await page.goto('/signin')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password').fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page.getByText('Sign out')).toBeVisible()
-}
-
-
-// mootmaker/docs/reference/use-cases.md, section F (Add Meeting), cases 38-58. Signs in as the demo user rather
-// than creating a fresh account for most cases: it's a real, pre-verified Cognito account that
-// already exists in every environment (see mootmaker-api/deploy/terraform/cognito.tf, "the demo
-// user is the one always-present admin") with a linked Person already resolved, so most of these
-// tests can go straight to the thing they're actually about - adding a meeting - without needing
-// sign-up or email verification at all (see acceptance/README.md's "Which account to sign in as").
-// A few cases (F.48, F.51) specifically need the e2e user instead, since they depend on a
-// no-linked-Person account.
+// mootmaker/docs/reference/use-cases.md, section F (Add Meeting), cases 38-58. Signs in as the
+// standard fixture user (./support/accounts.ts): adding a meeting is something every user does, so
+// none of these needs an admin. F.48 and the multiple-failures case need a blank Organiser to start
+// from, so they sign in as the no-person user instead.
 //
-// A fresh ephemeral environment has no rooms/people yet, so creating them via the real Settings UI
-// is these tests' own precondition - there's no Admin-API-style bypass for app data the way there
-// is for Cognito accounts, and doing it through the real UI is no less realistic than a real admin
-// would be. Every room/person name below is suffixed with a fresh uniqueId() so repeated runs
-// against the same shared environment, and other agents' concurrent runs against sections other
-// than F, never collide.
-function requireEnv(name: string): string {
-  const value = process.env[name]
-  if (!value) {
-    throw new Error(`${name} is not set - see acceptance/run.sh.`)
-  }
-  return value
-}
-
-// NO RETRIES IN THIS FILE, deliberately - mootmaker-webapp#30.
-//
-// The suite's config retries once in CI, which is right for tests that are independent. These are
-// not. This whole file reasons about what earlier tests have accumulated in a shared environment
-// that is never torn down mid-suite (see F.52/F.53/F.54's own comments below), and Playwright's
-// retry model assumes the opposite: that re-running a test starts from the same place. Here a
-// retry re-runs against an environment that now ALSO contains everything the failed attempt
-// created.
-//
-// For F.53 that is deterministic failure, not bad luck. It creates rooms named
-// `Suggest Room 5 <uniqueId()>` and asserts suggest-a-room picks its own. On a retry there are two
-// capacity-5 rooms, and SuggestRoomHandler ranks smallest-surplus-first with ties broken by NAME.
-// uniqueId() is Date.now()-based and 13 digits, so lexicographic order is chronological order, so
-// the FAILED attempt's room wins the tiebreak every time. The retry cannot pass. Observed exactly
-// that way in the v0.0.6 release: expected the room ending -471, got the one ending -1791, created
-// 121 seconds earlier - which was attempt 1's own 120-second timeout.
-//
-// So a retry here does not absorb a transient. It converts a recoverable timeout into a certain
-// failure, and reports it as a confusing wrong-room assertion that hides the real first cause.
-test.describe.configure({ retries: 0 })
+// Every test starts from a reset environment (./support/test.ts) and creates the rooms and people
+// it needs over the API, so the suggest-a-room cases (F.49, F.50, F.53) rank only their own rooms.
+// They used to rank against every room earlier tests had left behind, which made this file depend
+// on test order and impossible to retry (mootmaker-webapp#30, #138).
 
 // Real Date.now()/Math.random(), deliberately not derived from any pinned clock - see each test's
 // own reasoning for why it needs a fresh value every run even against an already-deployed,
 // repeatedly-iterated-against environment.
-function uniqueId(): string {
-  return `${Date.now()}-${Math.floor(Math.random() * 10_000)}`
-}
-
 // The Room field's combobox is now an Autocomplete <input> (see AddMeetingPage.tsx), whose
 // displayed text lives in its `value` attribute, not textContent - so matching a suggested room's
 // name needs toHaveValue(regex), not toContainText (which checks textContent, always empty for an
@@ -92,40 +25,6 @@ function uniqueId(): string {
 // toContainText used to, since the field's full value also has " (capacity N)" appended.
 function containsValue(text: string): RegExp {
   return new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-}
-
-async function signInAsDemo(page: Page): Promise<void> {
-  const demoEmail = requireEnv('DEMO_USER_EMAIL')
-  const demoPassword = requireEnv('DEMO_USER_PASSWORD')
-  await page.goto('/signin')
-  await page.getByLabel('Email').fill(demoEmail)
-  await page.getByLabel('Password').fill(demoPassword)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page.getByText('Sign out')).toBeVisible()
-}
-
-
-async function signOut(page: Page): Promise<void> {
-  await page.getByText('Sign out').click()
-}
-
-async function createRoom(page: Page, name: string, capacity: number): Promise<void> {
-  await page.goto('/rooms')
-  await page.getByRole('button', { name: 'Add room' }).click()
-  const dialog = page.getByRole('dialog')
-  await dialog.getByLabel('Name').fill(name)
-  await dialog.getByLabel('Capacity').fill(String(capacity))
-  await dialog.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText(name)).toBeVisible()
-}
-
-async function createPerson(page: Page, name: string): Promise<void> {
-  await page.goto('/persons')
-  await page.getByRole('button', { name: 'Add person' }).click()
-  const dialog = page.getByRole('dialog')
-  await dialog.getByLabel('Name').fill(name)
-  await dialog.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText(name)).toBeVisible()
 }
 
 async function goToAddMeeting(page: Page): Promise<void> {
@@ -231,12 +130,12 @@ const CREATE_MEETING_MUTATION = `
 `
 
 // Shared setup for the two cases that submit a createMeeting mutation directly against the
-// GraphQL API rather than through the UI (F.43, F.45b): a room to book (created through the real
-// Settings UI, then looked up by name via a direct query since the UI never surfaces its id), and
-// the signed-in demo user's own Person id to use as organiserId, both fetched with the same real
+// GraphQL API rather than through the UI (F.43, F.45b): a room to book (created over the API, then
+// looked up by name via a direct query as the signed-in user), and the signed-in user's own Person
+// id to use as organiserId, both fetched with the same real
 // bearer token the mutation itself will use.
-async function directApiContext(page: Page, roomName: string): Promise<{ token: string; organiserId: string; roomId: string }> {
-  await createRoom(page, roomName, 4)
+async function directApiContext(page: Page, api: SetupApi, roomName: string): Promise<{ token: string; organiserId: string; roomId: string }> {
+  await api.createRoom(roomName, 4)
   const token = await getIdToken(page)
 
   // workspace { me }, not the deleted Query.myPerson: the caller's own Person is resolved from the
@@ -261,9 +160,8 @@ async function directApiContext(page: Page, roomName: string): Promise<{ token: 
 
 test('add a meeting with all required fields succeeds and it appears on the room availability schedule', async ({
   page,
+  api,
 }) => {
-  const demoEmail = requireEnv('DEMO_USER_EMAIL')
-  const demoPassword = requireEnv('DEMO_USER_PASSWORD')
   // Real Date.now(), before pinning the clock below - run.sh supports iterating against an
   // already-deployed environment across repeated runs, so this still needs to be genuinely
   // unique each time, not just once per pinned-clock value.
@@ -279,20 +177,10 @@ test('add a meeting with all required fields succeeds and it appears on the room
   // webapp/tests/meeting-details.spec.ts for the same class of problem.
   await page.clock.setFixedTime(pinnedWeekday('Wednesday'))
 
-  await page.goto('/signin')
-  await page.getByLabel('Email').fill(demoEmail)
-  await page.getByLabel('Password').fill(demoPassword)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page.getByText('Sign out')).toBeVisible()
+  await signInAsStandardUser(page)
 
   // Precondition: a room to book (see the file-level comment above).
-  await page.goto('/rooms')
-  await page.getByRole('button', { name: 'Add room' }).click()
-  const addRoomDialog = page.getByRole('dialog')
-  await addRoomDialog.getByLabel('Name').fill(roomName)
-  await addRoomDialog.getByLabel('Capacity').fill('4')
-  await addRoomDialog.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText(roomName)).toBeVisible()
+  await api.createRoom(roomName, 4)
 
   // The use case itself: add a meeting with all required fields. Organiser defaults to the
   // signed-in user's own Person (case 39) and the time fields default sensibly (case 40), so the
@@ -324,18 +212,18 @@ test('add a meeting with all required fields succeeds and it appears on the room
 })
 
 test('organiser defaults to the signed-in user\'s own Person without any interaction', async ({ page }) => {
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
   await goToAddMeeting(page)
 
   // Cheapest possible version of this check - no submission needed, just reading the field's
   // initial state (see F.39's catalog Notes). Uses toHaveValue (auto-retrying) rather than a raw
   // inputValue() read: the default is applied by a useEffect once personId resolves, which can
   // genuinely lag the initial render by a tick or two.
-  await expect(page.getByRole('combobox', { name: 'Organiser' })).toHaveValue('Demo Strater')
+  await expect(page.getByRole('combobox', { name: 'Organiser' })).toHaveValue(STANDARD_USER_NAME)
 })
 
 test('start and end time default to the next 15-minute boundary and one hour later, same day', async ({ page }) => {
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
   // A known, non-boundary time - see F.40's catalog Given.
   await page.clock.setFixedTime(pinnedWeekday('Monday', { hour: 10, minute: 7 }))
   await goToAddMeeting(page)
@@ -345,7 +233,7 @@ test('start and end time default to the next 15-minute boundary and one hour lat
 })
 
 test('start/end time pickers only ever offer 15-minute-boundary minutes', async ({ page }) => {
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
   await goToAddMeeting(page)
 
   for (const groupName of ['Start time', 'End time'] as const) {
@@ -367,12 +255,12 @@ test('start/end time pickers only ever offer 15-minute-boundary minutes', async 
 // F.42 - now a real, fixed rule (see CreateMeetingHandler.java's EndBeforeStart check, added
 // alongside this catalog): reversed or zero-length start/end pairs on the same calendar date are
 // rejected, distinctly from SpansMultipleDays (genuinely different calendar dates - see F.43).
-test('an end time before the start time is rejected with EndBeforeStart', async ({ page }) => {
+test('an end time before the start time is rejected with EndBeforeStart', async ({ page, api }) => {
   const runId = uniqueId()
   const roomName = `Acceptance Test Room F42a ${runId}`
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
   await page.clock.setFixedTime(pinnedWeekday('Monday', { hour: 8 }))
-  await createRoom(page, roomName, 4)
+  await api.createRoom(roomName, 4)
 
   await goToAddMeeting(page)
   await page.getByLabel('Subject').fill(`F42a end before start ${runId}`)
@@ -385,12 +273,12 @@ test('an end time before the start time is rejected with EndBeforeStart', async 
   await expect(page).toHaveURL(/\/meetings\/add$/)
 })
 
-test('an end time equal to the start time is rejected with EndBeforeStart', async ({ page }) => {
+test('an end time equal to the start time is rejected with EndBeforeStart', async ({ page, api }) => {
   const runId = uniqueId()
   const roomName = `Acceptance Test Room F42b ${runId}`
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
   await page.clock.setFixedTime(pinnedWeekday('Monday', { hour: 8 }))
-  await createRoom(page, roomName, 4)
+  await api.createRoom(roomName, 4)
 
   await goToAddMeeting(page)
   await page.getByLabel('Subject').fill(`F42b end equals start ${runId}`)
@@ -412,11 +300,12 @@ test('an end time equal to the start time is rejected with EndBeforeStart', asyn
 // underlying reason: a purely server-side rule the UI cannot be maneuvered into triggering).
 test('a start/end pair on genuinely different calendar dates is rejected with SpansMultipleDays (direct GraphQL call - unreachable through the form itself)', async ({
   page,
+  api,
 }) => {
   const runId = uniqueId()
   const roomName = `Acceptance Test Room F43 ${runId}`
-  await signInAsDemo(page)
-  const { token, organiserId, roomId } = await directApiContext(page, roomName)
+  await signInAsStandardUser(page)
+  const { token, organiserId, roomId } = await directApiContext(page, api, roomName)
 
   const result = await graphqlRequest<{ createMeeting: { meeting: { id: string } | null; errors: string[] } }>(
     page,
@@ -441,13 +330,14 @@ test('a start/end pair on genuinely different calendar dates is rejected with Sp
 test.describe('F.44 - Organiser/Attendees mutual exclusivity', () => {
   test('picking someone as an attendee excludes them from Organiser; picking a new organiser excludes them from Attendees; deselecting frees them up again', async ({
     page,
+    api,
   }) => {
     const runId = uniqueId()
     const aliceName = `Alice F44 ${runId}`
     const bobName = `Bob F44 ${runId}`
-    await signInAsDemo(page)
-    await createPerson(page, aliceName)
-    await createPerson(page, bobName)
+    await signInAsStandardUser(page)
+    await api.createPerson(aliceName)
+    await api.createPerson(bobName)
 
     await goToAddMeeting(page)
 
@@ -470,11 +360,11 @@ test.describe('F.44 - Organiser/Attendees mutual exclusivity', () => {
 })
 
 test.describe('F.45 - Organiser also picked as attendee', () => {
-  test('the organiser, once picked, never appears in the Attendees options (UI prevention)', async ({ page }) => {
+  test('the organiser, once picked, never appears in the Attendees options (UI prevention)', async ({ page, api }) => {
     const runId = uniqueId()
     const personName = `F45 Person ${runId}`
-    await signInAsDemo(page)
-    await createPerson(page, personName)
+    await signInAsStandardUser(page)
+    await api.createPerson(personName)
 
     await goToAddMeeting(page)
     await selectOrganiser(page, personName)
@@ -486,11 +376,12 @@ test.describe('F.45 - Organiser also picked as attendee', () => {
 
   test('organiser duplicated into attendeeIds is rejected server-side with OrganiserIsAttendee (forced via direct GraphQL call)', async ({
     page,
+    api,
   }) => {
     const runId = uniqueId()
     const roomName = `Acceptance Test Room F45b ${runId}`
-    await signInAsDemo(page)
-    const { token, organiserId, roomId } = await directApiContext(page, roomName)
+    await signInAsStandardUser(page)
+    const { token, organiserId, roomId } = await directApiContext(page, api, roomName)
 
     const result = await graphqlRequest<{ createMeeting: { meeting: { id: string } | null; errors: string[] } }>(
       page,
@@ -513,11 +404,11 @@ test.describe('F.45 - Organiser also picked as attendee', () => {
   })
 })
 
-test('blank subject is rejected with SubjectRequired', async ({ page }) => {
+test('blank subject is rejected with SubjectRequired', async ({ page, api }) => {
   const runId = uniqueId()
   const roomName = `Acceptance Test Room F46 ${runId}`
-  await signInAsDemo(page)
-  await createRoom(page, roomName, 4)
+  await signInAsStandardUser(page)
+  await api.createRoom(roomName, 4)
 
   await goToAddMeeting(page)
   await selectRoom(page, roomName)
@@ -529,7 +420,7 @@ test('blank subject is rejected with SubjectRequired', async ({ page }) => {
 
 test('blank room is rejected with RoomRequired', async ({ page }) => {
   const runId = uniqueId()
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
 
   await goToAddMeeting(page)
   await page.getByLabel('Subject').fill(`F47 subject ${runId}`)
@@ -539,15 +430,12 @@ test('blank room is rejected with RoomRequired', async ({ page }) => {
   await expect(page).toHaveURL(/\/meetings\/add$/)
 })
 
-test('blank organiser (no linked Person, not manually chosen) is rejected with OrganiserRequired', async ({ page }) => {
+test('blank organiser (no linked Person, not manually chosen) is rejected with OrganiserRequired', async ({ page, api }) => {
   const runId = uniqueId()
   const roomName = `Acceptance Test Room F48 ${runId}`
-  // The demo user's Organiser is never blank to begin with (F.39) - this is the one case that
-  // specifically needs the e2e user's no-linked-Person starting point, not just as an option (see
-  // F.48's catalog Notes). The room still needs an admin to create it first.
-  await signInAsDemo(page)
-  await createRoom(page, roomName, 4)
-  await signOut(page)
+  // A user with a Person never starts with a blank Organiser (F.39) - this is the one case that
+  // specifically needs the no-person user's starting point (see F.48's catalog Notes).
+  await api.createRoom(roomName, 4)
 
   await signInAsNoPersonUser(page)
   await goToAddMeeting(page)
@@ -559,20 +447,20 @@ test('blank organiser (no linked Person, not manually chosen) is rejected with O
   await expect(page).toHaveURL(/\/meetings\/add$/)
 })
 
-test('room capacity less than organiser+attendees is rejected with InsufficientCapacity', async ({ page }) => {
+test('room capacity less than organiser+attendees is rejected with InsufficientCapacity', async ({ page, api }) => {
   const runId = uniqueId()
   const roomName = `Acceptance Test Room F49 ${runId}`
   const carolName = `Carol F49 ${runId}`
   const daveName = `Dave F49 ${runId}`
-  await signInAsDemo(page)
-  await createRoom(page, roomName, 2)
-  await createPerson(page, carolName)
-  await createPerson(page, daveName)
+  await signInAsStandardUser(page)
+  await api.createRoom(roomName, 2)
+  await api.createPerson(carolName)
+  await api.createPerson(daveName)
 
   await goToAddMeeting(page)
   await page.getByLabel('Subject').fill(`F49 subject ${runId}`)
   await selectRoom(page, roomName)
-  // Organiser stays on its default (the demo user) - 1 organiser + 2 attendees = 3 distinct
+  // Organiser stays on its default (the signed-in user) - 1 organiser + 2 attendees = 3 distinct
   // people against a room that only holds 2.
   await selectAttendees(page, [carolName, daveName])
   await page.getByRole('button', { name: 'Save' }).click()
@@ -581,14 +469,14 @@ test('room capacity less than organiser+attendees is rejected with InsufficientC
   await expect(page).toHaveURL(/\/meetings\/add$/)
 })
 
-test('an overlapping time slot in the same room is rejected with TimeRangeUnavailable', async ({ page }) => {
+test('an overlapping time slot in the same room is rejected with TimeRangeUnavailable', async ({ page, api }) => {
   const runId = uniqueId()
   const roomName = `Acceptance Test Room F50 ${runId}`
   const subject1 = `F50 first meeting ${runId}`
   const subject2 = `F50 second meeting ${runId}`
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
   await page.clock.setFixedTime(pinnedWeekday('Monday', { hour: 8 }))
-  await createRoom(page, roomName, 4)
+  await api.createRoom(roomName, 4)
 
   // First meeting: 10:00-11:00.
   await goToAddMeeting(page)
@@ -640,6 +528,7 @@ test('multiple simultaneous validation failures are listed together in one banne
 
 test('suggest a room with none qualifying shows the inline "no room available" message and leaves Room unset', async ({
   page,
+  api,
 }) => {
   const runId = uniqueId()
   // suggestRoom scans every room in this shared environment (see SuggestRoomHandler.java), so
@@ -650,13 +539,13 @@ test('suggest a room with none qualifying shows the inline "no room available" m
   // tops out in the single digits) makes the "nothing qualifies" outcome robust regardless of
   // what else exists in the environment, without needing an actually-empty room list either.
   const attendeeNames = Array.from({ length: 8 }, (_, i) => `F52 Attendee ${i} ${runId}`)
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
   // A deliberately unusual date/time, distinct from the round examples used elsewhere in this
   // catalog (e.g. 10:00 on 2026-08-19/24), to further reduce the odds of colliding with some
   // other section's own fixture meeting.
   await page.clock.setFixedTime(pinnedFutureWeekday('Tuesday', { hour: 5 }))
   for (const name of attendeeNames) {
-    await createPerson(page, name)
+    await api.createPerson(name)
   }
 
   await goToAddMeeting(page)
@@ -673,6 +562,7 @@ test('suggest a room with none qualifying shows the inline "no room available" m
 
 test('suggest a room fills the best-fit room on first press, then cycles through the ranked list and wraps', async ({
   page,
+  api,
 }) => {
   const runId = uniqueId()
   // 2026-08-27 root cause (previously "under investigation" in f-add-meeting.md's F.53 Notes):
@@ -699,13 +589,13 @@ test('suggest a room fills the best-fit room on first press, then cycles through
   const room7 = `Suggest Room 7 ${runId}`
   const room9 = `Suggest Room 9 ${runId}`
   const attendeeNames = Array.from({ length: 4 }, (_, i) => `F53 Attendee ${i} ${runId}`)
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
   await page.clock.setFixedTime(pinnedFutureWeekday('Wednesday', { hour: 6 }))
-  await createRoom(page, room5, 5)
-  await createRoom(page, room7, 7)
-  await createRoom(page, room9, 9)
+  await api.createRoom(room5, 5)
+  await api.createRoom(room7, 7)
+  await api.createRoom(room9, 9)
   for (const name of attendeeNames) {
-    await createPerson(page, name)
+    await api.createPerson(name)
   }
 
   await goToAddMeeting(page)
@@ -730,6 +620,7 @@ test('suggest a room fills the best-fit room on first press, then cycles through
 
 test('changing the attendee count invalidates the cached suggestion, re-ranking for the new required capacity', async ({
   page,
+  api,
 }) => {
   const runId = uniqueId()
   // 2026-08-27 root cause (previously "under investigation" in f-add-meeting.md's F.54 Notes):
@@ -758,12 +649,12 @@ test('changing the attendee count invalidates the cached suggestion, re-ranking 
   // disjoint set.
   const attendeeNames = Array.from({ length: 11 }, (_, i) => `F54 Attendee ${i} ${runId}`)
   const firstPressAttendees = attendeeNames.slice(0, 9)
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
   await page.clock.setFixedTime(pinnedFutureWeekday('Thursday', { hour: 7 }))
-  await createRoom(page, roomSmall, capacitySmall)
-  await createRoom(page, roomLarge, capacityLarge)
+  await api.createRoom(roomSmall, capacitySmall)
+  await api.createRoom(roomLarge, capacityLarge)
   for (const name of attendeeNames) {
-    await createPerson(page, name)
+    await api.createPerson(name)
   }
 
   await goToAddMeeting(page)
@@ -788,7 +679,7 @@ test('changing the attendee count invalidates the cached suggestion, re-ranking 
 })
 
 test('Cancel discards the form and returns to the previously-viewed Room Availability page', async ({ page }) => {
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
   await page.clock.setFixedTime(pinnedWeekday('Monday'))
 
   // Arrive via a real navigation (not page.goto('/meetings/add') directly) so browser history has
@@ -809,13 +700,13 @@ test('Cancel discards the form and returns to the previously-viewed Room Availab
   await expect(page.getByText(discardedSubject)).toHaveCount(0)
 })
 
-test('double-clicking Save does not double-submit - exactly one meeting is created', async ({ page }) => {
+test('double-clicking Save does not double-submit - exactly one meeting is created', async ({ page, api }) => {
   const runId = uniqueId()
   const roomName = `Acceptance Test Room F56 ${runId}`
   const subject = `F56 double click subject ${runId}`
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
   await page.clock.setFixedTime(pinnedWeekday('Monday', { hour: 9 }))
-  await createRoom(page, roomName, 4)
+  await api.createRoom(roomName, 4)
 
   await goToAddMeeting(page)
   await page.getByLabel('Subject').fill(subject)
@@ -855,7 +746,7 @@ test('double-clicking Save does not double-submit - exactly one meeting is creat
 })
 
 test('at mobile width the Save/Cancel actions stack vertically instead of a cramped row', async ({ page }) => {
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
   await goToAddMeeting(page)
 
   const saveButton = page.getByRole('button', { name: 'Save' })
@@ -869,7 +760,7 @@ test('at mobile width the Save/Cancel actions stack vertically instead of a cram
 })
 
 test('a rejected submission shows the error banner and briefly flashes the Save button red', async ({ page }) => {
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
   await goToAddMeeting(page)
 
   const saveButton = page.getByRole('button', { name: 'Save' })

@@ -24,12 +24,11 @@ set -euo pipefail
 # which fails with "No such file or directory".
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="${script_dir}/.."
-api_dir="${repo_root}/../mootmaker-api"
-# Two separate repos since the 2026-09-03 split of mootmaker-test-infra (see
-# mootmaker-ephemeral-envs' and mootmaker-email-testing's own READMEs): the ephemeral-environment
-# scripts below vs. the persistent email pipeline's Terraform further down.
+# Only for creating and tearing down an environment when none is given. Everything else this
+# script needs is looked up in SSM (deploy/ssm-config.sh).
 ephemeral_envs_dir="${repo_root}/../mootmaker-ephemeral-envs"
-email_testing_dir="${repo_root}/../mootmaker-email-testing"
+# shellcheck source=../deploy/ssm-config.sh
+source "${repo_root}/deploy/ssm-config.sh"
 
 owns_environment=""
 environment="${1:-}"
@@ -56,22 +55,10 @@ trap cleanup EXIT
 
 echo "Running the e2e suite against '${environment}'..." >&2
 
-# Populates GRAPHQL_API_URL, COGNITO_USER_POOL_ID, COGNITO_WEBAPP_CLIENT_ID, etc. - only the
-# COGNITO_* ones are actually used here (support/cognitoAdmin.ts), but sourcing the whole thing is
-# simpler and more robust than hand-picking outputs.
-source "${api_dir}/authenticate.sh" "${environment}"
-
-webapp_tf_data_dir="${repo_root}/deploy/terraform/.terraform-${environment}"
-TF_DATA_DIR="${webapp_tf_data_dir}" terraform -chdir="${repo_root}/deploy/terraform" init \
-  -backend-config=backend.hcl \
-  -backend-config="key=${environment}/mootmaker-webapp/terraform.tfstate" \
-  -input=false >/dev/null
-export WEBAPP_URL="$(TF_DATA_DIR="${webapp_tf_data_dir}" terraform -chdir="${repo_root}/deploy/terraform" output -raw site_url)"
-
-# The email pipeline is persistent/shared, owned by mootmaker-email-testing - not per environment or
-# per frontend, so this is the same queue regardless of which webapp/API environment is under test.
-terraform -chdir="${email_testing_dir}/deploy/terraform" init -backend-config=backend.hcl -input=false >/dev/null
-export SQS_QUEUE_URL="$(terraform -chdir="${email_testing_dir}/deploy/terraform" output -raw sqs_queue_url)"
+# Everything the suite needs - the API's endpoint and clients, the site URL, the shared email
+# queue, the reset function and the test fixture users - is looked up in SSM Parameter Store,
+# where each component publishes it (mootmaker-api#94), and exported to Playwright only.
+export_test_config "${environment}"
 
 cd "${repo_root}"
 npm run test:e2e

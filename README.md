@@ -6,7 +6,7 @@ A project that is part of my [Claude Code exploration](https://github.com/geoffw
 
 A single-page web application for the [mootmaker-api](https://github.com/geoffweatherall/mootmaker-api) GraphQL API. It lets users add meetings and browse existing meetings through a daily room-availability view and a per-person calendar view. The app is a static build hosted on AWS (S3 + CloudFront) and talks directly to the AppSync GraphQL endpoint from the browser.
 
-This checkout expects the `mootmaker-api` project to be a **sibling directory** — the deploy script reads the API's URL and Cognito settings from its Terraform outputs.
+The deploy script looks up the API's URL, Cognito settings and demo credentials in SSM Parameter Store, where `mootmaker-api`'s deploy publishes them (see `deploy/ssm-config.sh`). A sibling `mootmaker-api` checkout is optional: codegen and the pre-deploy schema check use its schema when it's there, and the published `@mootmaker/schema` package otherwise.
 
 Users must **sign in** (or sign up) with an email address and password before they can see any page other than the home page; see [Authentication](#authentication). Signing up also collects the user's name, which the API uses to automatically create a linked Person record once the account is confirmed (see the [mootmaker-api README](https://github.com/geoffweatherall/mootmaker-api#sign-up-creates-a-linked-person)) — so a new user can schedule a meeting as themselves without needing to be added as a person first. Every account is one of two classes, `standard` or `admin` (see [Authentication](#authentication) below): only admins can add, edit, or delete rooms and people, and grant/revoke admin access, from the dedicated [Rooms and Persons pages](#rooms-and-persons-pages-admin-only); a standard user can only rename themselves.
 
@@ -64,7 +64,7 @@ Beyond the four-colour palette in [theme/tokens.ts](webapp/src/theme/tokens.ts) 
 
 ## Calling the API
 
-The browser calls the AppSync GraphQL endpoint directly via Apollo Client. Every request carries the signed-in user's Cognito **JWT id token** in the `Authorization` header (attached by the `SetContextLink` in [apolloClient.ts](webapp/src/apolloClient.ts)); AppSync rejects requests without a valid token with HTTP 401. The endpoint URL, Cognito ids, and demo user credentials are read at **page load**, not baked into the bundle at build time: `index.html` loads `/env-config.js` (a small `window.__MOOTMAKER_CONFIG__ = {...}` script, see [src/vite-env.d.ts](webapp/src/vite-env.d.ts) and [src/config.ts](webapp/src/config.ts)) before `main.tsx` runs. Locally, `npm run dev`/`dev:mock` generate it from `.env`/`.env.mock` (see [.env.example](webapp/.env.example) and [scripts/generate-env-config.mjs](webapp/scripts/generate-env-config.mjs)); a real deploy has `deploy.sh` write it into `webapp/dist/env-config.js` from the deployed API's Terraform outputs, *after* the build — this is what lets one built bundle be deployed to more than one environment unmodified. None of these are secrets — the Cognito ids are public identifiers (the security lives in Cognito's password authentication and JWT signatures), and the demo credentials are *meant* to be public: this is a demo system, so the home page shows them to every signed-out visitor (see [Home page](#home-page) below).
+The browser calls the AppSync GraphQL endpoint directly via Apollo Client. Every request carries the signed-in user's Cognito **JWT id token** in the `Authorization` header (attached by the `SetContextLink` in [apolloClient.ts](webapp/src/apolloClient.ts)); AppSync rejects requests without a valid token with HTTP 401. The endpoint URL, Cognito ids, and demo user credentials are read at **page load**, not baked into the bundle at build time: `index.html` loads `/env-config.js` (a small `window.__MOOTMAKER_CONFIG__ = {...}` script, see [src/vite-env.d.ts](webapp/src/vite-env.d.ts) and [src/config.ts](webapp/src/config.ts)) before `main.tsx` runs. Locally, `npm run dev`/`dev:mock` generate it from `.env`/`.env.mock` (see [.env.example](webapp/.env.example) and [scripts/generate-env-config.mjs](webapp/scripts/generate-env-config.mjs)); a real deploy has `deploy.sh` write it into `webapp/dist/env-config.js` from the deployed API's configuration in SSM, *after* the build — this is what lets one built bundle be deployed to more than one environment unmodified. None of these are secrets — the Cognito ids are public identifiers (the security lives in Cognito's password authentication and JWT signatures), and the demo credentials are *meant* to be public: this is a demo system, so the home page shows them to every signed-out visitor (see [Home page](#home-page) below).
 
 ### Authentication
 
@@ -295,7 +295,7 @@ delegation propagated) before this project's certificate can validate.
 
 ## Build, run, deploy
 
-Prerequisites: Node.js + npm, Terraform ≥ 1.10, AWS credentials, and a deployed `mootmaker-api` in the sibling directory.
+Prerequisites: Node.js + npm, Terraform ≥ 1.10, AWS credentials, and `mootmaker-api` already deployed to the same environment.
 
 Like the API, `deploy.sh`/`undeploy.sh` take an **environment** name (e.g.
 `test`, `production`, or your own name) and talk to the `mootmaker-api`
@@ -306,11 +306,10 @@ for the full multi-environment how-to.
 
 ```bash
 cd webapp
-cp .env.example .env        # then fill in real values: source the API project's
-                            # authenticate.sh <environment> and copy GRAPHQL_API_URL,
-                            # COGNITO_USER_POOL_ID, COGNITO_WEBAPP_CLIENT_ID,
-                            # DEMO_USER_EMAIL and DEMO_USER_PASSWORD into the
-                            # five VITE_ variables.
+cp .env.example .env        # then fill in real values from SSM: the five VITE_ variables are
+                            # /mootmaker/<environment>/api/graphql-url, cognito/user-pool-id,
+                            # cognito/webapp-client-id, demo-user/email and demo-user/password
+                            # (aws ssm get-parameter --name ... --query Parameter.Value).
 npm install
 npm run dev                 # generates public/env-config.js from .env (predev hook), then the
                             # Vite dev server on http://localhost:5173 - see Calling the API
@@ -323,8 +322,8 @@ npm run build               # type-check (tsc -b) + production build into dist/ 
 
 `./deploy.sh <environment>` performs, in order:
 
-1. Sources the API project's `authenticate.sh <environment>` to obtain `GRAPHQL_API_URL`, the `COGNITO_*` variables, and the `DEMO_*` demo-user credentials from that environment's Terraform outputs (fails fast if the API checkout or that environment's deployment is missing) — so this needs that environment's `mootmaker-api` already deployed.
-2. `terraform init` (state key `<environment>/mootmaker-webapp/terraform.tfstate`) + `terraform apply -auto-approve -var="environment=<environment>"` in [deploy/terraform](deploy/terraform) to create/update the S3 bucket and CloudFront distribution.
+1. Looks up the API's URL, Cognito ids, demo-user credentials and machine-to-machine client in SSM Parameter Store under `/mootmaker/<environment>/api/` ([deploy/ssm-config.sh](deploy/ssm-config.sh)). It fails fast if they are missing, so this needs that environment's `mootmaker-api` already deployed.
+2. `terraform init` (state key `<environment>/mootmaker-webapp/terraform.tfstate`) + `terraform apply -auto-approve -var="environment=<environment>"` in [deploy/terraform](deploy/terraform) to create/update the S3 bucket and CloudFront distribution, and publish the site URL to SSM as `/mootmaker/<environment>/webapp/site-url`.
 3. `npm install` and `npm run build` to produce `webapp/dist/` — an environment-agnostic build, no config baked in.
 4. Writes `webapp/dist/env-config.js` with the API URL, Cognito user pool id, webapp client id, and demo user email/password from step 1 — see [Calling the API](#calling-the-api).
 5. `aws s3 sync webapp/dist s3://<bucket> --delete` to upload the build (including `env-config.js`) and remove stale files.

@@ -1,11 +1,13 @@
-import { expect, test, type Locator, type Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { freshTestAccount } from '../../support/testAccount'
+import { expect, test } from './support/test'
 
 // A second, parameterized run of a small number of scenarios that already pass under the default
 // format, this time under an account deliberately set to British + AM/PM.
 //
-// Why not just flip the shared demo user instead? That would turn the *entire* existing suite into
+// Why not just flip a shared fixture user instead? (Tests never change those - see
+// ./support/accounts.ts - but even if they could:) That would turn the *entire* existing suite into
 // non-default coverage for free, but only by rewriting every hardcoded date/time assertion across
 // dozens of files to compute its expectation from a configured format - real migration work, and
 // it would leave the project's actual default as the one path the main test account never
@@ -18,6 +20,12 @@ import { freshTestAccount } from '../../support/testAccount'
 //
 // Expectations are *computed* from the format rather than hardcoded, which is the whole point: a
 // literal would prove only that this file agrees with itself.
+
+// The room these scenarios book into. The environment is reset before every test
+// (./support/test.ts), so nothing else provides one.
+test.beforeEach(async ({ api }) => {
+  await api.createRoom(`Format Rerun Room ${Date.now()}`, 10)
+})
 
 const BRITISH_OPTION = '24/08/2026'
 const AM_PM_OPTION = '02:30 PM'

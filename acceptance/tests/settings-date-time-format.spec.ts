@@ -1,49 +1,30 @@
-import { expect, test, type Locator, type Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { freshTestAccount, type TestAccount } from '../../support/testAccount'
+import { signInAsNoPersonUser } from './support/accounts'
+import { expect, test } from './support/test'
 
 // N.100/N.101/N.103/N.104 read a real meeting URL off addMeeting's Share button - see that
 // function's own comment. Forces the clipboard-fallback branch deterministically rather than
 // depending on this browser's navigator.share support - see designs/
 // meeting-detail-consolidation.md's Testing impacts. Harmless for the other cases here, which
 // don't create meetings.
-test.beforeEach(async ({ page, context }) => {
+//
+// Also creates the room the meeting cases book into: the environment is reset before every test
+// (./support/test.ts), so nothing else provides one.
+test.beforeEach(async ({ page, context, api }) => {
+  await api.createRoom(`Format Room ${Date.now()}`, 10)
   await page.addInitScript(() => {
     Object.defineProperty(window.navigator, 'share', { value: undefined, configurable: true })
   })
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
 })
 
-/**
- * Credentials for the account that deliberately has NO linked Person.
- *
- * A separate account from the e2e user, which used to have no Person only by accident: it is
- * created directly rather than through sign-up, so PostConfirmationCreatePersonHandler never ran.
- * Giving it one was right - the whole suite had been running as a degraded identity - but it left
- * the degraded path itself with no fixture, and these tests with no premise. See
- * mootmaker-api's cognito.tf and mootmaker-webapp#54.
- *
- * Skips rather than fails where the account does not exist. It is not created in production, where
- * a personless account would not be a fixture but a real person's broken login.
- */
-function noPersonCredentials(): { email: string; password: string } {
-  const email = process.env.NO_PERSON_USER_EMAIL
-  const password = process.env.NO_PERSON_USER_PASSWORD
-  test.skip(
-    !email || !password,
-    'This environment has no personless account (deliberately absent in production).',
-  )
-  return { email: email as string, password: password as string }
-}
-
-
 // mootmaker/docs/reference/use-cases.md, section N (Settings - Date and time format), cases
 // 100-105. See test-cases/n-date-time-format-settings.md for the full designs.
 //
-// Every case here uses a freshly signed-up account rather than the demo user. Changing the demo
-// user's format would change how *every other spec in this suite* reads dates and times back -
-// the same hazard I.74 avoids for renames, but much wider, since almost every spec asserts on a
-// date or a time somewhere. A fresh account starts at the defaults (Iso + TwentyFourHour), which
+// Every case here uses a freshly signed-up account rather than a fixture user: tests never change
+// the fixture users (./support/accounts.ts), and a format preference is exactly such a change. A fresh account starts at the defaults (Iso + TwentyFourHour), which
 // is exactly the "before" state these cases need.
 
 // The visible option labels are worked examples rather than format names, because the example is
@@ -127,11 +108,8 @@ async function roomCount(page: Page): Promise<number> {
   return count
 }
 
-// Books into a weekday well beyond the 6-week window mootmaker-demo-data fills, so the chosen room
-// is actually free. An earlier version left the Date field at its default (today) and booked the
-// same slot in the same room from every test, which collided both with the generated sample data
-// and with the other tests here - the form rejected it with "The room already has a meeting
-// scheduled during that time range."
+// A weekday well ahead. The room is this test's own and the environment was reset before it, so any
+// slot is free; the distance just keeps the date clear of "today"-dependent edge cases.
 function weekdayDaysAhead(days: number): { year: number; month: number; day: number } {
   const d = new Date()
   d.setDate(d.getDate() + days)
@@ -402,8 +380,7 @@ test("N.103/N.104: a meeting booked in one viewer's format is the same instant f
 
 test('N.105: an account with no linked Person sees the section disabled with an explanation', async ({ page }) => {
   // The personless account - the same one I.76 uses for the equivalent "Your name" case.
-  const noPerson = noPersonCredentials()
-  await signIn(page, noPerson.email, noPerson.password)
+  await signInAsNoPersonUser(page)
   await page.goto('/settings')
 
   await expect(page.getByLabel('Date format')).toBeDisabled()

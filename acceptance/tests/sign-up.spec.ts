@@ -1,20 +1,12 @@
-import { expect, test } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { waitForVerificationCode } from '../../support/email'
 import { freshTestAccount } from '../../support/testAccount'
 import { pinnedWeekday } from './support/pinnedDates'
+import { expect, test } from './support/test'
 
 // A weekday inside business hours, derived from now() rather than hardcoded - a literal date here
 // expires the moment the server's retention boundary advances past it. See support/pinnedDates.ts.
 const PINNED_NOW = pinnedWeekday('Wednesday')
-
-function requireEnv(name: string): string {
-  const value = process.env[name]
-  if (!value) {
-    throw new Error(`${name} is not set - see acceptance/run.sh.`)
-  }
-  return value
-}
 
 // mootmaker/docs/reference/use-cases.md, section A (Sign up), case 1 - plus a touch of case 5. Unlike
 // e2e/sign-up.spec.ts (which only proves the real Cognito + SES infrastructure wiring works),
@@ -129,35 +121,18 @@ test('wrong verification code is rejected; correct code afterward still succeeds
 })
 
 // Case 6: a freshly signed-up user can go straight to Add Meeting without visiting Settings
-// first, and the Organiser field is already defaulted to their own Person. Needs an existing room
-// (created by the demo user first, since a freshly signed-up standard user can't create one).
+// first, and the Organiser field is already defaulted to their own Person. Needs an existing room,
+// created over the API since a freshly signed-up standard user can't create one.
 test('can immediately schedule a meeting as themselves right after signing up', async ({
   page,
+  api,
 }) => {
-  const demoEmail = requireEnv('DEMO_USER_EMAIL')
-  const demoPassword = requireEnv('DEMO_USER_PASSWORD')
   const runId = `${Date.now()}-${Math.floor(Math.random() * 10_000)}`
   const roomName = `Acceptance Test Room A6 ${runId}`
   const subject = `Acceptance test meeting A6 ${runId}`
 
-  // Precondition: a room to book, created by the demo user (admin). A freshly signed-up standard
-  // user can't create rooms themselves (the Rooms page is admin-only).
-  await page.goto('/signin')
-  await page.getByLabel('Email').fill(demoEmail)
-  await page.getByLabel('Password').fill(demoPassword)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page.getByText('Sign out')).toBeVisible()
-
-  await page.goto('/rooms')
-  await page.getByRole('button', { name: 'Add room' }).click()
-  const addRoomDialog = page.getByRole('dialog')
-  await addRoomDialog.getByLabel('Name').fill(roomName)
-  await addRoomDialog.getByLabel('Capacity').fill('4')
-  await addRoomDialog.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText(roomName)).toBeVisible()
-
-  await page.getByText('Sign out').click()
-  await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible()
+  // Precondition: a room to book.
+  await api.createRoom(roomName, 4)
 
   // The actual use case: sign up fresh, then go straight to Add Meeting.
   const account = freshTestAccount()

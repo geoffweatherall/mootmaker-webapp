@@ -164,7 +164,7 @@ test.describe('Q. Persons (admin only)', () => {
     await expect(personCard(page, guestName).getByText('Not signed up yet')).toBeVisible()
 
     const adminEmail = adminUser().email
-    await expect(personCard(page, ADMIN_USER_NAME).getByText('Admin')).toBeVisible()
+    await expect(personCard(page, ADMIN_USER_NAME).getByText('Admin', { exact: true })).toBeVisible()
     await expect(personCard(page, ADMIN_USER_NAME).getByText(adminEmail)).toBeVisible()
   })
 
@@ -183,7 +183,7 @@ test.describe('Q. Persons (admin only)', () => {
     await dialog.getByRole('button', { name: 'Save' }).click()
     await expect(dialog).toHaveCount(0)
 
-    await expect(personCard(page, account.name).getByText('Admin')).toBeVisible()
+    await expect(personCard(page, account.name).getByText('Admin', { exact: true })).toBeVisible()
 
     // The grant actually took effect on their token, not just the Persons list - the real proof
     // this isn't just a DynamoDB-side badge (see the design doc's cognitoSyncFailed reasoning).

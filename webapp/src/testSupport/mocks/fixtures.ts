@@ -77,7 +77,7 @@ export const people: Person[] = [
 ]
 
 // The only account with a linked Person - see cognito.mock.ts's MOCK_USERS doc comment.
-// E2E_USER deliberately has no entry here, matching the real e2e test user's account.
+// NO_PERSON_USER deliberately has no entry here, matching the real no-person fixture user.
 //
 // Typed MyPerson rather than Person: myPerson is one of only two operations that select the
 // viewer's own display preferences, so the mock has to return them or AuthProvider would read

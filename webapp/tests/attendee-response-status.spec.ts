@@ -5,7 +5,7 @@ import { people, rooms } from '../src/testSupport/mocks/fixtures'
 // Covers designs/attendee-response-status.md's webapp piece at the mocked-integration layer:
 // the status badge/control in the meeting-detail sheet, and the Home page's "Needs your
 // response" section reacting live to a respondToMeeting call. The saved session (auth.setup.ts)
-// signs in as the mock e2e test user, who has no linked Person - these need one, so every test
+// signs in as the mock no-person user, who has no linked Person - these need one, so every test
 // here signs in as DEMO_USER instead (same override calendar-menu.spec.ts uses). DEMO_USER is
 // then auto-selected as organiser by Add Meeting's own default, so createMeetingAsAttendee
 // explicitly picks a different organiser first to make DEMO_USER available as an attendee

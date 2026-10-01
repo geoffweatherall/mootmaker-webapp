@@ -6,7 +6,7 @@ import { test, expect } from '@playwright/test'
 // the dropdowns themselves; see README.md's "Organiser/Attendee mutual exclusivity" section for
 // the full list of cases around this rule, including ones deliberately not automated here (e.g.
 // the signed-in-user-as-default-organiser race, which needs an e2e account with a linked Person -
-// the current e2e test user has none, so that default never fires for it at all).
+// the current no-person test user has none, so that default never fires for it at all).
 
 test.describe('Add Meeting form - organiser/attendee mutual exclusivity', () => {
   test('every selected attendee is excluded from the Organiser options; removing just one restores only that one', async ({

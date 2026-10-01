@@ -1,7 +1,10 @@
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { freshTestAccount } from '../../support/testAccount'
+import { signInAsStandardUser } from './support/accounts'
+import { requireEnv, uniqueId } from './support/env'
 import { pinnedWeekday, formatDateParam } from './support/pinnedDates'
+import { expect, test } from './support/test'
 
 /**
  * designs/attendee-response-status.md's acceptance-layer coverage: the feature itself (response
@@ -11,31 +14,10 @@ import { pinnedWeekday, formatDateParam } from './support/pinnedDates'
  * handler's retry LOGIC against a fake client; only a real table actually produces a genuine
  * ConditionalCheckFailedException to retry against.
  *
- * NO RETRIES, same reasoning as cross-client-updates.spec.ts: these accumulate state in a shared
- * environment, so a retry re-runs against an environment that also contains everything the failed
- * attempt created.
+ * The signed-in respondent is the standard user (./support/accounts.ts); other people are fresh
+ * accounts where they must sign in themselves, or guests created over the API where they need not.
+ * Every test starts from a reset environment and creates its own rooms and people.
  */
-test.describe.configure({ retries: 0, mode: 'serial' })
-
-function requireEnv(name: string): string {
-  const value = process.env[name]
-  if (!value) {
-    throw new Error(`${name} is not set - see acceptance/run.sh.`)
-  }
-  return value
-}
-
-function uniqueId(): string {
-  return `${Date.now()}-${Math.floor(Math.random() * 10_000)}`
-}
-
-async function signInAsDemo(page: Page): Promise<void> {
-  await page.goto('/signin')
-  await page.getByLabel('Email').fill(requireEnv('DEMO_USER_EMAIL'))
-  await page.getByLabel('Password').fill(requireEnv('DEMO_USER_PASSWORD'))
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page.getByText('Sign out')).toBeVisible()
-}
 
 /** A genuinely fresh, real, confirmed account with its own linked Person - see cognitoAdmin.ts. */
 async function signInAsFreshAccount(page: Page): Promise<{ name: string; email: string }> {
@@ -47,16 +29,6 @@ async function signInAsFreshAccount(page: Page): Promise<{ name: string; email: 
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page.getByText('Sign out')).toBeVisible()
   return account
-}
-
-async function createRoom(page: Page, name: string, capacity: number): Promise<void> {
-  await page.goto('/rooms')
-  await page.getByRole('button', { name: 'Add room' }).click()
-  const dialog = page.getByRole('dialog')
-  await dialog.getByLabel('Name').fill(name)
-  await dialog.getByLabel('Capacity').fill(String(capacity))
-  await dialog.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText(name)).toBeVisible()
 }
 
 async function getIdToken(page: Page): Promise<string> {
@@ -177,6 +149,7 @@ async function readAttendeeStatuses(
 
 test('Home page shows a real "Needs your response" card, and quick-respond updates it and Today live', async ({
   browser,
+  api,
 }) => {
   const id = uniqueId()
   const room = `Response Status Room ${id}`
@@ -189,21 +162,14 @@ test('Home page shows a real "Needs your response" card, and quick-respond updat
     const pinnedNow = pinnedWeekday('Wednesday')
     await page.clock.setFixedTime(pinnedNow)
 
-    await signInAsDemo(page)
-    await createRoom(page, room, 4)
+    await signInAsStandardUser(page)
+    await api.createRoom(room, 4)
     const token = await getIdToken(page)
     const meId = await myPersonId(page, token)
 
-    // Reference data for the room id, then an organiser created via the admin-only Persons page
-    // (createPerson helper elsewhere in this suite) so Demo User can be an ATTENDEE, not the
-    // organiser - Add Meeting's own default would otherwise make Demo User the organiser, who has
-    // no status to respond with.
-    await page.goto('/persons')
-    await page.getByRole('button', { name: 'Add person' }).click()
-    const personDialog = page.getByRole('dialog')
-    await personDialog.getByLabel('Name').fill(organiser)
-    await personDialog.getByRole('button', { name: 'Save' }).click()
-    await expect(page.getByText(organiser)).toBeVisible()
+    // A separate organiser, created over the API, so the signed-in user can be an ATTENDEE - the
+    // organiser has no status to respond with.
+    await api.createPerson(organiser)
 
     const reference = await graphql<{
       workspace: { rooms: { id: string; name: string }[]; people: { id: string; name: string }[] }
@@ -248,28 +214,29 @@ test('Home page shows a real "Needs your response" card, and quick-respond updat
 
 test('two different attendees of the same meeting responding at once both land - real DynamoDB conflict retry', async ({
   browser,
+  api,
 }) => {
   const id = uniqueId()
   const room = `Concurrent Same Meeting Room ${id}`
   const subject = `Concurrent same-meeting response ${id}`
 
-  // Three separate contexts, one per real identity - Demo User (attendee 1), and two fresh
+  // Three separate contexts, one per real identity - the standard user (attendee 1), and two fresh
   // accounts (organiser, attendee 2). Not a shortcut: two pages sharing one BrowserContext share
   // its localStorage/cookies too, so a second sign-in in the same context would silently replace
   // the first tab's session. Each captured token is a plain JWT string used explicitly in every
   // request below, independent of whatever a page's own localStorage holds by the time it's used.
-  const demoContext = await browser.newContext()
+  const userContext = await browser.newContext()
   const organiserContext = await browser.newContext()
   const secondAttendeeContext = await browser.newContext()
   try {
     const pinnedNow = pinnedWeekday('Thursday')
 
-    const demoPage = await demoContext.newPage()
-    await demoPage.clock.setFixedTime(pinnedNow)
-    await signInAsDemo(demoPage)
-    await createRoom(demoPage, room, 4)
-    const demoToken = await getIdToken(demoPage)
-    const demoPersonId = await myPersonId(demoPage, demoToken)
+    const userPage = await userContext.newPage()
+    await userPage.clock.setFixedTime(pinnedNow)
+    await signInAsStandardUser(userPage)
+    await api.createRoom(room, 4)
+    const userToken = await getIdToken(userPage)
+    const userPersonId = await myPersonId(userPage, userToken)
 
     const organiserPage = await organiserContext.newPage()
     await organiserPage.clock.setFixedTime(pinnedNow)
@@ -284,8 +251,8 @@ test('two different attendees of the same meeting responding at once both land -
     const secondPersonId = await myPersonId(secondAttendeePage, secondToken)
 
     const reference = await graphql<{ workspace: { rooms: { id: string; name: string }[] } }>(
-      demoPage,
-      demoToken,
+      userPage,
+      userToken,
       `query { workspace { rooms { id name } } }`,
       {},
     )
@@ -295,7 +262,7 @@ test('two different attendees of the same meeting responding at once both land -
     const meetingId = await createMeetingViaApi(organiserPage, organiserToken, {
       roomId,
       organiserId: organiserPersonId,
-      attendeeIds: [demoPersonId, secondPersonId],
+      attendeeIds: [userPersonId, secondPersonId],
       subject,
       date,
     })
@@ -303,18 +270,18 @@ test('two different attendees of the same meeting responding at once both land -
     // Fired together, not awaited one after the other - the whole point is making both writers'
     // read-modify-write windows overlap on the SAME day item, so the second one to reach DynamoDB
     // hits a real ConditionalCheckFailedException and must retry rather than clobber the first.
-    const [demoResult, secondResult] = await Promise.all([
-      respondViaApi(demoPage, demoToken, meetingId, 'Going'),
+    const [userResult, secondResult] = await Promise.all([
+      respondViaApi(userPage, userToken, meetingId, 'Going'),
       respondViaApi(secondAttendeePage, secondToken, meetingId, 'Maybe'),
     ])
-    expect(demoResult.errors).toEqual([])
+    expect(userResult.errors).toEqual([])
     expect(secondResult.errors).toEqual([])
 
-    const statuses = await readAttendeeStatuses(demoPage, demoToken, meetingId)
-    expect(statuses[demoPersonId]).toBe('Going')
+    const statuses = await readAttendeeStatuses(userPage, userToken, meetingId)
+    expect(statuses[userPersonId]).toBe('Going')
     expect(statuses[secondPersonId]).toBe('Maybe')
   } finally {
-    await demoContext.close()
+    await userContext.close()
     await organiserContext.close()
     await secondAttendeeContext.close()
   }
@@ -322,6 +289,7 @@ test('two different attendees of the same meeting responding at once both land -
 
 test('one person responding to two different meetings on the same day both land - they share one day item', async ({
   browser,
+  api,
 }) => {
   // The sharper of the two concurrency shapes (see this design's Technical considerations):
   // storage is one DynamoDB item per DAY, not per meeting, so these two "independent-looking"
@@ -337,19 +305,14 @@ test('one person responding to two different meetings on the same day both land 
     const page = await context.newPage()
     const pinnedNow = pinnedWeekday('Friday')
     await page.clock.setFixedTime(pinnedNow)
-    await signInAsDemo(page)
-    await createRoom(page, roomA, 4)
-    await createRoom(page, roomB, 4)
+    await signInAsStandardUser(page)
+    await api.createRoom(roomA, 4)
+    await api.createRoom(roomB, 4)
     const token = await getIdToken(page)
     const meId = await myPersonId(page, token)
 
-    await page.goto('/persons')
     const organiserName = `Same Day Organiser ${id}`
-    await page.getByRole('button', { name: 'Add person' }).click()
-    const dialog = page.getByRole('dialog')
-    await dialog.getByLabel('Name').fill(organiserName)
-    await dialog.getByRole('button', { name: 'Save' }).click()
-    await expect(page.getByText(organiserName)).toBeVisible()
+    await api.createPerson(organiserName)
 
     const reference = await graphql<{
       workspace: { rooms: { id: string; name: string }[]; people: { id: string; name: string }[] }
@@ -394,7 +357,7 @@ test('one person responding to two different meetings on the same day both land 
   }
 })
 
-test('a response made by another client is reflected live, without a refresh', async ({ browser }) => {
+test('a response made by another client is reflected live, without a refresh', async ({ browser, api }) => {
   const id = uniqueId()
   const room = `Cache Convergence Room ${id}`
   const subject = `Cache convergence meeting ${id}`
@@ -405,8 +368,8 @@ test('a response made by another client is reflected live, without a refresh', a
     const observer = await observerContext.newPage()
     const pinnedNow = pinnedWeekday('Monday', { weeks: 1 })
     await observer.clock.setFixedTime(pinnedNow)
-    await signInAsDemo(observer)
-    await createRoom(observer, room, 4)
+    await signInAsStandardUser(observer)
+    await api.createRoom(room, 4)
     const observerToken = await getIdToken(observer)
     const observerPersonId = await myPersonId(observer, observerToken)
 

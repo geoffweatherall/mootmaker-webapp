@@ -13,22 +13,14 @@ layering.
 runs the suite, and tears it down. That is the supported path, and the only one the suite is
 actually designed for.
 
-**Do not re-run the suite against a long-lived environment.** Several specs assume a state only a
-freshly deployed environment has, and they fail confusingly once anything has run before them —
-most obviously [`tests/00-room-availability-empty.spec.ts`](tests/00-room-availability-empty.spec.ts),
-whose zero-rooms precondition (rooms are never deleted through this app) can only ever be true
-once, immediately after deployment. The suggest-a-room ranking cases and Person Calendar's "other
-days show none" case are similarly sensitive to accumulated data.
+**Re-running against a long-lived environment is fine.** Every test resets the environment
+before it starts (see "Every test is independent" below), so nothing one run or one test leaves
+behind affects the next. It does mean the suite wipes whatever data that environment held.
 
 Passing an environment name (`./run.sh <environment>`) is supported and useful for *iterating on a
 single spec* with `-g` while developing, where the deploy-and-teardown cost per attempt would be
-absurd. Just don't mistake a green run there for a green suite: only a fresh-environment run is
-evidence, and this project's definition of done means the no-argument form.
-
-This is worth stating because it is not obvious from a failing run. Ten specs once failed against a
-reused environment with errors that all looked like real regressions — empty-state, room ranking,
-calendar contents — and none of them were. The same commit went green first time on a fresh
-environment.
+absurd. A fresh-environment run is still the definition of done, because it also proves the
+deploy itself.
 
 ## Run output
 
@@ -58,10 +50,10 @@ drift" and "Known implementation gap" sections.
 
 Most of the catalogued use cases have a spec, across `sign-up.spec.ts`,
 `sign-in-sign-out.spec.ts`, `forgot-password.spec.ts`, `add-meeting.spec.ts`,
-`00-room-availability-empty.spec.ts`, `room-availability.spec.ts`, `person-calendar.spec.ts`,
+`room-availability-empty.spec.ts`, `room-availability.spec.ts`, `person-calendar.spec.ts`,
 `meeting-details.spec.ts`, `home-page.spec.ts`, `settings-your-name.spec.ts`,
 `p-rooms.spec.ts`, `q-persons.spec.ts`, `authorization-boundaries.spec.ts`,
-`cross-cutting.spec.ts`, `attendee-response-status.spec.ts`, `cross-client-updates.spec.ts`, and
+`cross-cutting.spec.ts`, `settings-admin-banner.spec.ts`, `attendee-response-status.spec.ts`, `cross-client-updates.spec.ts`, and
 `edit-and-cancel-meetings.spec.ts` — except G.64, confirmed infeasible against this project's
 standard environments (see its own catalog entry). Not every case has automated acceptance-layer
 coverage: some are left deliberately Planned where the Integration layer under `webapp/tests/`

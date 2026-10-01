@@ -54,6 +54,7 @@ export async function waitForVerificationCode(email: string, timeoutMs = 60_000)
     )
 
     for (const message of Messages ?? []) {
+      if (await deleteIfAbandoned(message)) continue
       const code = await tryExtractCodeForRecipient(message.Body ?? '', email)
       if (code) {
         if (message.ReceiptHandle) {
@@ -65,43 +66,6 @@ export async function waitForVerificationCode(email: string, timeoutMs = 60_000)
   }
 
   throw new Error(`Timed out after ${timeoutMs}ms waiting for a verification code addressed to ${email}`)
-}
-
-/**
- * Consumes and discards any message(s) already addressed to `email`, without requiring one to
- * exist - a short, best-effort drain, not a wait. `SignUpCommand` triggers Cognito to send its own
- * sign-up confirmation-code email as a side effect even when the caller immediately bypasses that
- * code via AdminConfirmSignUp (see cognitoAdmin.ts's createConfirmedTestAccount) - left alone, that
- * straggler email sits in this shared, standard (unordered) SQS queue and can be picked up by a
- * *later* waitForVerificationCode call for an unrelated real code request to the same address,
- * since standard queues don't guarantee delivery order. Call this right after any account-creation
- * path that has this side effect, before the real code-under-test is requested, so the queue is
- * known-empty for that address by the time the real wait begins.
- */
-export async function discardAnyPendingMessages(email: string, timeoutMs = 15_000): Promise<void> {
-  const deadline = Date.now() + timeoutMs
-
-  while (Date.now() < deadline) {
-    const { Messages } = await sqsClient.send(
-      new ReceiveMessageCommand({ QueueUrl: queueUrl(), MaxNumberOfMessages: 10, WaitTimeSeconds: 3 }),
-    )
-    if (!Messages || Messages.length === 0) {
-      return
-    }
-
-    for (const message of Messages) {
-      let notification: { mail?: { destination?: string[] }; receipt?: { recipients?: string[] } }
-      try {
-        notification = JSON.parse(message.Body ?? '')
-      } catch {
-        continue
-      }
-      const recipients = notification.mail?.destination ?? notification.receipt?.recipients ?? []
-      if (recipients.some((recipient) => recipient.toLowerCase() === email.toLowerCase()) && message.ReceiptHandle) {
-        await sqsClient.send(new DeleteMessageCommand({ QueueUrl: queueUrl(), ReceiptHandle: message.ReceiptHandle }))
-      }
-    }
-  }
 }
 
 /**
@@ -138,4 +102,27 @@ async function tryExtractCodeForRecipient(rawBody: string, email: string): Promi
   // copy) rather than brittle about exact phrasing.
   const match = bodyText.match(/\b(\d{6})\b/)
   return match ? match[1] : null
+}
+
+/** Older than any test would still be waiting for: every wait here gives up within a minute. */
+const ABANDONED_AFTER_MS = 60 * 60 * 1000
+
+/**
+ * Deletes a message nobody can still be waiting for, and says whether it did.
+ *
+ * Mail no test ever consumed - a sign-up confirmation nobody read, a bounce - used to stay on the
+ * shared queue for its full 14-day retention. Hundreds built up, and every poll had to wade through
+ * them ten at a time, hiding each batch from concurrent runs for the visibility timeout while it
+ * did. Clearing them as they are met keeps the queue near-empty without a separate job.
+ */
+async function deleteIfAbandoned(message: { Body?: string; ReceiptHandle?: string }): Promise<boolean> {
+  let sentAt: number
+  try {
+    sentAt = Date.parse(JSON.parse(message.Body ?? '').mail?.timestamp ?? '')
+  } catch {
+    return false
+  }
+  if (Number.isNaN(sentAt) || Date.now() - sentAt < ABANDONED_AFTER_MS || !message.ReceiptHandle) return false
+  await sqsClient.send(new DeleteMessageCommand({ QueueUrl: queueUrl(), ReceiptHandle: message.ReceiptHandle }))
+  return true
 }

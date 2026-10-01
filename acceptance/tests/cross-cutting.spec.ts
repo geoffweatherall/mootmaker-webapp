@@ -40,6 +40,11 @@ test('M.92 - a first cold visit shows a full spinner; a same-session revisit sho
   // Precondition room, created over the API before any artificial delay is added.
   await api.createRoom(roomName, 4)
 
+  // Signing in lands on Home, whose Today/Tomorrow agenda warms today's Day in the cache - so (a)
+  // starts from a fresh page load of Settings, which asks about no day, to make this day cold.
+  await page.goto('/settings')
+  await expect(page.getByRole('heading', { name: 'Your name' })).toBeVisible()
+
   // From here on, every GraphQL round trip (including the createMeeting mutation below, and both
   // queries RoomAvailabilityPage fires on mount) is artificially delayed - a real deployed
   // environment is normally too fast to reliably catch a transient loading state otherwise. See

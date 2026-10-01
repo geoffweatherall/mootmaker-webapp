@@ -564,7 +564,7 @@ test("an admin cancels a meeting someone else organises", async ({ page, api }) 
   await page.goto(`/rooms/${date}/availability`)
   await openMeetingDetail(page, room, subject)
 
-  await page.getByRole('button', { name: 'Cancel meeting' }).click()
+  await page.getByRole('button', { name: 'Cancel meeting', exact: true }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Cancel meeting' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 

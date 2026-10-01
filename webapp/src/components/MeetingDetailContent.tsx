@@ -6,6 +6,7 @@ import ShareIcon from '@mui/icons-material/Share'
 import { Box, IconButton, LinearProgress, Stack, Typography } from '@mui/material'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useReturnHereState } from './useReturnHereState'
 import { useAuth } from '../auth/authContext'
 import { formatLocalDate, formatLocalTime } from '../graphql/formatDateTime'
 import { MEETING_BY_ID, MEETING_LIVE_FIELDS_FRAGMENT } from '../graphql/queries'
@@ -72,6 +73,7 @@ export function MeetingDetailContent({
    * both - only the semantic level differs. */
   headingComponent?: 'h1' | 'h2'
 }) {
+  const returnHere = useReturnHereState()
   const { timeFormat, dateFormat, personId, isAdmin } = useAuth()
   const [linkCopied, setLinkCopied] = useState(false)
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
@@ -191,7 +193,7 @@ export function MeetingDetailContent({
               otherwise). This is presentation only: real enforcement is the API's own organiser-
               or-admin check, never bypassable by editing what the client happens to render. */}
           {canEdit && (
-            <IconButton size="small" aria-label="Edit meeting" component={Link} to={`/meetings/${meeting.id}/edit`}>
+            <IconButton size="small" aria-label="Edit meeting" component={Link} to={`/meetings/${meeting.id}/edit`} state={returnHere}>
               <EditIcon fontSize="small" />
             </IconButton>
           )}

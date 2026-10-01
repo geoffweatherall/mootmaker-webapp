@@ -186,3 +186,18 @@ export function snapToNearestQuarterHour(value: Dayjs | null): Dayjs | null {
     remainder >= 7.5 ? minutesSinceMidnight + (15 - remainder) : minutesSinceMidnight - remainder
   return value.hour(0).minute(0).second(0).millisecond(0).add(snapped, 'minute')
 }
+
+const ROOM_AVAILABILITY_PATH = /^\/rooms\/[^/]+\/availability(\?|$)/
+
+/**
+ * Where Save goes (mootmaker-webapp#146): back to the page the form was opened from, carried as
+ * `returnTo` in the opening link's state. Room Availability is the exception - that page is about
+ * one day, and the meeting may now be on another, so it goes to the booked day's instead. So does
+ * a form opened with no origin (a typed, bookmarked or shared link), as it always did.
+ */
+export function pageAfterSave(returnTo: string | undefined, bookedDate: string): string {
+  if (returnTo?.startsWith('/') && !ROOM_AVAILABILITY_PATH.test(returnTo)) {
+    return returnTo
+  }
+  return `/rooms/${bookedDate}/availability`
+}

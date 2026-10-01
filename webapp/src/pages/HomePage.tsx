@@ -48,6 +48,9 @@ const SIGN_UP_STEPS = [
 
 const DATE_KEY_FORMAT = 'YYYY-MM-DD'
 
+// Saving a meeting opened from here comes back here - see pageAfterSave (mootmaker-webapp#146).
+const RETURN_HOME = { returnTo: '/' }
+
 /**
  * Fires a response directly from the card - Going/Maybe/Not going, same three choices as
  * AttendeeStatusControl.tsx's detail-sheet control, but as one-shot buttons rather than a toggle
@@ -133,17 +136,18 @@ interface ToolbarActionProps {
   icon: ReactNode
   disabled?: boolean
   to?: string
+  state?: unknown
   onClick?: () => void
 }
 
-function ToolbarAction({ caption, accessibleName, icon, disabled, to, onClick }: ToolbarActionProps) {
+function ToolbarAction({ caption, accessibleName, icon, disabled, to, state, onClick }: ToolbarActionProps) {
   return (
     <Stack sx={{ alignItems: 'center', gap: 0.5 }}>
       <IconButton
         aria-label={accessibleName}
         disabled={disabled}
         onClick={onClick}
-        {...(to ? { component: Link, to } : {})}
+        {...(to ? { component: Link, to, state } : {})}
         sx={{
           width: 40,
           height: 40,
@@ -429,7 +433,7 @@ export default function HomePage() {
           Your account hasn't been set up properly — no profile could be found for your sign-in.
         </Alert>
         <Stack direction="row" spacing={2}>
-          <Button variant="contained" component={Link} to="/meetings/add" startIcon={<AddIcon />}>
+          <Button variant="contained" component={Link} to="/meetings/add" state={RETURN_HOME} startIcon={<AddIcon />}>
             Add Meeting
           </Button>
           <Button variant="contained" onClick={() => navigate(`/rooms/${today}/availability`)}>
@@ -459,6 +463,7 @@ export default function HomePage() {
             accessibleName="Add Meeting"
             icon={<AddIcon fontSize="small" />}
             to="/meetings/add"
+            state={RETURN_HOME}
           />
           <ToolbarAction
             caption="Rooms today"

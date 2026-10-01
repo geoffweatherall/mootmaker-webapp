@@ -1,6 +1,7 @@
 import dayjs from 'dayjs'
 import { describe, expect, it } from 'vitest'
 import {
+  pageAfterSave,
   advanceSuggestion,
   defaultMeetingTimes,
   filterAttendeeOptions,
@@ -261,5 +262,23 @@ describe('snapToNearestQuarterHour', () => {
 
   it('passes a cleared field through unchanged', () => {
     expect(snapToNearestQuarterHour(null)).toBeNull()
+  })
+})
+
+describe('pageAfterSave', () => {
+  it('returns to the page the form was opened from', () => {
+    expect(pageAfterSave('/', '2026-10-07')).toBe('/')
+    expect(pageAfterSave('/persons/p1/calendar?week=2026-10-05', '2026-10-07')).toBe(
+      '/persons/p1/calendar?week=2026-10-05',
+    )
+  })
+
+  it("goes to the booked day's Room Availability when opened from Room Availability", () => {
+    expect(pageAfterSave('/rooms/2026-10-01/availability', '2026-10-07')).toBe('/rooms/2026-10-07/availability')
+  })
+
+  it("goes to the booked day's Room Availability when opened with no origin", () => {
+    expect(pageAfterSave(undefined, '2026-10-07')).toBe('/rooms/2026-10-07/availability')
+    expect(pageAfterSave('https://elsewhere.example', '2026-10-07')).toBe('/rooms/2026-10-07/availability')
   })
 })

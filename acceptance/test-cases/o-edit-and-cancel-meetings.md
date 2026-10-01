@@ -28,7 +28,7 @@ for `respondToMeeting` - not duplicated here.
 2. Open the meeting's detail sheet; click "Edit meeting"; change the subject; click Save.
 
 **Assertions:**
-- Navigates to `/rooms/<date>/availability` on success (same target `createMeeting` navigates to).
+- Navigates to `/rooms/<date>/availability` on success, because the form was opened from Room Availability (same target `createMeeting` navigates to). Opened from anywhere else, Save returns there instead - see G.68/G.69 (mootmaker-webapp#146).
 - The new subject is visible on the grid; the old one is not.
 
 **Out of scope:** Every other field-level edit path (room/organiser/attendees/date) and the

@@ -1,8 +1,10 @@
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { freshTestAccount } from '../../support/testAccount'
-import { createPersonViaApi, setAvatarViaApi } from './support/avatarApi'
+import { ADMIN_USER_NAME, adminUser, signIn, signInAsAdminUser, signInAsStandardUser } from './support/accounts'
+import { uniqueId } from './support/env'
 import { formatDateParam, pinnedWeekday } from './support/pinnedDates'
+import { expect, test } from './support/test'
 
 const PINNED_NOW = pinnedWeekday('Wednesday')
 
@@ -11,32 +13,8 @@ const PINNED_NOW = pinnedWeekday('Wednesday')
 // file implements one at a time. Supersedes section K (k-settings-people.md /
 // settings-people.spec.ts) now that People has moved out of Settings to its own top-level Persons
 // page - see the admin-rooms-and-people design doc. Every case except Q.132 (standard user) signs
-// in as the demo user. A standard user forcing renamePerson/setPersonAdmin/deletePerson directly
+// in as the admin fixture user, since managing people is the subject (./support/accounts.ts). A standard user forcing renamePerson/setPersonAdmin/deletePerson directly
 // is covered once, comprehensively, by L.90 rather than repeated here.
-
-function requireEnv(name: string): string {
-  const value = process.env[name]
-  if (!value) {
-    throw new Error(`${name} is not set - see acceptance/run.sh.`)
-  }
-  return value
-}
-
-function uniqueId(): string {
-  return `${Date.now()}-${Math.floor(Math.random() * 10_000)}`
-}
-
-async function signIn(page: Page, email: string, password: string) {
-  await page.goto('/signin')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password').fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page.getByText('Sign out')).toBeVisible()
-}
-
-async function signInAsDemo(page: Page) {
-  await signIn(page, requireEnv('DEMO_USER_EMAIL'), requireEnv('DEMO_USER_PASSWORD'))
-}
 
 async function signOut(page: Page) {
   await page.getByRole('button', { name: 'Sign out' }).click()
@@ -45,9 +23,9 @@ async function signOut(page: Page) {
 
 /** The Persons page's card for a given person name. */
 /** Scoped to `main`, not just the nearest MuiPaper-root ancestor - the signed-in admin's own name
- * (always "Demo Strater" in this catalog's tests) also appears in the nav sidebar's account area,
- * itself inside a MuiPaper-root (the Drawer), so an unscoped search is ambiguous whenever a test
- * looks up the demo admin's own card (Q.137, Q.140, Q.142). */
+ * also appears in the nav sidebar's account area, itself inside a MuiPaper-root (the Drawer), so an
+ * unscoped search is ambiguous whenever a test looks up the admin's own card (Q.137, Q.140,
+ * Q.142). */
 function personCard(page: Page, name: string) {
   return page
     .getByRole('main')
@@ -90,19 +68,9 @@ async function createMeeting(page: Page, { subject, roomName, organiserName, att
   await expect(page).toHaveURL(/\/rooms\/.+\/availability/)
 }
 
-async function createRoom(page: Page, name: string, capacity: string) {
-  await page.goto('/rooms')
-  await page.getByRole('button', { name: 'Add room' }).click()
-  const dialog = page.getByRole('dialog')
-  await dialog.getByLabel('Name').fill(name)
-  await dialog.getByLabel('Capacity').fill(capacity)
-  await dialog.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText(name)).toBeVisible()
-}
-
 test.describe('Q. Persons (admin only)', () => {
   test('Q.132 - standard user has no Persons nav link and cannot reach the page directly', async ({ page }) => {
-    await signIn(page, requireEnv('E2E_USER_EMAIL'), requireEnv('E2E_USER_PASSWORD'))
+    await signInAsStandardUser(page)
     await expect(page.getByRole('link', { name: 'Persons' })).toHaveCount(0)
 
     await page.goto('/persons')
@@ -113,7 +81,7 @@ test.describe('Q. Persons (admin only)', () => {
     const runId = uniqueId()
     const personName = `Q133 Guest ${runId}`
 
-    await signInAsDemo(page)
+    await signInAsAdminUser(page)
     await createPerson(page, personName)
 
     await page.goto('/meetings/add')
@@ -132,7 +100,7 @@ test.describe('Q. Persons (admin only)', () => {
   })
 
   test('Q.134 - blank person name is rejected', async ({ page }) => {
-    await signInAsDemo(page)
+    await signInAsAdminUser(page)
     await page.goto('/persons')
     await page.getByRole('button', { name: 'Add person' }).click()
     const dialog = page.getByRole('dialog')
@@ -141,7 +109,7 @@ test.describe('Q. Persons (admin only)', () => {
     await expect(dialog).toBeVisible()
   })
 
-  test('Q.135 - admin renames a Cognito-linked person: propagates to their sidebar and meetings', async ({ page }) => {
+  test('Q.135 - admin renames a Cognito-linked person: propagates to their sidebar and meetings', async ({ page, api }) => {
     const runId = uniqueId()
     const account = { ...freshTestAccount(), name: `Q135 Person ${runId}` }
     await createConfirmedTestAccount(account)
@@ -151,8 +119,8 @@ test.describe('Q. Persons (admin only)', () => {
     const newName = `Q135 Renamed ${runId}`
     await page.clock.setFixedTime(PINNED_NOW)
 
-    await signInAsDemo(page)
-    await createRoom(page, roomName, '4')
+    await signInAsAdminUser(page)
+    await api.createRoom(roomName, 4)
     await createMeeting(page, { subject, roomName, attendeeNames: [account.name] })
 
     await page.goto('/persons')
@@ -163,7 +131,7 @@ test.describe('Q. Persons (admin only)', () => {
     await expect(personCard(page, newName)).toBeVisible()
 
     await signOut(page)
-    await signIn(page, account.email, account.password)
+    await signIn(page, account)
     await expect(page.getByText(newName)).toBeVisible()
   })
 
@@ -172,7 +140,7 @@ test.describe('Q. Persons (admin only)', () => {
     const guestName = `Q136 Guest ${runId}`
     const newName = `Q136 Guest Renamed ${runId}`
 
-    await signInAsDemo(page)
+    await signInAsAdminUser(page)
     await createPerson(page, guestName)
 
     await page.getByLabel(`Edit ${guestName}`).click()
@@ -188,16 +156,16 @@ test.describe('Q. Persons (admin only)', () => {
     await createConfirmedTestAccount(account)
     const guestName = `Q137 Guest ${runId}`
 
-    await signInAsDemo(page)
+    await signInAsAdminUser(page)
     await createPerson(page, guestName)
     await page.goto('/persons')
 
     await expect(personCard(page, account.name).getByText(account.email)).toBeVisible()
     await expect(personCard(page, guestName).getByText('Not signed up yet')).toBeVisible()
 
-    const demoEmail = requireEnv('DEMO_USER_EMAIL')
-    await expect(personCard(page, 'Demo Strater').getByText('Admin')).toBeVisible()
-    await expect(personCard(page, 'Demo Strater').getByText(demoEmail)).toBeVisible()
+    const adminEmail = adminUser().email
+    await expect(personCard(page, ADMIN_USER_NAME).getByText('Admin', { exact: true })).toBeVisible()
+    await expect(personCard(page, ADMIN_USER_NAME).getByText(adminEmail)).toBeVisible()
   })
 
   test('Q.138 - admin grants admin access to a person with a linked account', async ({ page }) => {
@@ -205,7 +173,7 @@ test.describe('Q. Persons (admin only)', () => {
     const account = { ...freshTestAccount(), name: `Q138 Person ${runId}` }
     await createConfirmedTestAccount(account)
 
-    await signInAsDemo(page)
+    await signInAsAdminUser(page)
     await page.goto('/persons')
     await page.getByLabel(`Edit ${account.name}`).click()
     const dialog = page.getByRole('dialog')
@@ -215,12 +183,12 @@ test.describe('Q. Persons (admin only)', () => {
     await dialog.getByRole('button', { name: 'Save' }).click()
     await expect(dialog).toHaveCount(0)
 
-    await expect(personCard(page, account.name).getByText('Admin')).toBeVisible()
+    await expect(personCard(page, account.name).getByText('Admin', { exact: true })).toBeVisible()
 
     // The grant actually took effect on their token, not just the Persons list - the real proof
     // this isn't just a DynamoDB-side badge (see the design doc's cognitoSyncFailed reasoning).
     await signOut(page)
-    await signIn(page, account.email, account.password)
+    await signIn(page, account)
     await expect(page.getByRole('link', { name: 'Rooms' })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Persons' })).toBeVisible()
   })
@@ -229,7 +197,7 @@ test.describe('Q. Persons (admin only)', () => {
     const runId = uniqueId()
     const guestName = `Q139 Guest ${runId}`
 
-    await signInAsDemo(page)
+    await signInAsAdminUser(page)
     await createPerson(page, guestName)
     await page.getByLabel(`Edit ${guestName}`).click()
     const dialog = page.getByRole('dialog')
@@ -239,16 +207,16 @@ test.describe('Q. Persons (admin only)', () => {
   })
 
   test('Q.140 - the admin switch is disabled for the signed-in admin\'s own person', async ({ page }) => {
-    await signInAsDemo(page)
+    await signInAsAdminUser(page)
     await page.goto('/persons')
-    await page.getByLabel('Edit Demo Strater').click()
+    await page.getByLabel(`Edit ${ADMIN_USER_NAME}`).click()
     const dialog = page.getByRole('dialog')
 
     await expect(dialog.getByRole('switch', { name: 'Admin' })).toBeDisabled()
     await expect(dialog.getByText("can't change your own admin access")).toBeVisible()
   })
 
-  test('Q.141 - admin deletes a person: their organised meeting is cancelled, they are removed from one they only attend', async ({ page, context }) => {
+  test('Q.141 - admin deletes a person: their organised meeting is cancelled, they are removed from one they only attend', async ({ page, context, api }) => {
     const runId = uniqueId()
     const targetName = `Q141 Person ${runId}`
     const otherAttendeeName = `Q141 Other ${runId}`
@@ -264,13 +232,13 @@ test.describe('Q. Persons (admin only)', () => {
     })
     await context.grantPermissions(['clipboard-read', 'clipboard-write'])
 
-    await signInAsDemo(page)
-    await createRoom(page, roomName, '4')
-    await createRoom(page, roomName2, '4')
+    await signInAsAdminUser(page)
+    await api.createRoom(roomName, 4)
+    await api.createRoom(roomName2, 4)
     await createPerson(page, targetName)
     await createPerson(page, otherAttendeeName)
-    // Target organises one meeting (demo user as an attendee, so it's still visible/queryable
-    // afterward), and only attends a second one the demo user organises.
+    // Target organises one meeting (the signed-in admin as an attendee, so it's still
+    // visible/queryable afterward), and only attends a second one the admin organises.
     await createMeeting(page, { subject: organisedSubject, roomName, organiserName: targetName })
     await createMeeting(page, { subject: attendedSubject, roomName: roomName2, attendeeNames: [targetName, otherAttendeeName] })
 
@@ -295,15 +263,15 @@ test.describe('Q. Persons (admin only)', () => {
   })
 
   test('Q.142 - an admin cannot delete their own person this way', async ({ page }) => {
-    await signInAsDemo(page)
+    await signInAsAdminUser(page)
     await page.goto('/persons')
-    await page.getByLabel('Remove Demo Strater').click()
+    await page.getByLabel(`Remove ${ADMIN_USER_NAME}`).click()
     const dialog = page.getByRole('dialog')
     await dialog.getByRole('button', { name: 'Remove person' }).click()
 
     await expect(dialog.getByText('use Delete account in Settings instead')).toBeVisible()
     await dialog.getByRole('button', { name: 'Cancel' }).click()
-    await expect(personCard(page, 'Demo Strater')).toBeVisible()
+    await expect(personCard(page, ADMIN_USER_NAME)).toBeVisible()
   })
 
   // mootmaker-webapp#125. Not a numbered use case - a small addition to the page P/Q already
@@ -312,16 +280,16 @@ test.describe('Q. Persons (admin only)', () => {
     const runId = uniqueId()
     const guestName = `Filter Guest ${runId}`
 
-    await signInAsDemo(page)
+    await signInAsAdminUser(page)
     await createPerson(page, guestName)
 
     await page.getByRole('textbox', { name: 'Filter' }).fill(guestName)
     await expect(personCard(page, guestName)).toBeVisible()
-    await expect(page.getByRole('main').getByText('Demo Strater')).toHaveCount(0)
+    await expect(page.getByRole('main').getByText(ADMIN_USER_NAME)).toHaveCount(0)
 
-    const demoEmail = requireEnv('DEMO_USER_EMAIL')
-    await page.getByRole('textbox', { name: 'Filter' }).fill(demoEmail)
-    await expect(page.getByRole('main').getByText('Demo Strater')).toBeVisible()
+    const adminEmail = adminUser().email
+    await page.getByRole('textbox', { name: 'Filter' }).fill(adminEmail)
+    await expect(page.getByRole('main').getByText(ADMIN_USER_NAME)).toBeVisible()
     await expect(personCard(page, guestName)).toHaveCount(0)
   })
 
@@ -332,7 +300,7 @@ test.describe('Q. Persons (admin only)', () => {
     const runId = uniqueId()
     const guestName = `Collision Guest ${runId}`
 
-    await signInAsDemo(page)
+    await signInAsAdminUser(page)
     await createPerson(page, guestName)
 
     await page.goto('/persons')
@@ -350,19 +318,19 @@ test.describe('Q. Persons (admin only)', () => {
   // and "an avatar is rendered" would not have caught it either. MUI's Avatar swaps in the
   // person's initials when its image fails to load, so a broken avatar looks exactly like a
   // deliberate initials one. Only naturalWidth proves real image bytes arrived and decoded.
-  test('Q.143 - a person with an avatar is shown with it, and a person without gets initials', async ({ page, request }) => {
+  test('Q.143 - a person with an avatar is shown with it, and a person without gets initials', async ({ page, api }) => {
     const withAvatar = `Avatar Holder ${uniqueId()}`
     // Initials are the first letters of the first and last words, so the unique part goes in the
     // middle - at the end it would become one of the initials.
     const without = `Zed ${uniqueId()} Quill`
-    const personId = await createPersonViaApi(request, withAvatar)
-    await createPersonViaApi(request, without)
+    const personId = await api.createPerson(withAvatar)
+    await api.createPerson(without)
 
-    await signInAsDemo(page)
+    await signInAsAdminUser(page)
     // Any real PNG will do: the API decodes and re-encodes whatever it is given. A screenshot of
     // the page is the cheapest way to get one without committing a binary fixture.
     const png = await page.screenshot({ clip: { x: 0, y: 0, width: 128, height: 128 } })
-    const avatarUrl = await setAvatarViaApi(request, personId, png)
+    const avatarUrl = await api.setAvatar(personId, png)
     // Absolute, and not this webapp's own origin: avatars come from a host mootmaker-api owns.
     expect(new URL(avatarUrl).origin).not.toBe(new URL(page.url()).origin)
 

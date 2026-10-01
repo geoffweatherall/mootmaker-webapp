@@ -1,82 +1,16 @@
-import { expect, test, type Page } from '@playwright/test'
-import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
-import { freshTestAccount } from '../../support/testAccount'
+import type { Page } from '@playwright/test'
 import { formatDayCell, pinnedWeekday } from './support/pinnedDates'
-
-/**
- * Credentials for the account that deliberately has NO linked Person.
- *
- * A separate account from the e2e user, which used to have no Person only by accident: it is
- * created directly rather than through sign-up, so PostConfirmationCreatePersonHandler never ran.
- * Giving it one was right - the whole suite had been running as a degraded identity - but it left
- * the degraded path itself with no fixture, and these tests with no premise. See
- * mootmaker-api's cognito.tf and mootmaker-webapp#54.
- *
- * Skips rather than fails where the account does not exist. It is not created in production, where
- * a personless account would not be a fixture but a real person's broken login.
- */
-function noPersonCredentials(): { email: string; password: string } {
-  const email = process.env.NO_PERSON_USER_EMAIL
-  const password = process.env.NO_PERSON_USER_PASSWORD
-  test.skip(
-    !email || !password,
-    'This environment has no personless account (deliberately absent in production).',
-  )
-  return { email: email as string, password: password as string }
-}
-
+import { uniqueId } from './support/env'
+import { STANDARD_USER_NAME, signInAsAdminUser, signInAsNoPersonUser, signInAsStandardUser } from './support/accounts'
+import { expect, test } from './support/test'
 
 // mootmaker/docs/reference/use-cases.md, section G (Person Calendar), cases 59-63 and 65-67. Case 64 ("no people
 // exist yet") is left unautomated - see g-person-calendar.md's own Notes on that case: every
-// environment this project can deploy already has exactly one seeded Person (the demo user's own,
-// via mootmaker-api's cognito.tf) before any test runs, so a genuinely empty People table isn't a
-// reachable state here.
-
-function requireEnv(name: string): string {
-  const value = process.env[name]
-  if (!value) {
-    throw new Error(`${name} is not set - see acceptance/run.sh.`)
-  }
-  return value
-}
-
-function uniqueId(): string {
-  return `${Date.now()}-${Math.floor(Math.random() * 10_000)}`
-}
-
-async function signIn(page: Page, email: string, password: string) {
-  await page.goto('/signin')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password').fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page.getByText('Sign out')).toBeVisible()
-}
-
-async function signInAsDemo(page: Page) {
-  await signIn(page, requireEnv('DEMO_USER_EMAIL'), requireEnv('DEMO_USER_PASSWORD'))
-}
+// environment always has the demo and fixture users' Persons, even straight after a reset, so a
+// genuinely empty People table isn't a reachable state here.
 
 // Precondition helper - no data-seeding bypass for rooms/people, so every test creates its own via
 // the real Rooms/Persons UI (see acceptance/README.md's "Known gaps"), uniquely named per run.
-async function createRoom(page: Page, roomName: string) {
-  await page.goto('/rooms')
-  await page.getByRole('button', { name: 'Add room' }).click()
-  const dialog = page.getByRole('dialog')
-  await dialog.getByLabel('Name').fill(roomName)
-  await dialog.getByLabel('Capacity').fill('4')
-  await dialog.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText(roomName)).toBeVisible()
-}
-
-async function createPerson(page: Page, name: string) {
-  await page.goto('/persons')
-  await page.getByRole('button', { name: 'Add person' }).click()
-  const dialog = page.getByRole('dialog')
-  await dialog.getByLabel('Name').fill(name)
-  await dialog.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText(name, { exact: true })).toBeVisible()
-}
-
 // Fills one of AddMeetingPage's MUI X time-picker fields (role="group", e.g. "Start time") by
 // clicking its "Hours" section then typing all four digits in one go - the sectioned field
 // auto-advances between segments as each fills up, e.g. "0900" types out to 09:00.
@@ -134,25 +68,27 @@ function weekRangeLabel(monday: Date): string {
 test('G.59 - viewing your own calendar by default shows it pre-selected in the Person selector', async ({
   page,
 }) => {
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
   await goToOwnCalendar(page)
 
   const url = page.url()
-  const demoPersonId = new URL(url).pathname.match(/\/persons\/([^/]+)\/calendar/)?.[1]
-  expect(demoPersonId).toBeTruthy()
+  const ownPersonId = new URL(url).pathname.match(/\/persons\/([^/]+)\/calendar/)?.[1]
+  expect(ownPersonId).toBeTruthy()
 
-  await expect(page.getByRole('combobox', { name: 'Person' })).toHaveValue('Demo Strater')
+  await expect(page.getByRole('combobox', { name: 'Person' })).toHaveValue(STANDARD_USER_NAME)
 })
 
 test("G.60 - switching the Person selector to someone else's calendar works for both an admin and a standard user", async ({
   page,
+  api,
 }) => {
   const id = uniqueId()
   const aliceName = `Acceptance Alice ${id}`
+  await api.createPerson(aliceName)
 
-  // Admin half: the demo user creates Alice, then switches their own calendar view to her.
-  await signInAsDemo(page)
-  await createPerson(page, aliceName)
+  // Admin half: the admin user switches their own calendar view to Alice. Admin on purpose - the
+  // case is that both kinds of user can do this.
+  await signInAsAdminUser(page)
   await goToOwnCalendar(page)
 
   await page.getByRole('combobox', { name: 'Person' }).click()
@@ -167,14 +103,11 @@ test("G.60 - switching the Person selector to someone else's calendar works for 
   await page.getByRole('button', { name: 'Sign out' }).click()
   await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible()
 
-  // Standard-user half: a freshly signed-up account (no admin rights) can do the exact same
-  // switch - see g-person-calendar.md's G.60 Notes: ListMeetingsHandler/ListPeopleHandler only
-  // require an authenticated identity, with no self-or-admin restriction, confirmed against
-  // source. This test documents that actual, current behaviour rather than deciding whether it
-  // should be restricted.
-  const standardAccount = freshTestAccount()
-  await createConfirmedTestAccount(standardAccount)
-  await signIn(page, standardAccount.email, standardAccount.password)
+  // Standard-user half: the standard user (no admin rights) can do the exact same switch - see
+  // g-person-calendar.md's G.60 Notes: ListMeetingsHandler/ListPeopleHandler only require an
+  // authenticated identity, with no self-or-admin restriction, confirmed against source. This test
+  // documents that actual, current behaviour rather than deciding whether it should be restricted.
+  await signInAsStandardUser(page)
   await goToOwnCalendar(page)
 
   await page.getByRole('combobox', { name: 'Person' }).click()
@@ -191,7 +124,7 @@ test('G.61 - the weekly agenda shows exactly Monday-Friday, five day sections', 
   // Monday only 1-2 days out, which is legitimately still "Tomorrow" - a real prior failure, not a
   // flake (mootmaker-webapp#80).
   await page.clock.setFixedTime(pinnedWeekday('Wednesday'))
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
   await goToOwnCalendar(page)
 
   // Move off the default (current) week so none of the five days is "Today"/"Tomorrow" - next
@@ -217,7 +150,7 @@ test('G.62 - Previous/Next week and This week navigate the visible one-week wind
   // with the three expected ranges computed from the same anchor rather than precomputed by hand.
   const pinnedNow = pinnedWeekday('Wednesday')
   await page.clock.setFixedTime(pinnedNow)
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
   await goToOwnCalendar(page)
 
   // Matches PersonCalendarPage's own `{firstMonday.format('D MMM')} – {lastDayShown.format('D MMM YYYY')}`.
@@ -249,27 +182,25 @@ test('G.62 - Previous/Next week and This week navigate the visible one-week wind
 
 test('G.63 - a day with three meetings lists them in ascending start-time order; other days show none', async ({
   page,
+  api,
 }) => {
   // A Wednesday inside the 6-week window that opens from this pinned "now", with the Friday of the
   // same week used as the "no fixtures placed here" comparison day. Derived rather than hardcoded:
   // this case creates meetings, so a literal date stops being bookable the moment the server's
   // retention boundary advances past it. See support/pinnedDates.ts.
   //
-  // EIGHT WEEKS OUT, and that isolation is load-bearing rather than arbitrary. This is the only
-  // case in the suite that counts EVERY row in a day section rather than looking for its own
-  // subjects, so any other test that books a meeting for the demo user on the same day breaks it -
-  // and this environment accumulates every fixture the whole suite creates. Confirmed the hard way:
-  // with this pinned to the current week it read 5 rows instead of 3, having picked up two other
-  // cases' meetings. Week 8 is clear of the current-week fixtures and of the room-suggestion cases
-  // at 16 weeks.
+  // Eight weeks out. This is the only case in the suite that counts EVERY row in a day section
+  // rather than looking for its own subjects. The reset before every test (./support/test.ts) is
+  // what makes that count reliable now - it once read 5 rows instead of 3, having picked up two
+  // other cases' meetings from earlier in the run.
   const pinnedNow = pinnedWeekday('Wednesday', { hour: 9, weeks: 8 })
   const fixtureDayCell = formatDayCell(pinnedNow)
   const emptyDayCell = formatDayCell(pinnedWeekday('Friday', { weeks: 8 }))
   await page.clock.setFixedTime(pinnedNow)
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
   const id = uniqueId()
   const roomName = `Sort Test Room ${id}`
-  await createRoom(page, roomName)
+  await api.createRoom(roomName, 4)
 
   // Created out of chronological order (14:00, then 09:00, then 11:00) so a pass here can only be
   // explained by the calendar actually sorting by start time, not by accidentally preserving
@@ -318,6 +249,7 @@ test('G.63 - a day with three meetings lists them in ascending start-time order;
 test('G.65 - clicking a meeting row on the calendar opens its detail panel, and Share reaches Meeting Details', async ({
   page,
   context,
+  api,
 }) => {
   // Forces MeetingDetailContent's Share button down its clipboard-fallback branch
   // deterministically - see designs/meeting-detail-consolidation.md's Testing impacts.
@@ -327,11 +259,11 @@ test('G.65 - clicking a meeting row on the calendar opens its detail panel, and 
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
 
   await page.clock.setFixedTime(pinnedWeekday('Wednesday'))
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
   const id = uniqueId()
   const roomName = `Calendar Click Room ${id}`
   const subject = `Calendar click meeting ${id}`
-  await createRoom(page, roomName)
+  await api.createRoom(roomName, 4)
   await addMeeting(page, { subject, roomName, start: '1000', end: '1030' })
 
   await goToOwnCalendar(page)
@@ -353,16 +285,17 @@ test('G.65 - clicking a meeting row on the calendar opens its detail panel, and 
 
 test("G.66 - the meeting's room colour dot on Person Calendar matches Room Availability's for the same room", async ({
   page,
+  api,
 }) => {
   // Same underlying check as E.35 in e-room-availability.md, initiated from this page instead -
   // see g-person-calendar.md's G.66 Notes. Kept as its own independent fixture rather than a
   // shared helper across the two catalog files/agents, per this section's own scope.
   await page.clock.setFixedTime(pinnedWeekday('Wednesday', { weeks: 1 }))
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
   const id = uniqueId()
   const roomName = `Colour Match Room ${id}`
   const subject = `Colour match meeting ${id}`
-  await createRoom(page, roomName)
+  await api.createRoom(roomName, 4)
   await addMeeting(page, { subject, roomName, start: '1000', end: '1030' })
 
   await goToOwnCalendar(page)
@@ -387,8 +320,7 @@ test("G.66 - the meeting's room colour dot on Person Calendar matches Room Avail
 test('G.67 - the sidebar\'s Calendar item is disabled, not hidden, for a signed-in user with no linked Person', async ({
   page,
 }) => {
-  const noPerson = noPersonCredentials()
-  await signIn(page, noPerson.email, noPerson.password)
+  await signInAsNoPersonUser(page)
 
   // Scoped to the sidebar nav - HomePage separately has its own "Calendar" call-to-action button
   // (also disabled for a no-linked-Person user), which would otherwise make this selector

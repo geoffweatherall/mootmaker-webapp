@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { E2E_USER } from '../src/auth/cognito.mock'
+import { NO_PERSON_USER } from '../src/auth/cognito.mock'
 
 // Run these tests signed out, ignoring the saved session from auth.setup.ts.
 test.use({ storageState: { cookies: [], origins: [] } })
@@ -52,8 +52,8 @@ test.describe('Authentication', () => {
     await page.goto('/meetings/add')
     await expect(page.getByRole('heading', { name: 'Sign In' })).toBeVisible()
 
-    await page.getByLabel('Email').fill(E2E_USER.email)
-    await page.getByLabel('Password').fill(E2E_USER.password)
+    await page.getByLabel('Email').fill(NO_PERSON_USER.email)
+    await page.getByLabel('Password').fill(NO_PERSON_USER.password)
     await page.getByRole('button', { name: 'Sign in' }).click()
 
     await expect(page).toHaveURL('/meetings/add')
@@ -62,8 +62,8 @@ test.describe('Authentication', () => {
 
   test('signing out returns to the home page and protected pages lock again', async ({ page }) => {
     await page.goto('/signin')
-    await page.getByLabel('Email').fill(E2E_USER.email)
-    await page.getByLabel('Password').fill(E2E_USER.password)
+    await page.getByLabel('Email').fill(NO_PERSON_USER.email)
+    await page.getByLabel('Password').fill(NO_PERSON_USER.password)
     await page.getByRole('button', { name: 'Sign in' }).click()
     await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
 
@@ -79,7 +79,7 @@ test.describe('Authentication', () => {
   test('wrong password shows an error and stays on the sign-in form', async ({ page }) => {
     await page.goto('/signin')
 
-    await page.getByLabel('Email').fill(E2E_USER.email)
+    await page.getByLabel('Email').fill(NO_PERSON_USER.email)
     await page.getByLabel('Password').fill('definitely-the-wrong-password')
     await page.getByRole('button', { name: 'Sign in' }).click()
 

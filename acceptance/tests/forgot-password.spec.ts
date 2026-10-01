@@ -1,21 +1,13 @@
-import { expect, test } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { uniqueTestEmail, waitForVerificationCode } from '../../support/email'
 import { freshTestAccount } from '../../support/testAccount'
+import { expect, test } from './support/test'
 
 // mootmaker/docs/reference/use-cases.md, section C (Forgot password), cases 16-20. See e2e/tests/forgot-password.spec.ts
 // for the same underlying infrastructure (real Cognito forgot-password flow, real SES->SNS->SQS
 // emailed code) proven in isolation - these tests instead prove the *use cases* around it: the
 // real success path plus its business-level effect (signed in with the NEW password, old one no
 // longer works), the no-account-enumeration behaviour, a wrong code, and a too-weak new password.
-
-function requireEnv(name: string): string {
-  const value = process.env[name]
-  if (!value) {
-    throw new Error(`${name} is not set - see acceptance/run.sh.`)
-  }
-  return value
-}
 
 // Case 16: request a reset code for a valid account, enter the real emailed code with a new
 // password, and confirm the *new* password is what actually works afterward - not just that the
@@ -62,7 +54,10 @@ test('reset password with a valid account and the real emailed code signs in wit
 test('requesting a reset code for an unknown email behaves identically to a known one', async ({
   page,
 }) => {
-  const demoEmail = requireEnv('DEMO_USER_EMAIL')
+  // The known account is a fresh one, not a fixture user: requesting a code makes Cognito send
+  // a real email, and a fresh account's address is on the test mail domain.
+  const known = freshTestAccount()
+  await createConfirmedTestAccount(known)
   const unknownEmail = uniqueTestEmail()
 
   await page.goto('/forgot-password')
@@ -75,7 +70,7 @@ test('requesting a reset code for an unknown email behaves identically to a know
   await expect(page.getByRole('alert')).not.toBeVisible()
 
   await page.goto('/forgot-password')
-  await page.getByLabel('Email').fill(demoEmail)
+  await page.getByLabel('Email').fill(known.email)
   await page.getByRole('button', { name: 'Send code' }).click()
 
   await expect(page.getByLabel('Verification code')).toBeVisible()

@@ -1,29 +1,14 @@
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { darkTokens, lightTokens } from '../../webapp/src/theme/tokens'
+import { signInAsStandardUser } from './support/accounts'
+import { requireEnv } from './support/env'
 import { formatDateParam, pinnedWeekday } from './support/pinnedDates'
+import { expect, test } from './support/test'
 
 // mootmaker/docs/reference/use-cases.md, section M (Cross-cutting / non-functional), cases 92-99. M.98 is
 // deliberately NOT re-implemented here - the catalog explicitly treats J.81's own test as already
 // satisfying it (same Apollo InMemoryCache-normalization mechanism, same fixture shape), rather
 // than writing a second, separately-fixtured copy - see m-cross-cutting.md's own Notes on tc-m98.
-function requireEnv(name: string): string {
-  const value = process.env[name]
-  if (!value) {
-    throw new Error(`${name} is not set - see acceptance/run.sh.`)
-  }
-  return value
-}
-
-async function signInAsDemo(page: Page) {
-  const demoEmail = requireEnv('DEMO_USER_EMAIL')
-  const demoPassword = requireEnv('DEMO_USER_PASSWORD')
-  await page.goto('/signin')
-  await page.getByLabel('Email').fill(demoEmail)
-  await page.getByLabel('Password').fill(demoPassword)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page.getByText('Sign out')).toBeVisible()
-}
-
 // Converts a theme token's hex colour into the "rgb(r, g, b)" form getComputedStyle() returns,
 // since MUI's CssBaseline sets a literal backgroundColor from the theme palette (this app doesn't
 // use MUI's CSS-variables mode) rather than leaving the hex string intact in computed style.
@@ -37,6 +22,7 @@ function hexToRgb(hex: string): string {
 
 test('M.92 - a first cold visit shows a full spinner; a same-session revisit shows stale data plus a slim progress bar', async ({
   page,
+  api,
 }) => {
   const runId = `${Date.now()}-${Math.floor(Math.random() * 10_000)}`
   const roomName = `M92 Room ${runId}`
@@ -49,19 +35,15 @@ test('M.92 - a first cold visit shows a full spinner; a same-session revisit sho
 
   await page.clock.setFixedTime(pinnedNow)
 
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
 
-  // Precondition room, created fast (no artificial delay yet) - same pattern as
-  // add-meeting.spec.ts. This also happens to warm LIST_ROOMS' cache-first cache, which is fine:
-  // this use case's "first load" half is specifically about *meetings* for a not-yet-visited day,
-  // not rooms - see this test's own comments below for why that still exercises showSpinner.
-  await page.goto('/rooms')
-  await page.getByRole('button', { name: 'Add room' }).click()
-  const addRoomDialog = page.getByRole('dialog')
-  await addRoomDialog.getByLabel('Name').fill(roomName)
-  await addRoomDialog.getByLabel('Capacity').fill('4')
-  await addRoomDialog.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText(roomName)).toBeVisible()
+  // Precondition room, created over the API before any artificial delay is added.
+  await api.createRoom(roomName, 4)
+
+  // Signing in lands on Home, whose Today/Tomorrow agenda warms today's Day in the cache - so (a)
+  // starts from a fresh page load of Settings, which asks about no day, to make this day cold.
+  await page.goto('/settings')
+  await expect(page.getByRole('heading', { name: 'Your name' })).toBeVisible()
 
   // From here on, every GraphQL round trip (including the createMeeting mutation below, and both
   // queries RoomAvailabilityPage fires on mount) is artificially delayed - a real deployed
@@ -147,7 +129,7 @@ test('M.92 - a first cold visit shows a full spinner; a same-session revisit sho
 test('M.93 - a transport error (API unreachable) shows a readable ErrorBanner, not a blank page', async ({
   page,
 }) => {
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
 
   const graphqlUrl = requireEnv('GRAPHQL_API_URL')
   // Scoped to this one page/test only - see m-cross-cutting.md's own Notes on why this is safe
@@ -169,7 +151,7 @@ test('M.93 - a transport error (API unreachable) shows a readable ErrorBanner, n
 test('M.94 - a corrupted/expired session fails gracefully on the next API call, not with a crash', async ({
   page,
 }) => {
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
 
   // Simulates expiry (waiting out a real Cognito token TTL isn't practical in a test): corrupt
   // every amazon-cognito-identity-js token value in localStorage so getSession() can neither
@@ -193,11 +175,9 @@ test('M.94 - a corrupted/expired session fails gracefully on the next API call, 
   expect(corruptedKeys.length).toBeGreaterThan(0)
 
   // Trigger a fresh API call by navigating to another authenticated page - HomePage issues its own
-  // PAGE_LOAD query on mount. Deliberately not an admin-only page (Rooms/Persons): if this
-  // environment's demo user isn't actually flagged admin right now (see this file's sibling
-  // authorization-boundaries.spec.ts), RequireAdmin's own client-side redirect would confound this
-  // test's redirect-vs-stayed-put outcome, which is supposed to be decided solely by the corrupted
-  // session, not by authorization.
+  // PAGE_LOAD query on mount. Deliberately not an admin-only page (Rooms/Persons): RequireAdmin's
+  // own client-side redirect would confound this test's redirect-vs-stayed-put outcome, which is
+  // supposed to be decided solely by the corrupted session, not by authorization.
   await page.goto('/')
 
   // Which of the two acceptable outcomes happens depends on amazon-cognito-identity-js's own
@@ -262,7 +242,7 @@ test('M.95 - a fresh hard navigation straight to a nested client-side route load
   page,
   context,
 }) => {
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
 
   // A genuinely fresh page - never loaded the SPA via any client-side navigation - sharing the
   // same context's (and so the same signed-in session's) localStorage, so this exercises the
@@ -279,7 +259,7 @@ test('M.95 - a fresh hard navigation straight to a nested client-side route load
 test('M.96 - light/dark mode follows OS prefers-color-scheme, with no in-app toggle', async ({
   page,
 }) => {
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
 
   async function backgroundColorsAcrossPages(): Promise<string[]> {
     const colors: string[] = []
@@ -311,13 +291,13 @@ test('M.96 - light/dark mode follows OS prefers-color-scheme, with no in-app tog
 test('M.97 - the mobile nav flyout opens on the hamburger tap and auto-closes after navigating', async ({
   page,
 }) => {
-  // Signs in at the default (desktop) viewport first, then switches to mobile - signInAsDemo's own
+  // Signs in at the default (desktop) viewport first, then switches to mobile - signInAsStandardUser's own
   // "Sign out" check targets the sidebar's Drawer, which Layout.tsx hides via CSS (not unmounts) at
   // narrow widths, so doing this the other way around leaves that text attached but never visible
   // (confirmed against a real run: "unexpected value 'hidden'" - the exact same failure mode
   // room-availability.spec.ts's E.36 already documents and works around the same way). This doesn't
   // change what M.97 itself is testing, since sign-in isn't part of this case's own assertions.
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
   await page.setViewportSize({ width: 375, height: 667 })
 
   // The desktop/permanent Drawer's identical copy of this same content (Layout.tsx renders
@@ -354,60 +334,37 @@ test('M.97 - the mobile nav flyout opens on the hamburger tap and auto-closes af
 })
 
 test('M.99 - a hard reload picks up a room created in another session; a stale cache-first read does not', async ({
-  browser,
+  page,
+  api,
 }) => {
-  const contextA = await browser.newContext()
-  const contextB = await browser.newContext()
-  const pageA = await contextA.newPage()
-  const pageB = await contextB.newPage()
   const runId = `${Date.now()}-${Math.floor(Math.random() * 10_000)}`
   const roomName = `M99 Room ${runId}`
-  // Created before session B loads, purely to prove session B's room list has finished fetching.
+  // Created before this session loads, purely to prove its room list has finished fetching.
   const sentinelName = `M99 Sentinel ${runId}`
+  const date = formatDateParam(pinnedWeekday('Wednesday'))
 
-  try {
-    await signInAsDemo(pageA)
-    await signInAsDemo(pageB)
+  // The "other session" is an API client. Room Availability rather than the Rooms page, which is
+  // admin-only: the subject is cache freshness across sessions, which a standard user sees too.
+  await api.createRoom(sentinelName, 4)
+  await signInAsStandardUser(page)
 
-    async function createRoom(page: Page, name: string) {
-      await page.getByRole('button', { name: 'Add room' }).click()
-      const dialog = page.getByRole('dialog')
-      await dialog.getByLabel('Name').fill(name)
-      await dialog.getByLabel('Capacity').fill('4')
-      await dialog.getByRole('button', { name: 'Save' }).click()
-      await expect(page.getByText(name)).toBeVisible()
-    }
+  // The sentinel exists BEFORE this session ever loads. Waiting for it proves the session's one
+  // reference-data fetch has COMPLETED. Without it the test raced: a precondition of
+  // `expect(roomName).toHaveCount(0)` passes instantly against a blank, still-loading page, so a
+  // slow first fetch could land AFTER the room below was created and legitimately include it.
+  await page.goto(`/rooms/${date}/availability`)
+  await expect(page.getByText(sentinelName, { exact: true })).toBeVisible()
+  await expect(page.getByText(roomName, { exact: true })).toHaveCount(0)
 
-    // Session A creates a sentinel room BEFORE session B ever loads. This is what makes session B's
-    // precondition meaningful: REFERENCE_DATA is `cache-and-network` (see RoomsPage), so session B
-    // fetches from the network exactly once, on mount, and never again - there is no polling, and
-    // refetch() only fires after a save in the same session.
-    //
-    // Waiting for the sentinel proves that single fetch has COMPLETED. Without it the test raced:
-    // its precondition was `expect(roomName).toHaveCount(0)`, which passes instantly against a
-    // blank, still-loading page, so a slow session B could take its first fetch AFTER session A
-    // created the room and legitimately receive it. That produced real failures under full-suite
-    // load while passing in isolation.
-    await pageA.goto('/rooms')
-    await createRoom(pageA, sentinelName)
+  // Another session creates a second room, after this one's list is definitively loaded.
+  await api.createRoom(roomName, 4)
 
-    await pageB.goto('/rooms')
-    await expect(pageB.getByText(sentinelName)).toBeVisible()
-    await expect(pageB.getByText(roomName)).toHaveCount(0)
+  // This session has already fetched its rooms and has no reason to fetch them again, so it still
+  // doesn't see it - proving the sessions' caches are genuinely independent, not shared.
+  await expect(page.getByText(roomName, { exact: true })).toHaveCount(0)
 
-    // Session A creates a second room, after session B's list is definitively loaded.
-    await createRoom(pageA, roomName)
-
-    // Session B, which has already fetched and has no reason to fetch again, still doesn't see it -
-    // proving the two sessions' caches are genuinely independent, not shared.
-    await expect(pageB.getByText(roomName)).toHaveCount(0)
-
-    // A hard reload discards session B's in-memory Apollo cache, so its next LIST_ROOMS fetch is a
-    // fresh network request and picks up the new room.
-    await pageB.reload()
-    await expect(pageB.getByText(roomName)).toBeVisible()
-  } finally {
-    await contextA.close()
-    await contextB.close()
-  }
+  // A hard reload discards this session's in-memory Apollo cache, so its next fetch is a fresh
+  // network request and picks up the new room.
+  await page.reload()
+  await expect(page.getByText(roomName, { exact: true })).toBeVisible()
 })

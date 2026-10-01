@@ -1,5 +1,8 @@
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import { signInAsAdminUser, signInAsStandardUser } from './support/accounts'
+import { uniqueId } from './support/env'
 import { formatDateParam, pinnedWeekday } from './support/pinnedDates'
+import { expect, test } from './support/test'
 
 // A weekday inside business hours, derived from now() rather than hardcoded - a literal date here
 // expires the moment the server's retention boundary advances past it. See support/pinnedDates.ts.
@@ -9,34 +12,10 @@ const PINNED_NOW = pinnedWeekday('Wednesday')
 // acceptance/test-cases/p-rooms.md for the full per-case Given/When/Then/Steps/Assertions this
 // file implements one at a time. Supersedes section J (j-settings-rooms.md / settings-rooms.spec.ts)
 // now that Rooms has moved out of Settings to its own top-level page - see the admin-rooms-and-
-// people design doc. Every case except P.124 (standard user) signs in as the demo user, matching
-// this catalog's general "which account to sign in as" convention (see acceptance/README.md). A
+// people design doc. Every case except P.124 (standard user) signs in as the admin fixture user,
+// since managing rooms is the subject (see ./support/accounts.ts). A
 // standard user forcing createRoom/updateRoom/deleteRoom directly is covered once, comprehensively,
 // by L.90 rather than repeated here - see this catalog's established "don't triplicate" convention.
-
-function requireEnv(name: string): string {
-  const value = process.env[name]
-  if (!value) {
-    throw new Error(`${name} is not set - see acceptance/run.sh.`)
-  }
-  return value
-}
-
-function uniqueId(): string {
-  return `${Date.now()}-${Math.floor(Math.random() * 10_000)}`
-}
-
-async function signIn(page: Page, email: string, password: string) {
-  await page.goto('/signin')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password').fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page.getByText('Sign out')).toBeVisible()
-}
-
-async function signInAsDemo(page: Page) {
-  await signIn(page, requireEnv('DEMO_USER_EMAIL'), requireEnv('DEMO_USER_PASSWORD'))
-}
 
 /** The Rooms page's card for a given room name - scopes assertions past collisions with other
  * rooms concurrently-running agents may have created in this same shared environment. */
@@ -46,18 +25,8 @@ function roomCard(page: Page, name: string) {
     .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
 }
 
-/** Creates a person via the real Persons page - used only by P.129, to give a meeting a headcount
- * above 1 (see its own comment for why that matters). */
-async function createPerson(page: Page, name: string) {
-  await page.goto('/persons')
-  await page.getByRole('button', { name: 'Add person' }).click()
-  const dialog = page.getByRole('dialog')
-  await dialog.getByLabel('Name').fill(name)
-  await dialog.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText(name)).toBeVisible()
-}
-
-/** Creates a room via the real Rooms page - there's no data-seeding bypass (see README.md). */
+/** Creates a room via the real Rooms page. Managing rooms is this file's subject, so it goes
+ * through the admin UI rather than ./support/setupApi.ts. */
 async function createRoom(page: Page, name: string, capacity: string) {
   await page.goto('/rooms')
   await page.getByRole('button', { name: 'Add room' }).click()
@@ -105,9 +74,10 @@ async function createMeetingAndOpenDetails(
   const url = await page.evaluate(() => navigator.clipboard.readText())
   const match = url.match(/\/meetings\/([^/?#]+)/)
   if (!match) throw new Error(`Could not extract a meeting id from the shared URL: ${url}`)
+  // Close is the last button after Share in the sheet's header (MeetingDetailContent.tsx).
   await page
     .getByRole('button', { name: 'Share meeting' })
-    .locator('xpath=following-sibling::button[1]')
+    .locator('xpath=following-sibling::button[last()]')
     .click()
   return match[1]
 }
@@ -121,7 +91,7 @@ test.describe('P. Rooms (admin only)', () => {
   })
 
   test('P.124 - standard user has no Rooms nav link and cannot reach the page directly', async ({ page }) => {
-    await signIn(page, requireEnv('E2E_USER_EMAIL'), requireEnv('E2E_USER_PASSWORD'))
+    await signInAsStandardUser(page)
     await expect(page.getByRole('link', { name: 'Rooms' })).toHaveCount(0)
 
     await page.goto('/rooms')
@@ -133,7 +103,7 @@ test.describe('P. Rooms (admin only)', () => {
     const roomName = `P125 Room ${runId}`
     await page.clock.setFixedTime(PINNED_NOW)
 
-    await signInAsDemo(page)
+    await signInAsAdminUser(page)
     await createRoom(page, roomName, '2')
     await expect(roomCard(page, roomName).getByText('Capacity 2')).toBeVisible()
 
@@ -152,7 +122,7 @@ test.describe('P. Rooms (admin only)', () => {
     const runId = uniqueId()
     const roomName = `Colour Room ${runId}`
 
-    await signInAsDemo(page)
+    await signInAsAdminUser(page)
     await page.goto('/rooms')
     await page.getByRole('button', { name: 'Add room' }).click()
     const dialog = page.getByRole('dialog')
@@ -169,7 +139,7 @@ test.describe('P. Rooms (admin only)', () => {
   })
 
   test('P.126 - blank room name is rejected', async ({ page }) => {
-    await signInAsDemo(page)
+    await signInAsAdminUser(page)
     await page.goto('/rooms')
     await page.getByRole('button', { name: 'Add room' }).click()
     const dialog = page.getByRole('dialog')
@@ -182,7 +152,7 @@ test.describe('P. Rooms (admin only)', () => {
 
   test('P.127 - capacity below 2 is rejected', async ({ page }) => {
     const runId = uniqueId()
-    await signInAsDemo(page)
+    await signInAsAdminUser(page)
     await page.goto('/rooms')
 
     await page.getByRole('button', { name: 'Add room' }).click()
@@ -200,7 +170,7 @@ test.describe('P. Rooms (admin only)', () => {
     const subject = `P128 Meeting ${runId}`
     await page.clock.setFixedTime(PINNED_NOW)
 
-    await signInAsDemo(page)
+    await signInAsAdminUser(page)
     await createRoom(page, originalName, '4')
     const meetingId = await createMeetingAndOpenDetails(page, { subject, roomName: originalName })
 
@@ -218,15 +188,15 @@ test.describe('P. Rooms (admin only)', () => {
     await expect(page.getByText(newName)).toBeVisible()
   })
 
-  test('P.129 - reducing a room capacity below an already-booked meeting is allowed', async ({ page }) => {
+  test('P.129 - reducing a room capacity below an already-booked meeting is allowed', async ({ page, api }) => {
     const runId = uniqueId()
     const roomName = `P129 Room ${runId}`
     const subject = `P129 Meeting ${runId}`
     const attendeeName = `P129 Attendee ${runId}`
     await page.clock.setFixedTime(PINNED_NOW)
 
-    await signInAsDemo(page)
-    await createPerson(page, attendeeName)
+    await api.createPerson(attendeeName)
+    await signInAsAdminUser(page)
     await createRoom(page, roomName, '4')
     // A headcount of 2 (organiser + this one attendee), so reducing to capacity 2 - the server's
     // own absolute floor (see P.127) - genuinely puts the room's capacity at the meeting's headcount
@@ -250,7 +220,7 @@ test.describe('P. Rooms (admin only)', () => {
     const runId = uniqueId()
     const roomName = `P130 Room ${runId}`
 
-    await signInAsDemo(page)
+    await signInAsAdminUser(page)
     await createRoom(page, roomName, '4')
 
     await page.getByLabel(`Remove ${roomName}`).click()
@@ -275,7 +245,7 @@ test.describe('P. Rooms (admin only)', () => {
     const pinnedFuture = pinnedWeekday('Wednesday', { weeks: 1 })
     await page.clock.setFixedTime(pinnedFuture)
 
-    await signInAsDemo(page)
+    await signInAsAdminUser(page)
     await createRoom(page, roomName, '4')
     await createMeetingAndOpenDetails(page, { subject, roomName })
 

@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.940.0",
+    "@aws-sdk/client-lambda": "^3.1144.0",
     "@aws-sdk/client-sqs": "^3.940.0",
     "mailparser": "^3.7.4"
   },

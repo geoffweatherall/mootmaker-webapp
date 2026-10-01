@@ -14,19 +14,19 @@ Monday–Friday work week at a time (not the six-week grid these cases originall
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user.
+**Preconditions:** Signed in as the standard user.
 
 **Given** a signed-in user with a linked Person
 **When** they click "Calendar" in the sidebar
 **Then** `/persons/<their own personId>/calendar` loads with the Person selector already showing their own name
 
 **Steps:**
-1. Sign in as the demo user.
+1. Sign in as the standard user.
 2. Click the sidebar's **Calendar** item.
 
 **Assertions:**
 - URL is `/persons/<demo's personId>/calendar`.
-- The Person `Autocomplete` shows "Demo Strater" as the selected value.
+- The Person `Autocomplete` shows "E2E Standard" as the selected value.
 
 **Out of scope:** switching to someone else's calendar (G.60).
 
@@ -41,14 +41,14 @@ Monday–Friday work week at a time (not the six-week grid these cases originall
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** A second Person exists ("Alice", created by the demo user via Settings). A confirmed standard test account with its own linked Person (`createConfirmedTestAccount`), to check the "standard user" half.
+**Preconditions:** A second Person exists ("Alice", created by the standard user via Settings). A confirmed standard test account with its own linked Person (`createConfirmedTestAccount`), to check the "standard user" half.
 
 **Given** a signed-in user (admin, then separately a standard user) viewing their own calendar
 **When** they select a different person from the `Autocomplete`
 **Then** the URL and displayed data both switch to that person's calendar — with **no server-side restriction observed**, confirmed against `ListMeetingsHandler`'s source (`Identity.requireAuthenticated` only, no self-or-admin check)
 
 **Steps:**
-1. Sign in as the demo user; create "Alice" via Settings; navigate to own Calendar.
+1. Sign in as the standard user; create "Alice" via Settings; navigate to own Calendar.
 2. In the Person selector, choose "Alice".
 3. Assert the URL updates to `/persons/<Alice's id>/calendar` and the selector shows "Alice".
 4. Sign out; `createConfirmedTestAccount` a fresh standard account, sign in as it.
@@ -70,7 +70,7 @@ Monday–Friday work week at a time (not the six-week grid these cases originall
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user.
+**Preconditions:** Signed in as the standard user.
 
 **Given** the Person Calendar agenda
 **When** viewed
@@ -99,7 +99,7 @@ Monday–Friday work week at a time (not the six-week grid these cases originall
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. Clock pinned (this case books nothing, so a literal instant is fine - see the spec's own comment on why).
+**Preconditions:** Signed in as the standard user. Clock pinned (this case books nothing, so a literal instant is fine - see the spec's own comment on why).
 
 **Given** the Person Calendar's default (current) week
 **When** the user clicks "Next week" three times, "This week", then "Previous week" once
@@ -131,7 +131,7 @@ Monday–Friday work week at a time (not the six-week grid these cases originall
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. A room. Three meetings on the same day (within the visible week) at non-chronological creation order (e.g. 14:00, then 09:00, then 11:00), all organised by the demo user.
+**Preconditions:** Signed in as the standard user. A room. Three meetings on the same day (within the visible week) at non-chronological creation order (e.g. 14:00, then 09:00, then 11:00), all organised by the standard user.
 
 **Given** one day with 3 meetings and other days with none
 **When** the calendar is viewed
@@ -179,7 +179,7 @@ Monday–Friday work week at a time (not the six-week grid these cases originall
 
 **Notes:** **Confirmed infeasible, not just order-sensitive** — checked directly against a freshly
 created ephemeral environment (`web-acc-260826-u4j2`, deployed 2026-08-26, before any test ran
-against it): `aws dynamodb scan` on its People table already returned 1 item (`"Demo Strater"`).
+against it): `aws dynamodb scan` on its People table already returned 1 item (`"E2E Standard"`).
 `mootmaker-api/deploy/terraform/cognito.tf`'s `aws_dynamodb_table_item.demo_person` seeds the demo
 user's linked Person directly via Terraform as part of every deploy - not through the app - so
 **every environment this project can create already has exactly one Person from the moment it
@@ -190,7 +190,7 @@ is a decision for whoever owns the demo-data seeding and this test case, not som
 acceptance suite can route around: (a) accept this use case can't be automated against this
 project's standard environments (an environment deployed with the demo-person seeding skipped would
 need its own bespoke path, undermining the "same deploy every time" model), (b) change the seeding
-so the demo user's Person is created lazily on first use instead of via Terraform, freeing up a
+so the standard user's Person is created lazily on first use instead of via Terraform, freeing up a
 genuinely empty starting state, or (c) drop/reword this use case, since "no people exist yet" may
 not be a reachable real-world state for this product at all. Left unautomated pending that decision.
 
@@ -203,7 +203,7 @@ not be a reachable real-world state for this product at all. Left unautomated pe
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. A room and one meeting on a date within the visible week.
+**Preconditions:** Signed in as the standard user. A room and one meeting on a date within the visible week.
 
 **Given** a meeting visible on the calendar
 **When** its row is clicked, and then the panel's Share button is clicked

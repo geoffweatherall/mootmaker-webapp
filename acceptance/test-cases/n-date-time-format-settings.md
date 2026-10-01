@@ -9,7 +9,7 @@ types, and nothing else. Several cases below exist specifically to pin that boun
 change can't quietly turn the setting into a wire-format switch.
 
 **Account policy for this whole section:** every case uses a freshly signed-up account
-(`createConfirmedTestAccount`), never the shared demo user. Changing the demo user's format would
+(`createConfirmedTestAccount`), never the shared standard user. Changing the standard user's format would
 alter how *every other test in this suite* reads dates and times — the same hazard I.74 avoids for
 renames, but far wider, since almost every spec asserts on a date or a time somewhere.
 
@@ -114,7 +114,7 @@ renames, but far wider, since almost every spec asserts on a date or a time some
 1. Sign in as fresh account A; set format to `Usa` + `AmPm`.
 2. Book a meeting at a known date and afternoon time, typing `MM/DD/YYYY` into the Date field (sections run Month, Day, Year for this setting) and a 12-hour time plus a `PM` keystroke into the time fields.
 3. Assert the meeting was created and reads back correctly for A.
-4. Sign in as a second, default-format account B (or the demo user, read-only) and open the same meeting.
+4. Sign in as a second, default-format account B (or the standard user, read-only) and open the same meeting.
 
 **Assertions:**
 - The meeting is created without validation errors — the picker parsed the typed value in the chosen format.

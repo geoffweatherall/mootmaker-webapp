@@ -1,85 +1,15 @@
-import { expect, test, type Page } from '@playwright/test'
-import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
-import { freshTestAccount } from '../../support/testAccount'
+import type { Page } from '@playwright/test'
 import { formatDateParam, pinnedFutureWeekday, pinnedWeekday } from './support/pinnedDates'
-
-/**
- * Credentials for the account that deliberately has NO linked Person.
- *
- * A separate account from the e2e user, which used to have no Person only by accident: it is
- * created directly rather than through sign-up, so PostConfirmationCreatePersonHandler never ran.
- * Giving it one was right - the whole suite had been running as a degraded identity - but it left
- * the degraded path itself with no fixture, and these tests with no premise. See
- * mootmaker-api's cognito.tf and mootmaker-webapp#54.
- *
- * Skips rather than fails where the account does not exist. It is not created in production, where
- * a personless account would not be a fixture but a real person's broken login.
- */
-function noPersonCredentials(): { email: string; password: string } {
-  const email = process.env.NO_PERSON_USER_EMAIL
-  const password = process.env.NO_PERSON_USER_PASSWORD
-  test.skip(
-    !email || !password,
-    'This environment has no personless account (deliberately absent in production).',
-  )
-  return { email: email as string, password: password as string }
-}
-
-/** Signs in as the personless account. See noPersonCredentials for why it is a separate account. */
-async function signInAsNoPersonUser(page: Page): Promise<void> {
-  const { email, password } = noPersonCredentials()
-  await page.goto('/signin')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password').fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page.getByText('Sign out')).toBeVisible()
-}
-
+import { requireEnv, uniqueId } from './support/env'
+import { signInAsNoPersonUser, signInAsStandardUser } from './support/accounts'
+import { expect, test } from './support/test'
 
 // mootmaker/docs/reference/use-cases.md, section D (Home page), cases 21-25 - see
 // acceptance/test-cases/d-home-page.md for the full Given/When/Then design each test below
-// translates directly from. Signs in as whichever account each case's own Preconditions call for:
-// the demo user (D.22, D.25 - a working, Person-linked, admin account), a freshly signed-up
-// account via createConfirmedTestAccount (D.23 - the only way to *guarantee* zero meetings,
-// unlike the demo user whose history depends on what else has run against this environment), or
-// the e2e user (D.24 - standard, with no linked Person at all). D.21 stays signed out throughout.
-
-function requireEnv(name: string): string {
-  const value = process.env[name]
-  if (!value) {
-    throw new Error(`${name} is not set - see acceptance/run.sh.`)
-  }
-  return value
-}
-
-function uniqueId(): string {
-  return `${Date.now()}-${Math.floor(Math.random() * 10_000)}`
-}
-
-async function signIn(page: Page, email: string, password: string): Promise<void> {
-  await page.goto('/signin')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password').fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page.getByText('Sign out')).toBeVisible()
-}
-
-async function signInAsDemo(page: Page): Promise<void> {
-  await signIn(page, requireEnv('DEMO_USER_EMAIL'), requireEnv('DEMO_USER_PASSWORD'))
-}
-
-
-// Precondition helper - no data-seeding bypass for rooms (see README.md's "Known gaps"), so every
-// test creates its own via the real Rooms UI, uniquely named per run.
-async function createRoom(page: Page, name: string, capacity: number): Promise<void> {
-  await page.goto('/rooms')
-  await page.getByRole('button', { name: 'Add room' }).click()
-  const dialog = page.getByRole('dialog')
-  await dialog.getByLabel('Name').fill(name)
-  await dialog.getByLabel('Capacity').fill(String(capacity))
-  await dialog.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText(name)).toBeVisible()
-}
+// translates directly from. Signs in as whichever account each case's own Preconditions call for
+// (./support/accounts.ts): the standard user (D.22, D.23, D.25, D.112) or the no-person user
+// (D.24). D.21 stays signed out throughout, and is the one place the
+// demo user's credentials appear, because the demo login on the home page is its subject.
 
 // Fills one of AddMeetingPage's MUI X sectioned Time fields (role="group", e.g. "Start time") -
 // the same technique person-calendar.spec.ts's fillTime uses, confirmed against the real deployed
@@ -201,6 +131,7 @@ test('D.21 - signed-out home page shows the sign-in form pre-filled with demo cr
 test('D.22 - signed in with a linked Person shows Calendar/Room availability/Add Meeting entry points plus a Today/Tomorrow agenda sorted by start time, each opening its own meeting details', async ({
   page,
   context,
+  api,
 }) => {
   // Forces MeetingDetailContent's Share button down its clipboard-fallback branch
   // deterministically - see designs/meeting-detail-consolidation.md's Testing impacts.
@@ -215,18 +146,17 @@ test('D.22 - signed in with a linked Person shows Calendar/Room availability/Add
   const subjectToday14 = `D22 today 2pm ${runId}`
   const subjectTomorrow = `D22 tomorrow ${runId}`
 
-  // A Tuesday, safely inside business hours, deliberately far from every other pinned date already
-  // used elsewhere in this suite (e.g. add-meeting.spec.ts's own August dates, which each
-  // accumulate real persisted demo-user meetings). This test's "Today" panel asserts an exact row
-  // count below, which an unrelated fixture meeting landing on the same date would throw off.
+  // A Tuesday, safely inside business hours. This test's "Today" panel asserts an exact row count
+  // below; the reset before every test (./support/test.ts) is what guarantees no other meeting
+  // lands on the same date.
   //
   // DERIVED, not hardcoded. It used to be 2027-04-06, which stopped working the moment the API
   // gained a 180-day booking horizon: every booking came back OutsideBookableRange and the test
   // reported a failed navigation, blaming the Home page. A fixed future date expires silently.
   const pinnedToday = pinnedFutureWeekday('Tuesday', { hour: 9 })
   await page.clock.setFixedTime(pinnedToday)
-  await signInAsDemo(page)
-  await createRoom(page, roomName, 4)
+  await signInAsStandardUser(page)
+  await api.createRoom(roomName, 4)
 
   // Created out of chronological order (14:00 before 10:00) so a passing sort-order assertion
   // below can only be explained by the Home page actually sorting by start time, not by
@@ -287,11 +217,9 @@ test('D.22 - signed in with a linked Person shows Calendar/Room availability/Add
 })
 
 test('D.23 - no meetings today or tomorrow shows the empty state, not a bare empty list', async ({ page }) => {
-  // A freshly signed-up account, not the demo user - the cleanest way to guarantee zero meetings
-  // without first needing to query/clear existing ones (see D.23's catalog Notes).
-  const account = freshTestAccount()
-  await createConfirmedTestAccount(account)
-  await signIn(page, account.email, account.password)
+  // The standard user has no meetings at all: the environment was reset before this test
+  // (./support/test.ts), and reset deletes every meeting.
+  await signInAsStandardUser(page)
 
   await page.goto('/')
 
@@ -340,7 +268,7 @@ test('D.24 - no linked Person shows a degraded Home page: the account-not-set-up
 })
 
 test('D.25 - "Room availability today" and "Add Meeting" deep-link to the pinned "today" date', async ({ page }) => {
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
   // A Monday inside business hours, derived from now() rather than hardcoded: a literal date here
   // expires as soon as the server's retention boundary advances past it (see
   // support/pinnedDates.ts). The expected URL and field value below are therefore derived from the
@@ -388,10 +316,10 @@ async function graphqlQuery<T>(page: Page, token: string, query: string): Promis
   return body.data as T
 }
 
-/** The signed-in demo user's own display name, needed to pick them by name in the Attendees
+/** The signed-in user's own display name, needed to pick them by name in the Attendees
  * Autocomplete below - there is no DEMO_USER_NAME env var, so this reads it the same way the
  * signed-in session itself does. */
-async function demoUserName(page: Page): Promise<string> {
+async function ownName(page: Page): Promise<string> {
   const token = await getIdToken(page)
   const result = await graphqlQuery<{ workspace: { me: { name: string } | null } }>(
     page,
@@ -399,21 +327,12 @@ async function demoUserName(page: Page): Promise<string> {
     `query { workspace { me { name } } }`,
   )
   if (!result.workspace.me) {
-    throw new Error('Signed-in demo account has no linked Person')
+    throw new Error('Signed-in account has no linked Person')
   }
   return result.workspace.me.name
 }
 
-async function createPerson(page: Page, name: string): Promise<void> {
-  await page.goto('/persons')
-  await page.getByRole('button', { name: 'Add person' }).click()
-  const dialog = page.getByRole('dialog')
-  await dialog.getByLabel('Name').fill(name)
-  await dialog.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText(name)).toBeVisible()
-}
-
-test('D.112 - "Search further ahead" finds a real meeting booked beyond the initial window', async ({ page }) => {
+test('D.112 - "Search further ahead" finds a real meeting booked beyond the initial window', async ({ page, api }) => {
   const runId = uniqueId()
   const roomName = `Search Further Ahead Room ${runId}`
   const organiserName = `Search Further Ahead Organiser ${runId}`
@@ -423,15 +342,15 @@ test('D.112 - "Search further ahead" finds a real meeting booked beyond the init
   // matters (an unrelated fixture meeting landing on the same date this test navigates through).
   const pinnedToday = pinnedFutureWeekday('Tuesday', { hour: 9 })
   await page.clock.setFixedTime(pinnedToday)
-  await signInAsDemo(page)
-  await createRoom(page, roomName, 4)
+  await signInAsStandardUser(page)
+  await api.createRoom(roomName, 4)
 
-  // Add Meeting defaults the Organiser to the signed-in user (Demo User) - explicitly picking a
-  // different organiser first, then adding Demo User as an Attendee, is what makes Demo User an
+  // Add Meeting defaults the Organiser to the signed-in user - explicitly picking a different
+  // organiser first, then adding the signed-in user as an Attendee, is what makes them an
   // unresponded ATTENDEE instead (matching webapp/tests/attendee-response-status.spec.ts's own
   // mocked-layer equivalent of this same mechanic).
-  await createPerson(page, organiserName)
-  const attendeeName = await demoUserName(page)
+  await api.createPerson(organiserName)
+  const attendeeName = await ownName(page)
 
   // 6 days out: past the initial 3-day window (offsets 0-2) and past the first "Search further
   // ahead" click's own new window (offsets 3-5), so reaching it exercises a click that finds

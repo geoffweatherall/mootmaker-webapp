@@ -40,8 +40,9 @@ export_api_deploy_config() {
 }
 
 # Exports everything the e2e and acceptance suites need: the deploy config above, plus the site
-# URL, the shared email queue, the database-reset function, and the test fixture users. Fixtures
-# exist in ephemeral environments only; the no-person user is optional, as its tests skip without it.
+# URL, the shared email queue, the database-reset function, and the test fixture users (admin,
+# standard and no-person - see mootmaker-api's README, "Test fixture users"). Fixtures exist in
+# ephemeral environments only, which is the only kind these suites run against.
 export_test_config() {
   local environment="$1" api="/mootmaker/$1/api"
   export_api_deploy_config "${environment}"
@@ -49,13 +50,13 @@ export_test_config() {
   WEBAPP_URL="$(ssm_value "/mootmaker/${environment}/webapp/site-url")"
   SQS_QUEUE_URL="$(ssm_value /mootmaker/email-testing/sqs-queue-url)"
   DATABASE_RESET_FUNCTION_NAME="$(ssm_value "${api}/database-reset/function-name")"
-  E2E_USER_EMAIL="$(ssm_value "${api}/test-fixtures/users/standard/email")"
-  E2E_USER_PASSWORD="$(ssm_value "${api}/test-fixtures/users/standard/password")"
-  export AWS_REGION WEBAPP_URL SQS_QUEUE_URL DATABASE_RESET_FUNCTION_NAME E2E_USER_EMAIL E2E_USER_PASSWORD
-  local no_person_email no_person_password
-  no_person_email="$(ssm_value_optional "${api}/test-fixtures/users/no-person/email")"
-  no_person_password="$(ssm_value_optional "${api}/test-fixtures/users/no-person/password")"
-  if [[ -n "${no_person_email}" && -n "${no_person_password}" ]]; then
-    export NO_PERSON_USER_EMAIL="${no_person_email}" NO_PERSON_USER_PASSWORD="${no_person_password}"
-  fi
+  E2E_ADMIN_USER_EMAIL="$(ssm_value "${api}/test-fixtures/users/admin/email")"
+  E2E_ADMIN_USER_PASSWORD="$(ssm_value "${api}/test-fixtures/users/admin/password")"
+  E2E_STANDARD_USER_EMAIL="$(ssm_value "${api}/test-fixtures/users/standard/email")"
+  E2E_STANDARD_USER_PASSWORD="$(ssm_value "${api}/test-fixtures/users/standard/password")"
+  E2E_NO_PERSON_USER_EMAIL="$(ssm_value "${api}/test-fixtures/users/no-person/email")"
+  E2E_NO_PERSON_USER_PASSWORD="$(ssm_value "${api}/test-fixtures/users/no-person/password")"
+  export AWS_REGION WEBAPP_URL SQS_QUEUE_URL DATABASE_RESET_FUNCTION_NAME \
+    E2E_ADMIN_USER_EMAIL E2E_ADMIN_USER_PASSWORD E2E_STANDARD_USER_EMAIL E2E_STANDARD_USER_PASSWORD \
+    E2E_NO_PERSON_USER_EMAIL E2E_NO_PERSON_USER_PASSWORD
 }

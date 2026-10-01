@@ -2,7 +2,7 @@
 
 Use cases [mootmaker/use-cases.md § E](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#e-room-availability-viewing-a-rooms-schedule).
 See [README.md](README.md) for the entry format and test-data conventions. Every case here signs in
-as the demo user unless noted, and most need `page.clock.setFixedTime` pinned to a known
+as the standard user unless noted, and most need `page.clock.setFixedTime` pinned to a known
 business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` already documents.
 
 ---
@@ -14,14 +14,14 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. At least one room exists (create one if needed).
+**Preconditions:** Signed in as the standard user. At least one room exists (create one if needed).
 
 **Given** a signed-in user
 **When** they navigate to `/rooms/<today>/availability` (e.g. via the sidebar's "Room Availability" item)
 **Then** the page loads showing today's date and a card for every existing room
 
 **Steps:**
-1. Sign in as the demo user; ensure at least one room exists.
+1. Sign in as the standard user; ensure at least one room exists.
 2. Click the sidebar's **Room Availability** nav item.
 
 **Assertions:**
@@ -46,7 +46,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. Clock pinned. A meeting exists 3 days in the future (created via Add Meeting, date field set explicitly).
+**Preconditions:** Signed in as the standard user. Clock pinned. A meeting exists 3 days in the future (created via Add Meeting, date field set explicitly).
 
 **Given** a user viewing today's room availability
 **When** they click the "Next day" control three times (or use the date picker directly)
@@ -75,7 +75,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. Clock pinned.
+**Preconditions:** Signed in as the standard user. Clock pinned.
 
 **Given** a user viewing today's room availability
 **When** they click "Previous day"
@@ -102,7 +102,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. Clock pinned.
+**Preconditions:** Signed in as the standard user. Clock pinned.
 
 **Given** a user viewing today's room availability
 **When** they open the date picker and select a date several weeks away (not reachable sensibly via repeated next/prev clicks)
@@ -138,7 +138,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 **Then** the `EmptyState` ("No rooms exist yet.", `empty-rooms.svg`) is shown instead of a grid
 
 **Steps:**
-1. Sign in as the demo user (or the e2e user — either works, no room-dependence).
+1. Sign in as the standard user (or the e2e user — either works, no room-dependence).
 2. Navigate to `/rooms/<today>/availability`.
 
 **Assertions:**
@@ -157,7 +157,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. At least one room exists. Clock pinned to a date guaranteed to have no meetings (e.g. a date several months in the future, never touched by any other fixture).
+**Preconditions:** Signed in as the standard user. At least one room exists. Clock pinned to a date guaranteed to have no meetings (e.g. a date several months in the future, never touched by any other fixture).
 
 **Given** rooms exist but none has a meeting on the viewed date
 **When** a user views that date's availability
@@ -187,7 +187,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. A room and a meeting on it exist (create via Add Meeting), clock pinned to that meeting's date.
+**Preconditions:** Signed in as the standard user. A room and a meeting on it exist (create via Add Meeting), clock pinned to that meeting's date.
 
 **Given** a meeting on a room's card
 **When** the user expands that card's meeting list and clicks the meeting
@@ -219,7 +219,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. Two rooms ("Room A", "Room B"). Two meetings on the same date: Room A 10:00–11:00, Room B 10:30–11:30 (time-overlapping, different rooms — legal, since `TimeRangeUnavailable` is scoped per room). Clock pinned to that date.
+**Preconditions:** Signed in as the standard user. Two rooms ("Room A", "Room B"). Two meetings on the same date: Room A 10:00–11:00, Room B 10:30–11:30 (time-overlapping, different rooms — legal, since `TimeRangeUnavailable` is scoped per room). Clock pinned to that date.
 
 **Given** two meetings overlapping in time but in different rooms
 **When** the user expands both rooms' cards
@@ -251,7 +251,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. One room. Two meetings in it on the same date: 09:00–10:00 and 10:00–11:00 (touching end-to-start — explicitly allowed by the API's `[startTime, endTime)` half-open-interval rule, per `mootmaker-api/README.md`'s Validation table). Clock pinned.
+**Preconditions:** Signed in as the standard user. One room. Two meetings in it on the same date: 09:00–10:00 and 10:00–11:00 (touching end-to-start — explicitly allowed by the API's `[startTime, endTime)` half-open-interval rule, per `mootmaker-api/README.md`'s Validation table). Clock pinned.
 
 **Given** two meetings in the same room that touch but don't overlap
 **When** the user expands that room's card
@@ -281,7 +281,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user (organiser, so the meeting shows on their own Person Calendar too). One room, one meeting on a date within the visible week, clock pinned accordingly.
+**Preconditions:** Signed in as the standard user (organiser, so the meeting shows on their own Person Calendar too). One room, one meeting on a date within the visible week, clock pinned accordingly.
 
 **Given** a meeting in a specific room, visible on both Room Availability and the organiser's Person Calendar
 **When** the same room's colour swatch is read from both pages
@@ -310,7 +310,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. At least one room.
+**Preconditions:** Signed in as the standard user. At least one room.
 
 **Given** a signed-in user on a narrow viewport
 **When** they view Room Availability
@@ -341,7 +341,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. Clock pinned.
+**Preconditions:** Signed in as the standard user. Clock pinned.
 
 **Given** a user viewing a date other than today (e.g. navigated forward several days)
 **When** they click this page's own "Add Meeting" button

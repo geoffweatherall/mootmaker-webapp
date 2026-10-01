@@ -1,26 +1,22 @@
-import { expect, test } from '@playwright/test'
 import { uniqueTestEmail } from '../../support/email'
+import { standardUser } from './support/accounts'
+import { requireEnv } from './support/env'
+import { expect, test } from './support/test'
 
 // mootmaker/docs/reference/use-cases.md, section B (Sign in / sign out), cases 7-15. See
 // acceptance/test-cases/b-sign-in-sign-out.md for the full Given/When/Then/Steps/Assertions this
 // file was generated from.
-function requireEnv(name: string): string {
-  const value = process.env[name]
-  if (!value) {
-    throw new Error(`${name} is not set - see acceptance/run.sh.`)
-  }
-  return value
-}
-
-const demoEmail = requireEnv('DEMO_USER_EMAIL')
-const demoPassword = requireEnv('DEMO_USER_PASSWORD')
+//
+// Signs in as the standard fixture user (./support/accounts.ts). Only B.11, whose subject is the
+// demo login on the home page, uses the demo user.
+const { email: userEmail, password: userPassword } = standardUser()
 
 // B.7 - sign in with correct credentials from /signin lands back on "/" (no RequireAuth redirect
 // was in play, since /signin was reached directly).
 test('B.7: sign in with correct credentials from /signin', async ({ page }) => {
   await page.goto('/signin')
-  await page.getByLabel('Email').fill(demoEmail)
-  await page.getByLabel('Password').fill(demoPassword)
+  await page.getByLabel('Email').fill(userEmail)
+  await page.getByLabel('Password').fill(userPassword)
   await page.getByRole('button', { name: 'Sign in' }).click()
 
   await expect(page.getByText('Sign out')).toBeVisible()
@@ -35,8 +31,8 @@ test('B.8: sign in via the embedded form on the signed-out home page', async ({ 
   const tryItNow = page
     .getByRole('heading', { name: 'Try it now — no account needed' })
     .locator('..')
-  await tryItNow.getByLabel('Email').fill(demoEmail)
-  await tryItNow.getByLabel('Password').fill(demoPassword)
+  await tryItNow.getByLabel('Email').fill(userEmail)
+  await tryItNow.getByLabel('Password').fill(userPassword)
   await tryItNow.getByRole('button', { name: 'Sign in' }).click()
 
   await expect(page.getByText('Sign out')).toBeVisible()
@@ -49,7 +45,7 @@ test('B.8: sign in via the embedded form on the signed-out home page', async ({ 
 // B.9 - a valid email with the wrong password shows an error and leaves the visitor signed out.
 test('B.9: wrong password shows an error, does not sign in', async ({ page }) => {
   await page.goto('/signin')
-  await page.getByLabel('Email').fill(demoEmail)
+  await page.getByLabel('Email').fill(userEmail)
   await page.getByLabel('Password').fill('definitely-the-wrong-password')
   await page.getByRole('button', { name: 'Sign in' }).click()
 
@@ -74,7 +70,7 @@ test('B.10: unknown email shows the same error as a wrong password', async ({ pa
   await expect(page.getByText('Sign out')).not.toBeVisible()
 
   // Repeat B.9 (wrong password, known-good email) in the same test to capture its message too.
-  await page.getByLabel('Email').fill(demoEmail)
+  await page.getByLabel('Email').fill(userEmail)
   await page.getByLabel('Password').fill('definitely-the-wrong-password')
   await page.getByRole('button', { name: 'Sign in' }).click()
 
@@ -89,6 +85,8 @@ test('B.10: unknown email shows the same error as a wrong password', async ({ pa
 // rendered page (not this process's own DEMO_USER_EMAIL/PASSWORD env vars) so the test actually
 // proves the pre-fill works end to end, rather than just that two copies of the same env var match.
 test('B.11: sign in via the demo user credentials pre-filled on the home page', async ({ page }) => {
+  const demoEmail = requireEnv('DEMO_USER_EMAIL')
+  const demoPassword = requireEnv('DEMO_USER_PASSWORD')
   await page.goto('/')
 
   const tryItNow = page
@@ -116,8 +114,8 @@ test('B.11: sign in via the demo user credentials pre-filled on the home page', 
 // proving persistence actually comes from localStorage rather than in-memory auth state.
 test('B.12: session persists across a page reload', async ({ page }) => {
   await page.goto('/signin')
-  await page.getByLabel('Email').fill(demoEmail)
-  await page.getByLabel('Password').fill(demoPassword)
+  await page.getByLabel('Email').fill(userEmail)
+  await page.getByLabel('Password').fill(userPassword)
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page.getByText('Sign out')).toBeVisible()
 
@@ -135,8 +133,8 @@ test('B.12: session persists across a page reload', async ({ page }) => {
 // protected route afterward redirects to /signin instead of loading.
 test('B.13: sign out clears the session and locks the app down again', async ({ page }) => {
   await page.goto('/signin')
-  await page.getByLabel('Email').fill(demoEmail)
-  await page.getByLabel('Password').fill(demoPassword)
+  await page.getByLabel('Email').fill(userEmail)
+  await page.getByLabel('Password').fill(userPassword)
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page.getByText('Sign out')).toBeVisible()
 
@@ -155,8 +153,8 @@ test('B.14: protected route redirects to sign-in and returns you after signing i
   await page.goto('/settings')
   await expect(page).toHaveURL('/signin')
 
-  await page.getByLabel('Email').fill(demoEmail)
-  await page.getByLabel('Password').fill(demoPassword)
+  await page.getByLabel('Email').fill(userEmail)
+  await page.getByLabel('Password').fill(userPassword)
   await page.getByRole('button', { name: 'Sign in' }).click()
 
   await expect(page).toHaveURL('/settings')

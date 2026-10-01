@@ -12,7 +12,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 **Status:** ✅ Automated — [`tests/settings-your-name.spec.ts`](../tests/settings-your-name.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** A freshly signed-up account (`createConfirmedTestAccount`) — avoids permanently renaming the shared demo user's Person, which every other test in this catalog relies on reading as "Demo Strater."
+**Preconditions:** A freshly signed-up account (`createConfirmedTestAccount`) — avoids permanently renaming the shared standard user's Person, which every other test in this catalog relies on reading as "E2E Standard."
 
 **Given** a signed-in user with a linked Person
 **When** they change their name in Settings and save
@@ -31,7 +31,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Out of scope:** admin renaming *someone else* (K.87); a standard user attempting to rename someone else directly (L.91).
 
-**Notes:** Deliberately avoids the demo user specifically so this test doesn't leave "Demo Strater" renamed for every other test that depends on that literal string (E.35, G.59, H.68, etc.) — a fresh account is cheap and self-contained here.
+**Notes:** Deliberately avoids the standard user specifically so this test doesn't leave "E2E Standard" renamed for every other test that depends on that literal string (E.35, G.59, H.68, etc.) — a fresh account is cheap and self-contained here.
 
 ---
 

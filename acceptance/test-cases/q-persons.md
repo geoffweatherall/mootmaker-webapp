@@ -91,17 +91,17 @@ Same as K.88 (no auth-side propagation needed for a guest Person).
 **Status:** ✅ Automated — [`tests/q-persons.spec.ts`](../tests/q-persons.spec.ts)
 **Android:** not yet automated
 
-**Given** the Persons grid, with a Cognito-linked person, a guest, and the (admin) demo user all present
-**Then** the linked person's card shows their email, the guest's card shows "Not signed up yet", and the demo user's card shows an "Admin" badge alongside their own email
+**Given** the Persons grid, with a Cognito-linked person, a guest, and the (admin) admin user all present
+**Then** the linked person's card shows their email, the guest's card shows "Not signed up yet", and the admin user's card shows an "Admin" badge alongside their own email
 
 **Steps:**
-1. Sign in as the demo admin; create a real Cognito-linked test account and a guest person.
+1. Sign in as the admin user; create a real Cognito-linked test account and a guest person.
 2. Navigate to `/persons`.
 
 **Assertions:**
 - The linked account's card shows its email.
 - The guest's card shows "Not signed up yet".
-- The demo user's card shows "Admin" and the demo email.
+- The admin user's card shows "Admin" and the demo email.
 
 **Out of scope:** a person with more than one linked Cognito account (the schema supports
 `linkedEmails: [String!]!` as a list, but nothing in this app's sign-up flow links a second
@@ -124,7 +124,7 @@ account to an existing Person today — see mootmaker-api#70, out of scope for t
 
 **Steps:**
 1. Create a real confirmed test account.
-2. Sign in as the demo admin; edit that person; enable Admin; save.
+2. Sign in as the admin user; edit that person; enable Admin; save.
 3. Sign out; sign back in as that account.
 
 **Assertions:**
@@ -231,7 +231,7 @@ thing not worth risking against a real environment for a guard already unit-test
 **Steps:**
 1. Create both people through the API, and set an avatar on the first through the API's upload
    flow (`requestAvatarUpload`, `PUT`, `confirmAvatarUpload`) — the webapp has no upload feature.
-2. Sign in as the demo admin and open `/persons`.
+2. Sign in as the admin user and open `/persons`.
 3. Open `/persons/<id>/calendar` and open the Person picker.
 
 **Assertions:**

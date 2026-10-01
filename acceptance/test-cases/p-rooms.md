@@ -120,7 +120,7 @@ validated.
 **Then** it disappears from the Rooms grid and is no longer offered in Add Meeting
 
 **Steps:**
-1. Sign in as the demo admin; create a room.
+1. Sign in as the admin user; create a room.
 2. Click its "Remove" icon; confirm in the dialog.
 3. Check Add Meeting's Room dropdown.
 
@@ -148,7 +148,7 @@ fallback for any past meeting referencing a since-deleted room).
 **Then** the deletion is rejected with an explanation, and the room and its meeting are unaffected
 
 **Steps:**
-1. Sign in as the demo admin; create a room; book a meeting in it (today, via the pinned clock).
+1. Sign in as the admin user; create a room; book a meeting in it (today, via the pinned clock).
 2. Click "Remove"; confirm.
 
 **Assertions:**

@@ -10,7 +10,7 @@ test.describe('Calendar nav item while personId is still resolving', () => {
   test('stays enabled before myPerson resolves, shows a spinner instead of navigating early if clicked, then falls back to disabled once resolved with no linked Person', async ({
     page,
   }) => {
-    // The saved session (auth.setup.ts) signs in as the mock e2e test user, who has no linked
+    // The saved session (auth.setup.ts) signs in as the mock no-person user, who has no linked
     // Person - myPerson resolves to null for them, so this also covers the "confirmed
     // unavailable" path.
     const releaseMyPerson = await gateMyPersonQuery(page)
@@ -43,7 +43,7 @@ test.describe('Calendar nav item once personId resolves', () => {
   test.use({ storageState: { cookies: [], origins: [] } })
 
   test("navigates to the signed-in user's calendar once myPerson resolves, if clicked first", async ({ page }) => {
-    // The demo user (unlike the mock e2e test user) has a linked Person - see
+    // The demo user (unlike the mock no-person user) has a linked Person - see
     // src/auth/cognito.mock.ts - which is what this test needs.
     const releaseMyPerson = await gateMyPersonQuery(page)
 

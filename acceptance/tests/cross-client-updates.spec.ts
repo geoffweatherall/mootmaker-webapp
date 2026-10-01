@@ -1,5 +1,8 @@
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { formatDateParam, pinnedWeekday } from './support/pinnedDates'
+import { STANDARD_USER_NAME, signInAsStandardUser } from './support/accounts'
+import { requireEnv, uniqueId } from './support/env'
+import { expect, test } from './support/test'
 
 /**
  * The cross-client guarantee: a booking made by one client appears on another's screen without a
@@ -10,23 +13,9 @@ import { formatDateParam, pinnedWeekday } from './support/pinnedDates'
  * chain is proven end to end - resolver Lambda, IAM-signed publish, @aws_subscribe, the realtime
  * socket, and the cache eviction - with a real user watching a real page.
  *
- * NO RETRIES, for the same reason as add-meeting.spec.ts: these accumulate state in a shared
- * environment, so a retry re-runs against an environment that also contains everything the failed
- * attempt created.
+ * The watching user is the standard user (./support/accounts.ts). Every test starts from a reset
+ * environment (./support/test.ts) and creates its own rooms and people.
  */
-test.describe.configure({ retries: 0, mode: 'serial' })
-
-function requireEnv(name: string): string {
-  const value = process.env[name]
-  if (!value) {
-    throw new Error(`${name} is not set - see acceptance/run.sh.`)
-  }
-  return value
-}
-
-function uniqueId(): string {
-  return `${Date.now()}-${Math.floor(Math.random() * 10_000)}`
-}
 
 /**
  * A date far enough out that no other section's fixtures collide with it, and comfortably inside
@@ -37,33 +26,6 @@ function bookableDate(offsetDays: number): string {
   const date = new Date()
   date.setDate(date.getDate() + offsetDays)
   return date.toISOString().slice(0, 10)
-}
-
-async function signInAsDemo(page: Page): Promise<void> {
-  await page.goto('/signin')
-  await page.getByLabel('Email').fill(requireEnv('DEMO_USER_EMAIL'))
-  await page.getByLabel('Password').fill(requireEnv('DEMO_USER_PASSWORD'))
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page.getByText('Sign out')).toBeVisible()
-}
-
-async function createRoom(page: Page, name: string, capacity: number): Promise<void> {
-  await page.goto('/rooms')
-  await page.getByRole('button', { name: 'Add room' }).click()
-  const dialog = page.getByRole('dialog')
-  await dialog.getByLabel('Name').fill(name)
-  await dialog.getByLabel('Capacity').fill(String(capacity))
-  await dialog.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText(name)).toBeVisible()
-}
-
-async function createPerson(page: Page, name: string): Promise<void> {
-  await page.goto('/persons')
-  await page.getByRole('button', { name: 'Add person' }).click()
-  const dialog = page.getByRole('dialog')
-  await dialog.getByLabel('Name').fill(name)
-  await dialog.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText(name)).toBeVisible()
 }
 
 async function getIdToken(page: Page): Promise<string> {
@@ -140,7 +102,7 @@ async function bookViaApi(page: Page, token: string, options: {
   }
 }
 
-test('a booking made by another client appears without a refresh', async ({ browser }) => {
+test('a booking made by another client appears without a refresh', async ({ browser, api }) => {
   const id = uniqueId()
   const date = bookableDate(21)
   const room = `Cross Client Room ${id}`
@@ -151,9 +113,9 @@ test('a booking made by another client appears without a refresh', async ({ brow
   const observer = await browser.newContext()
   try {
     const page = await observer.newPage()
-    await signInAsDemo(page)
-    await createRoom(page, room, 4)
-    await createPerson(page, organiser)
+    await signInAsStandardUser(page)
+    await api.createRoom(room, 4)
+    await api.createPerson(organiser)
     const token = await getIdToken(page)
 
     // Watching the day BEFORE the booking exists, and never reloading after this point. The room's
@@ -190,6 +152,7 @@ test('a booking made by another client appears without a refresh', async ({ brow
 
 test('a booking made by another client updates the collapsed meeting count, not just the expanded row', async ({
   browser,
+  api,
 }) => {
   // mootmaker-webapp#93: the test above pre-expands the card, so the collapsed toggle label -
   // "See <day>'s meetings (N)" - is never on screen when the broadcast lands. This test leaves it
@@ -203,9 +166,9 @@ test('a booking made by another client updates the collapsed meeting count, not 
   const observer = await browser.newContext()
   try {
     const page = await observer.newPage()
-    await signInAsDemo(page)
-    await createRoom(page, room, 4)
-    await createPerson(page, organiser)
+    await signInAsStandardUser(page)
+    await api.createRoom(room, 4)
+    await api.createPerson(organiser)
     const token = await getIdToken(page)
 
     await page.goto(`/rooms/${date}/availability`)
@@ -229,7 +192,7 @@ test('a booking made by another client updates the collapsed meeting count, not 
   }
 })
 
-test('a booking made by another client adds a segment to the timeline bar, live', async ({ browser }) => {
+test('a booking made by another client adds a segment to the timeline bar, live', async ({ browser, api }) => {
   // mootmaker-webapp#94/#75: the busy/free timeline bar is always rendered (not gated behind the
   // expand toggle), so this needs no click at all either.
   const id = uniqueId()
@@ -241,9 +204,9 @@ test('a booking made by another client adds a segment to the timeline bar, live'
   const observer = await browser.newContext()
   try {
     const page = await observer.newPage()
-    await signInAsDemo(page)
-    await createRoom(page, room, 4)
-    await createPerson(page, organiser)
+    await signInAsStandardUser(page)
+    await api.createRoom(room, 4)
+    await api.createPerson(organiser)
     const token = await getIdToken(page)
 
     await page.goto(`/rooms/${date}/availability`)
@@ -271,7 +234,7 @@ test('a booking made by another client adds a segment to the timeline bar, live'
   }
 })
 
-test('a booking on a day being viewed does not disturb another day', async ({ browser }) => {
+test('a booking on a day being viewed does not disturb another day', async ({ browser, api }) => {
   // Row 3a of the cross-client table, and the row most likely to be mistaken for a defect later:
   // an invalidation names ONE date, so a client viewing a different date must be untouched.
   const id = uniqueId()
@@ -284,9 +247,9 @@ test('a booking on a day being viewed does not disturb another day', async ({ br
   const observer = await browser.newContext()
   try {
     const page = await observer.newPage()
-    await signInAsDemo(page)
-    await createRoom(page, room, 4)
-    await createPerson(page, organiser)
+    await signInAsStandardUser(page)
+    await api.createRoom(room, 4)
+    await api.createPerson(organiser)
     const token = await getIdToken(page)
 
     await page.goto(`/rooms/${viewedDate}/availability`)
@@ -304,7 +267,7 @@ test('a booking on a day being viewed does not disturb another day', async ({ br
   }
 })
 
-test('the tab that made the booking does not lose it to its own broadcast', async ({ browser }) => {
+test('the tab that made the booking does not lose it to its own broadcast', async ({ browser, api }) => {
   // Row 7 of the cross-client table. The booking tab is also a subscriber, so the server's
   // broadcast for this booking comes back to it. Without the self-invalidation guard it evicts the
   // Day its own mutation response just wrote authoritatively and re-renders empty while refetching
@@ -334,9 +297,9 @@ test('the tab that made the booking does not lose it to its own broadcast', asyn
     tenAmToday.setHours(10, 0, 0, 0)
     await page.clock.setFixedTime(tenAmToday)
 
-    await signInAsDemo(page)
-    await createRoom(page, room, 4)
-    await createPerson(page, organiser)
+    await signInAsStandardUser(page)
+    await api.createRoom(room, 4)
+    await api.createPerson(organiser)
 
     await page.goto('/meetings/add')
     await expect(page.getByRole('heading', { name: 'Add Meeting' })).toBeVisible()
@@ -375,7 +338,7 @@ test('the tab that made the booking does not lose it to its own broadcast', asyn
   }
 })
 
-test('a booking made by another client appears on Person Calendar without a refresh', async ({ browser }) => {
+test('a booking made by another client appears on Person Calendar without a refresh', async ({ browser, api }) => {
   // mootmaker-webapp#96: every test above only ever exercised Room Availability.
   // /persons/:id/calendar uses the same subscription/cache-eviction mechanism, but had no
   // dedicated proof of its own - this project has a real history of shared plumbing quietly
@@ -395,17 +358,17 @@ test('a booking made by another client appears on Person Calendar without a refr
   try {
     const page = await observer.newPage()
     await page.clock.setFixedTime(wednesday)
-    await signInAsDemo(page)
-    await createRoom(page, room, 4)
+    await signInAsStandardUser(page)
+    await api.createRoom(room, 4)
     const token = await getIdToken(page)
 
     await page.getByRole('link', { name: 'Calendar', exact: true }).click()
     await expect(page).toHaveURL(/\/persons\/[^/]+\/calendar$/)
     await expect(page.getByText(subject)).toHaveCount(0)
 
-    // Demo Strater is the signed-in demo user's own name - booking as themselves means no extra
-    // Person/selector switch is needed to see it on their own default calendar view.
-    await bookViaApi(page, token, { roomName: room, organiserName: 'Demo Strater', subject, date })
+    // Booked with the signed-in user as organiser, so no Person/selector switch is needed to see
+    // it on their own default calendar view.
+    await bookViaApi(page, token, { roomName: room, organiserName: STANDARD_USER_NAME, subject, date })
 
     // No reload, no navigation, no user action: the only thing that can make this appear is the
     // broadcast evicting the day and the refetch refilling it.
@@ -415,7 +378,7 @@ test('a booking made by another client appears on Person Calendar without a refr
   }
 })
 
-test('an open meeting detail sheet survives an unrelated background refetch', async ({ browser }) => {
+test('an open meeting detail sheet survives an unrelated background refetch', async ({ browser, api }) => {
   // mootmaker-webapp#98: useMeetingDetailOverlay's openMeeting is a snapshot captured into local
   // useState at click time, decoupled from the live query - this guards that decoupling doesn't
   // have a surprising failure mode under concurrent background activity: an unrelated day/meeting
@@ -433,10 +396,10 @@ test('an open meeting detail sheet survives an unrelated background refetch', as
   const observer = await browser.newContext()
   try {
     const page = await observer.newPage()
-    await signInAsDemo(page)
-    await createRoom(page, room, 4)
-    await createRoom(page, otherRoom, 4)
-    await createPerson(page, organiser)
+    await signInAsStandardUser(page)
+    await api.createRoom(room, 4)
+    await api.createRoom(otherRoom, 4)
+    await api.createPerson(organiser)
     const token = await getIdToken(page)
 
     // The meeting whose sheet stays open throughout.

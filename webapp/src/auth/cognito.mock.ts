@@ -27,15 +27,15 @@ export interface MockUser {
 // scattering ad hoc credentials across spec files. `password` is mutated in place by a successful
 // confirmForgotPassword, matching a real account's password actually changing.
 //
-// E2E_USER has no linked Person (see fixtures.ts's `linkedPersonByEmail`) - mirroring the real
-// e2e test user's Terraform-provisioned account, which webapp/tests/*.spec.ts and
+// NO_PERSON_USER has no linked Person (see fixtures.ts's `linkedPersonByEmail`) - mirroring the real
+// no-person fixture user (mootmaker-api#95), which webapp/tests/*.spec.ts and
 // README.md's "Organiser/attendee mutual exclusivity" section rely on to keep the
 // organiser-defaulting effect from firing. DEMO_USER *does* have a linked Person - it's the
 // account calendar-menu.spec.ts's "once personId resolves" tests need, and whose credentials are
 // shown/pre-filled on the signed-out home page (see .env.mock's VITE_DEMO_USER_EMAIL/PASSWORD,
 // which must match this record).
 export const MOCK_USERS: MockUser[] = [
-  { email: 'e2e-user@example.com', password: 'Mock-password-1', name: 'E2E Test User', userClass: 'standard' },
+  { email: 'no-person-user@example.com', password: 'Mock-password-1', name: 'No Person User', userClass: 'standard' },
   { email: 'demo@example.com', password: 'Demo-password-1', name: 'Demo User', userClass: 'standard' },
   // The only admin here, so Settings' Rooms/People sections render at all - neither of the two
   // above is one, which is why nothing had covered those sections at this layer before. Kept as a
@@ -43,7 +43,7 @@ export const MOCK_USERS: MockUser[] = [
   { email: 'admin@example.com', password: 'Admin-password-1', name: 'Admin User', userClass: 'admin' },
 ]
 
-export const E2E_USER = MOCK_USERS[0]
+export const NO_PERSON_USER = MOCK_USERS[0]
 export const DEMO_USER = MOCK_USERS[1]
 export const ADMIN_USER = MOCK_USERS[2]
 

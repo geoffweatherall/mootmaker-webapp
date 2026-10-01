@@ -106,36 +106,30 @@ Every test case follows the same shape:
 
 Referenced by shorthand across every section file rather than re-explained each time:
 
-- **The demo user** (`DEMO_USER_EMAIL` / `DEMO_USER_PASSWORD`, from `run.sh` /
-  `mootmaker-api/deploy/terraform/cognito.tf`'s `aws_cognito_user.demo`) — **admin**, with a
-  linked Person ("Demo Strater", `aws_dynamodb_table_item.demo_person`). The default account for
-  any case that just needs *some* working, admin-capable, Person-linked signed-in user and isn't
-  itself about sign-up, sign-in, or password reset.
-- **The e2e user** (`E2E_USER_EMAIL` / `E2E_USER_PASSWORD`, same Terraform file's
-  `aws_cognito_user.e2e`) — **standard**, with **no linked Person at all** (created directly by
-  Terraform, so `PostConfirmationCreatePersonHandler` never ran for it). The account for any case
-  that specifically needs "signed in, but no linked Person" (Home page's degraded state, Calendar
-  nav disabled, Settings' Name section disabled) or "a plain standard user" where a linked Person
-  isn't the point.
-- **A fresh signed-up account** — either through the real UI + `support/email.ts`'s
-  `waitForVerificationCode` (when the sign-up/reset flow itself is under test), or via
-  `support/cognitoAdmin.ts`'s `createConfirmedTestAccount` (when a working account is only a
-  *precondition* for something else). Either way this account **does** get a linked Person —
-  `AdminConfirmSignUp` fires the same `PostConfirmationCreatePersonHandler` a real confirmation
-  would. This is the account type for anything needing a **standard user with a linked Person**
-  (self-rename as a non-admin, the organiser-defaults-to-self behaviour for a real signed-up user,
-  "schedule a meeting as yourself right after signing up").
-- **An admin-created guest Person** (no Cognito account, no login) — created through the real
-  Settings UI by an admin (the demo user), the only way to get one; there's no data-seeding
-  bypass for rooms or people (see [../README.md](../README.md)'s "Known gaps").
-- **Rooms** — no bypass either; a test needing a room creates its own, uniquely named per run (see
-  `tests/add-meeting.spec.ts`'s `roomName` pattern), so repeated runs against a shared environment
-  don't collide and tests don't depend on each other's leftover data.
+Decided in mootmaker-api#95 and mootmaker-webapp#138 - see [../README.md](../README.md)'s "Which
+account to sign in as". In short:
 
-`acceptance/playwright.config.ts` runs `workers: 1`, not `fullyParallel` — tests in this suite run
-one at a time against real, possibly-shared infrastructure. Every test case here is still written
-to create whatever data it personally needs rather than relying on another test's leftovers or a
-particular run order, the same discipline the two existing specs already follow.
+- **The standard user** (`E2E_STANDARD_USER_EMAIL` / `_PASSWORD`) - non-admin, with a linked
+  Person ("E2E Standard"). The default for every case.
+- **The admin user** (`E2E_ADMIN_USER_EMAIL` / `_PASSWORD`) - admin, Person "E2E Admin". Only for
+  cases whose subject is admin functionality (sections P and Q, an admin editing or cancelling
+  someone else's meeting, admin-only UI).
+- **The no-person user** (`E2E_NO_PERSON_USER_EMAIL` / `_PASSWORD`) - standard, with **no linked
+  Person**. For "signed in, but no linked Person" cases.
+- **A fresh signed-up account** - through the real UI + `support/email.ts`'s
+  `waitForVerificationCode` when the sign-up or reset flow itself is under test, or via
+  `support/cognitoAdmin.ts`'s `createConfirmedTestAccount` when a test changes its own account
+  (name, preferences, deletion, an admin grant) or needs another real user. Either way it gets a
+  linked Person, since `AdminConfirmSignUp` fires the same `PostConfirmationCreatePersonHandler` a
+  real confirmation would.
+- **The demo user** (`DEMO_USER_EMAIL` / `DEMO_USER_PASSWORD`) - only B.11 and D.21, whose subject
+  is the demo login on the home page.
+- **Rooms, guest people, meetings, avatars** - created over the API by the test that needs them
+  (`tests/support/setupApi.ts`), unless creating them through the admin UI is the subject.
+
+Every test starts from a reset environment (`tests/support/test.ts`): no rooms, no meetings, and the
+demo and fixture users, repaired to exactly the state above. So no case depends on another case's
+leftovers, on demo-data, or on run order.
 
 ## Resolved since this catalog was first written
 
@@ -157,15 +151,8 @@ One inconsistency remains from when this catalog was first written, cross-checki
 against the actual webapp source — flagged here rather than silently "corrected" in place, since
 fixing the wording is a decision for whoever owns those docs, not this catalog:
 
-- **The demo user's linked-Person status is inconsistently described in code comments.**
-  `HomePage.tsx`'s and `organiser-attendee-exclusivity.spec.ts`'s own comments both list "the demo
-  user" alongside "the e2e test user" as accounts with *no* linked Person. That's true for the e2e
-  user but not the demo user: `cognito.tf`'s `aws_dynamodb_table_item.demo_person` gives the demo
-  user a real linked Person ("Demo Strater"), which is also exactly what lets
-  `tests/add-meeting.spec.ts` rely on the organiser defaulting to the signed-in demo user without
-  setting it explicitly. This catalog treats the demo user as Person-linked throughout (matching
-  the Terraform, the existing passing spec, and `acceptance/README.md`'s own account guidance) —
-  the stale comments are a small cleanup worth doing in the webapp repo separately.
+- ~~The demo user's linked-Person status is inconsistently described in code comments.~~ Moot
+  since mootmaker-webapp#138: no test relies on the demo user's Person any more.
 
 ## Known implementation gaps found while writing this catalog
 

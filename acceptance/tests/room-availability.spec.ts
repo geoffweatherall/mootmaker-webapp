@@ -1,63 +1,23 @@
-import { expect, test, type Locator, type Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { formatDateParam, pinnedWeekday } from './support/pinnedDates'
+import { signInAsStandardUser } from './support/accounts'
+import { uniqueId } from './support/env'
+import { expect, test } from './support/test'
 
 // mootmaker/docs/reference/use-cases.md, section E (Room Availability), cases 26-37 except 30. E.30 ("no rooms
-// exist yet") is covered separately by 00-room-availability-empty.spec.ts, which must run before
-// any room-creating test in this environment - see that file's own header comment and
-// e-room-availability.md's tc-e30 Notes. This file's name sorts after "00-...", so nothing special
-// is needed here beyond simply never recreating that same "zero rooms" scenario.
+// exist yet") is covered separately by room-availability-empty.spec.ts.
 //
-// Every case here signs in as the demo user (a real, pre-verified, admin, Person-linked Cognito
-// account present in every environment - see acceptance/README.md and add-meeting.spec.ts's own
-// header comment) and pins page.clock.setFixedTime to a known business-hours weekday, for the same
-// flakiness reason add-meeting.spec.ts already documents: any test that depends on "today" or a
-// meeting's default time needs a deterministic clock to avoid flaking whenever the suite happens to
-// run close to midnight (a default start/end pair spanning two calendar days is rejected by the
-// API as SpansMultipleDays). Every room/meeting subject below is suffixed with a fresh uniqueId()
-// so repeated runs against the same shared environment, and other agents' concurrent runs against
-// sections other than E, never collide.
+// Every case here signs in as the standard fixture user (./support/accounts.ts), creates the rooms
+// it needs over the API, and pins page.clock.setFixedTime to a known business-hours weekday, for
+// the same flakiness reason add-meeting.spec.ts already documents: any test that depends on "today"
+// or a meeting's default time needs a deterministic clock to avoid flaking whenever the suite
+// happens to run close to midnight (a default start/end pair spanning two calendar days is
+// rejected by the API as SpansMultipleDays). The environment is reset before every test
+// (./support/test.ts), so each case starts with no rooms and no meetings but its own.
 //
 // E.37 note: RoomAvailabilityPage's "Add Meeting" links now pass the currently-viewed date via
 // router state, and AddMeetingPage's defaultDate() reads it - this used to be a documented gap in
 // e-room-availability.md, now fixed, so E.37 below asserts the corrected (passing) behaviour.
-
-function requireEnv(name: string): string {
-  const value = process.env[name]
-  if (!value) {
-    throw new Error(`${name} is not set - see acceptance/run.sh.`)
-  }
-  return value
-}
-
-// Real Date.now()/Math.random(), deliberately not derived from any pinned clock - see
-// add-meeting.spec.ts's identical helper for why a fresh value is needed every run even against an
-// already-deployed, repeatedly-iterated-against environment.
-function uniqueId(): string {
-  return `${Date.now()}-${Math.floor(Math.random() * 10_000)}`
-}
-
-async function signInAsDemo(page: Page): Promise<void> {
-  const demoEmail = requireEnv('DEMO_USER_EMAIL')
-  const demoPassword = requireEnv('DEMO_USER_PASSWORD')
-  await page.goto('/signin')
-  await page.getByLabel('Email').fill(demoEmail)
-  await page.getByLabel('Password').fill(demoPassword)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page.getByText('Sign out')).toBeVisible()
-}
-
-// No data-seeding bypass for rooms - every test creates its own via the real Rooms UI (see
-// acceptance/README.md's "Known gaps" and README.md's test-data conventions), uniquely named per
-// run.
-async function createRoom(page: Page, name: string, capacity: number): Promise<void> {
-  await page.goto('/rooms')
-  await page.getByRole('button', { name: 'Add room' }).click()
-  const dialog = page.getByRole('dialog')
-  await dialog.getByLabel('Name').fill(name)
-  await dialog.getByLabel('Capacity').fill(String(capacity))
-  await dialog.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText(name)).toBeVisible()
-}
 
 async function goToAddMeeting(page: Page): Promise<void> {
   await page.goto('/meetings/add')
@@ -166,13 +126,13 @@ async function expandMeetings(page: Page, roomName: string): Promise<Locator> {
   return card
 }
 
-test('E.26 - view room availability for today', async ({ page }) => {
+test('E.26 - view room availability for today', async ({ page, api }) => {
   const runId = uniqueId()
   const roomName = `Today Room E26 ${runId}`
   const pinnedNow = pinnedWeekday('Wednesday')
   await page.clock.setFixedTime(pinnedNow)
-  await signInAsDemo(page)
-  await createRoom(page, roomName, 4)
+  await signInAsStandardUser(page)
+  await api.createRoom(roomName, 4)
 
   await page.getByRole('link', { name: 'Room Availability' }).click()
 
@@ -183,14 +143,14 @@ test('E.26 - view room availability for today', async ({ page }) => {
   await expectDateFieldShows(dateNavGroup(page), pinnedNow)
 })
 
-test("E.27 - navigating to a future date shows that date's meeting", async ({ page }) => {
+test("E.27 - navigating to a future date shows that date's meeting", async ({ page, api }) => {
   const runId = uniqueId()
   const roomName = `Future Room E27 ${runId}`
   const subject = `E27 future meeting ${runId}`
   const pinnedNow = pinnedWeekday('Tuesday')
   await page.clock.setFixedTime(pinnedNow)
-  await signInAsDemo(page)
-  await createRoom(page, roomName, 4)
+  await signInAsStandardUser(page)
+  await api.createRoom(roomName, 4)
 
   // Fixture: a meeting three days in the future, created via Add Meeting with the Date field set
   // explicitly (it otherwise defaults to today).
@@ -223,7 +183,7 @@ test("E.27 - navigating to a future date shows that date's meeting", async ({ pa
 test('E.28 - navigating to a past date updates the URL and date picker', async ({ page }) => {
   const pinnedNow = pinnedWeekday('Friday')
   await page.clock.setFixedTime(pinnedNow)
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
 
   const today = formatDateParam(pinnedNow)
   await page.goto(`/rooms/${today}/availability`)
@@ -244,7 +204,7 @@ test('E.29 - the date picker jumps directly to an arbitrary date several weeks a
   // month, so the fixed +42-day hop can't land on a day-of-month the target month doesn't have.
   const pinnedNow = new Date('2026-08-03T10:00:00')
   await page.clock.setFixedTime(pinnedNow)
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
 
   const today = formatDateParam(pinnedNow)
   await page.goto(`/rooms/${today}/availability`)
@@ -291,6 +251,7 @@ test('E.29 - the date picker jumps directly to an arbitrary date several weeks a
 
 test('E.31 - rooms exist but none has meetings that day shows the cards, not the no-rooms empty state', async ({
   page,
+  api,
 }) => {
   const runId = uniqueId()
   const roomName = `Empty Day Room E31 ${runId}`
@@ -303,8 +264,8 @@ test('E.31 - rooms exist but none has meetings that day shows the cards, not the
   // file was changed to avoid.
   const pinnedNow = new Date('2028-01-05T10:00:00')
   await page.clock.setFixedTime(pinnedNow)
-  await signInAsDemo(page)
-  await createRoom(page, roomName, 4)
+  await signInAsStandardUser(page)
+  await api.createRoom(roomName, 4)
 
   const today = formatDateParam(pinnedNow)
   await page.goto(`/rooms/${today}/availability`)
@@ -320,6 +281,7 @@ test('E.31 - rooms exist but none has meetings that day shows the cards, not the
 test("E.32 - a room card's expanded meeting list shows subject and time range, and clicking a meeting opens its detail sheet, from which Share reaches Meeting Details", async ({
   page,
   context,
+  api,
 }) => {
   // Forces MeetingDetailContent's Share button down its clipboard-fallback branch
   // deterministically - see designs/meeting-detail-consolidation.md's Testing impacts.
@@ -333,8 +295,8 @@ test("E.32 - a room card's expanded meeting list shows subject and time range, a
   const subject = `E32 card meeting ${runId}`
   const pinnedNow = pinnedWeekday('Tuesday', { hour: 9 })
   await page.clock.setFixedTime(pinnedNow)
-  await signInAsDemo(page)
-  await createRoom(page, roomName, 4)
+  await signInAsStandardUser(page)
+  await api.createRoom(roomName, 4)
 
   await goToAddMeeting(page)
   await page.getByLabel('Subject').fill(subject)
@@ -368,7 +330,7 @@ test("E.32 - a room card's expanded meeting list shows subject and time range, a
   await expect(page.getByRole('heading', { name: subject, level: 1 })).toBeVisible()
 })
 
-test('E.33 - overlapping meetings in different rooms each show only on their own card', async ({ page, context }) => {
+test('E.33 - overlapping meetings in different rooms each show only on their own card', async ({ page, context, api }) => {
   // Forces MeetingDetailContent's Share button down its clipboard-fallback branch
   // deterministically - see designs/meeting-detail-consolidation.md's Testing impacts.
   await page.addInitScript(() => {
@@ -383,9 +345,9 @@ test('E.33 - overlapping meetings in different rooms each show only on their own
   const subjectB = `E33 meeting B ${runId}`
   const pinnedNow = pinnedWeekday('Wednesday', { hour: 9 })
   await page.clock.setFixedTime(pinnedNow)
-  await signInAsDemo(page)
-  await createRoom(page, roomAName, 4)
-  await createRoom(page, roomBName, 4)
+  await signInAsStandardUser(page)
+  await api.createRoom(roomAName, 4)
+  await api.createRoom(roomBName, 4)
 
   await goToAddMeeting(page)
   await page.getByLabel('Subject').fill(subjectA)
@@ -436,6 +398,7 @@ test('E.33 - overlapping meetings in different rooms each show only on their own
 
 test('E.34 - back-to-back meetings in the same room both succeed and render as distinct, ordered rows', async ({
   page,
+  api,
 }) => {
   const runId = uniqueId()
   const roomName = `Back To Back Room E34 ${runId}`
@@ -443,8 +406,8 @@ test('E.34 - back-to-back meetings in the same room both succeed and render as d
   const subject2 = `E34 second meeting ${runId}`
   const pinnedNow = pinnedWeekday('Thursday', { hour: 8 })
   await page.clock.setFixedTime(pinnedNow)
-  await signInAsDemo(page)
-  await createRoom(page, roomName, 4)
+  await signInAsStandardUser(page)
+  await api.createRoom(roomName, 4)
 
   await goToAddMeeting(page)
   await page.getByLabel('Subject').fill(subject1)
@@ -481,14 +444,14 @@ test('E.34 - back-to-back meetings in the same room both succeed and render as d
   expect(rowTexts[1]).toContain(subject2)
 })
 
-test('E.35 - room colour is consistent between Room Availability and Person Calendar', async ({ page }) => {
+test('E.35 - room colour is consistent between Room Availability and Person Calendar', async ({ page, api }) => {
   const runId = uniqueId()
   const roomName = `Colour Match Room E35 ${runId}`
   const subject = `E35 colour match meeting ${runId}`
   const pinnedNow = pinnedWeekday('Tuesday', { weeks: 1 })
   await page.clock.setFixedTime(pinnedNow)
-  await signInAsDemo(page)
-  await createRoom(page, roomName, 4)
+  await signInAsStandardUser(page)
+  await api.createRoom(roomName, 4)
 
   // Left at the Date field's default (today, same as the pinned clock), so this meeting falls
   // inside Person Calendar's own visible week, computed from that same pinned "now".
@@ -504,7 +467,7 @@ test('E.35 - room colour is consistent between Room Availability and Person Cale
   const availabilityColor = await availabilityDot.evaluate((el) => getComputedStyle(el).backgroundColor)
   expect(availabilityColor).toBeTruthy()
 
-  // Rather than guessing/hardcoding the demo user's own Person id, get there the same way a real
+  // Rather than guessing/hardcoding the signed-in user's own Person id, get there the same way a real
   // user would: the sidebar's "Calendar" nav link defaults to the signed-in user's own calendar.
   await goToOwnCalendar(page)
   // Person Calendar's meeting rows are a ButtonBase (opens a detail panel, not a link), with no
@@ -522,19 +485,20 @@ test('E.35 - room colour is consistent between Room Availability and Person Cale
 
 test('E.36 - mobile viewport: room cards stack in a single column, no horizontal scrolling needed', async ({
   page,
+  api,
 }) => {
   const runId = uniqueId()
   const roomName = `Mobile Room E36 ${runId}`
   const pinnedNow = pinnedWeekday('Friday')
   await page.clock.setFixedTime(pinnedNow)
-  // Signs in at the default (desktop) viewport first, then switches to mobile - signInAsDemo's own
+  // Signs in at the default (desktop) viewport first, then switches to mobile - signInAsStandardUser's own
   // "Sign out" check targets the sidebar's Drawer, which Layout.tsx hides via CSS (not unmounts) at
   // narrow widths, so doing this the other way around leaves that text attached but never visible
   // (confirmed against a real run: "unexpected value 'hidden'"). This doesn't change what E.36
   // itself is testing, since sign-in isn't part of this case's own assertions.
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
   await page.setViewportSize({ width: 375, height: 667 })
-  await createRoom(page, roomName, 4)
+  await api.createRoom(roomName, 4)
 
   const today = formatDateParam(pinnedNow)
   await page.goto(`/rooms/${today}/availability`)
@@ -561,7 +525,7 @@ test('E.36 - mobile viewport: room cards stack in a single column, no horizontal
 test('E.37 - "Add Meeting" from this page pre-fills the currently viewed date, not today', async ({ page }) => {
   const pinnedNow = pinnedWeekday('Monday')
   await page.clock.setFixedTime(pinnedNow)
-  await signInAsDemo(page)
+  await signInAsStandardUser(page)
 
   const today = formatDateParam(pinnedNow)
   await page.goto(`/rooms/${today}/availability`)

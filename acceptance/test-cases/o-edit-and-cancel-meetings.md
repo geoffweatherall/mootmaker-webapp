@@ -17,14 +17,14 @@ for `respondToMeeting` - not duplicated here.
 **Status:** ✅ Automated — [`tests/edit-and-cancel-meetings.spec.ts`](../tests/edit-and-cancel-meetings.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. A room and a meeting organised by the demo user.
+**Preconditions:** Signed in as the standard user. A room and a meeting organised by the standard user.
 
 **Given** a meeting the signed-in user organises
 **When** they open it, click Edit, change the subject, and save
 **Then** the new subject is reflected on the grid and the meeting's own detail view
 
 **Steps:**
-1. Sign in as the demo user; create a room and a meeting organised by the demo user.
+1. Sign in as the standard user; create a room and a meeting organised by the standard user.
 2. Open the meeting's detail sheet; click "Edit meeting"; change the subject; click Save.
 
 **Assertions:**
@@ -48,7 +48,7 @@ genuinely works end to end, not a re-run of every UI case against real infrastru
 **Status:** ⬜ Planned
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. A room and a meeting organised by the demo user.
+**Preconditions:** Signed in as the standard user. A room and a meeting organised by the standard user.
 
 **Given** a meeting in Room A from 10:00–11:00
 **When** it's edited to 10:30–11:30, still Room A, and saved
@@ -211,7 +211,7 @@ real meeting whose time has already passed.
 **Status:** ✅ Automated — [`tests/edit-and-cancel-meetings.spec.ts`](../tests/edit-and-cancel-meetings.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. A room and a meeting organised by the demo user, on
+**Preconditions:** Signed in as the standard user. A room and a meeting organised by the standard user, on
 a known bookable date.
 
 **Given** a meeting on date A

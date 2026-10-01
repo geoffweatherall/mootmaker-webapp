@@ -1,7 +1,10 @@
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import type { APIRequestContext, Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
 import { freshTestAccount } from '../../support/testAccount'
 import { formatDateParam, pinnedWeekday } from './support/pinnedDates'
+import { STANDARD_USER_NAME, signInAsAdminUser, signInAsStandardUser, standardUser } from './support/accounts'
+import { requireEnv, uniqueId } from './support/env'
+import { expect, test } from './support/test'
 
 /**
  * designs/edit-and-cancel-meetings.md's acceptance-layer coverage: the cases that genuinely need a
@@ -17,31 +20,9 @@ import { formatDateParam, pinnedWeekday } from './support/pinnedDates'
  * the cases deliberately left Planned because the Integration layer already covers them and this
  * file's job is the real-infrastructure proof, not a third copy of the same assertions.
  *
- * NO RETRIES, same reasoning as attendee-response-status.spec.ts and cross-client-updates.spec.ts:
- * these accumulate state in a shared environment, so a retry re-runs against an environment that
- * also contains everything the failed attempt created.
+ * Every test starts from a reset environment (./support/test.ts) and creates what it needs, so
+ * none depends on another and a retry starts clean.
  */
-test.describe.configure({ retries: 0, mode: 'serial' })
-
-function requireEnv(name: string): string {
-  const value = process.env[name]
-  if (!value) {
-    throw new Error(`${name} is not set - see acceptance/run.sh.`)
-  }
-  return value
-}
-
-function uniqueId(): string {
-  return `${Date.now()}-${Math.floor(Math.random() * 10_000)}`
-}
-
-async function signInAsDemo(page: Page): Promise<void> {
-  await page.goto('/signin')
-  await page.getByLabel('Email').fill(requireEnv('DEMO_USER_EMAIL'))
-  await page.getByLabel('Password').fill(requireEnv('DEMO_USER_PASSWORD'))
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page.getByText('Sign out')).toBeVisible()
-}
 
 async function signIn(page: Page, email: string, password: string): Promise<void> {
   await page.goto('/signin')
@@ -49,16 +30,6 @@ async function signIn(page: Page, email: string, password: string): Promise<void
   await page.getByLabel('Password').fill(password)
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page.getByText('Sign out')).toBeVisible()
-}
-
-async function createRoom(page: Page, name: string, capacity: number): Promise<void> {
-  await page.goto('/rooms')
-  await page.getByRole('button', { name: 'Add room' }).click()
-  const dialog = page.getByRole('dialog')
-  await dialog.getByLabel('Name').fill(name)
-  await dialog.getByLabel('Capacity').fill(String(capacity))
-  await dialog.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText(name)).toBeVisible()
 }
 
 async function getIdToken(page: Page): Promise<string> {
@@ -118,7 +89,7 @@ async function myPersonId(page: Page, token: string): Promise<string> {
 
 /** Extracts the signed-in user's real Cognito ID token straight from localStorage - see
  * authorization-boundaries.spec.ts's own copy for why this, not getIdToken's `.idToken` suffix
- * match, is used specifically where a fresh account (not the demo user) just signed in: both key
+ * match, is used specifically where a fresh account just signed in: both key
  * shapes exist in this app's localStorage, and this is the form the other forced-rejection tests
  * already rely on. */
 async function extractIdToken(page: Page): Promise<string> {
@@ -225,6 +196,7 @@ test('O.116 - a user who is neither organiser nor admin calling updateMeeting/ca
   page,
   request,
   browser,
+  api,
 }) => {
   const id = uniqueId()
   const room = `O116 Room ${id}`
@@ -232,10 +204,10 @@ test('O.116 - a user who is neither organiser nor admin calling updateMeeting/ca
   const pinnedNow = pinnedWeekday('Tuesday')
   const date = formatDateParam(pinnedNow)
 
-  // Organiser: the demo user, a genuinely real account with a linked Person.
+  // Organiser: the standard user, a genuinely real account with a linked Person.
   await page.clock.setFixedTime(pinnedNow)
-  await signInAsDemo(page)
-  await createRoom(page, room, 4)
+  await signInAsStandardUser(page)
+  await api.createRoom(room, 4)
   const organiserToken = await getIdToken(page)
   const organiserId = await myPersonId(page, organiserToken)
 
@@ -305,6 +277,7 @@ test('O.116 - a user who is neither organiser nor admin calling updateMeeting/ca
 test('O.119 - the second of two cancellations of the same meeting gets MeetingNotFound, not a crash or silent success', async ({
   page,
   request,
+  api,
 }) => {
   const id = uniqueId()
   const room = `O119 Room ${id}`
@@ -313,8 +286,8 @@ test('O.119 - the second of two cancellations of the same meeting gets MeetingNo
   const date = formatDateParam(pinnedNow)
 
   await page.clock.setFixedTime(pinnedNow)
-  await signInAsDemo(page)
-  await createRoom(page, room, 4)
+  await signInAsStandardUser(page)
+  await api.createRoom(room, 4)
   const token = await getIdToken(page)
   const organiserId = await myPersonId(page, token)
 
@@ -346,6 +319,7 @@ test('O.119 - the second of two cancellations of the same meeting gets MeetingNo
 
 test('O.121 - editing a meeting to a different date moves it there, without changing its identity', async ({
   page,
+  api,
 }) => {
   const id = uniqueId()
   const room = `O121 Room ${id}`
@@ -355,8 +329,8 @@ test('O.121 - editing a meeting to a different date moves it there, without chan
   const dateB = formatDateParam(pinnedWeekday('Friday'))
 
   await page.clock.setFixedTime(pinnedNow)
-  await signInAsDemo(page)
-  await createRoom(page, room, 4)
+  await signInAsStandardUser(page)
+  await api.createRoom(room, 4)
   const token = await getIdToken(page)
   const organiserId = await myPersonId(page, token)
 
@@ -428,6 +402,7 @@ test('O.121 - editing a meeting to a different date moves it there, without chan
 test('M.112 - an edit made by another client is reflected live on an already-open meeting detail sheet', async ({
   page,
   request,
+  api,
 }) => {
   const id = uniqueId()
   const room = `M112 Room ${id}`
@@ -436,8 +411,8 @@ test('M.112 - an edit made by another client is reflected live on an already-ope
   const date = formatDateParam(pinnedNow)
 
   await page.clock.setFixedTime(pinnedNow)
-  await signInAsDemo(page)
-  await createRoom(page, room, 4)
+  await signInAsStandardUser(page)
+  await api.createRoom(room, 4)
   const token = await getIdToken(page)
   const organiserId = await myPersonId(page, token)
 
@@ -480,6 +455,7 @@ test('M.112 - an edit made by another client is reflected live on an already-ope
 test('M.113 - a cancellation made by another client is reflected live on an already-open meeting detail sheet', async ({
   page,
   request,
+  api,
 }) => {
   const id = uniqueId()
   const room = `M113 Room ${id}`
@@ -491,8 +467,8 @@ test('M.113 - a cancellation made by another client is reflected live on an alre
   page.on('pageerror', (error) => pageErrors.push(error))
 
   await page.clock.setFixedTime(pinnedNow)
-  await signInAsDemo(page)
-  await createRoom(page, room, 4)
+  await signInAsStandardUser(page)
+  await api.createRoom(room, 4)
   const token = await getIdToken(page)
   const organiserId = await myPersonId(page, token)
 
@@ -525,4 +501,75 @@ test('M.113 - a cancellation made by another client is reflected live on an alre
   // own Close button is still there.
   await expect(page.getByRole('main').getByRole('button', { name: 'Close' })).toBeVisible()
   expect(pageErrors).toEqual([])
+})
+
+/**
+ * Admin functionality: an admin can edit and cancel a meeting someone ELSE organises, through the
+ * UI. Every other test in this file runs as the meeting's organiser, and O.116 proves only that a
+ * non-admin is rejected - so until these existed, nothing showed the admin half of the
+ * organiser-or-admin rule working end to end (mootmaker-webapp#138).
+ */
+async function bookForTheStandardUser(
+  api: import('./support/setupApi').SetupApi,
+  label: string,
+  date: string,
+): Promise<{ room: string; subject: string; meetingId: string }> {
+  const id = uniqueId()
+  const room = `${label} Room ${id}`
+  const subject = `${label} meeting ${id}`
+  const roomId = await api.createRoom(room, 4)
+  const organiserId = await api.personIdByEmail(standardUser().email)
+  const meetingId = await api.createMeeting({
+    subject,
+    roomId,
+    organiserId,
+    startTime: `${date}T10:00:00`,
+    endTime: `${date}T10:30:00`,
+  })
+  return { room, subject, meetingId }
+}
+
+test("an admin edits a meeting someone else organises", async ({ page, api }) => {
+  const pinnedNow = pinnedWeekday('Monday', { weeks: 3 })
+  const date = formatDateParam(pinnedNow)
+  const { room, subject } = await bookForTheStandardUser(api, 'AdminEdit', date)
+  const newSubject = `${subject} (edited by an admin)`
+
+  await page.clock.setFixedTime(pinnedNow)
+  await signInAsAdminUser(page)
+  await page.goto(`/rooms/${date}/availability`)
+  await openMeetingDetail(page, room, subject)
+
+  // The organiser is someone else - the admin's controls are what is under test.
+  const organiserRow = page.getByText('Organiser', { exact: true }).locator('xpath=following-sibling::*[1]')
+  await expect(organiserRow.getByText(STANDARD_USER_NAME, { exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'Edit meeting' }).click()
+  await expect(page.getByLabel('Subject')).toHaveValue(subject)
+  await page.getByLabel('Subject').fill(newSubject)
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByText('Meeting was successfully updated.')).toBeVisible()
+
+  await openMeetingDetail(page, room, newSubject)
+  await expect(page.getByRole('heading', { name: newSubject, exact: true })).toBeVisible()
+  await expect(organiserRow.getByText(STANDARD_USER_NAME, { exact: true })).toBeVisible()
+})
+
+test("an admin cancels a meeting someone else organises", async ({ page, api }) => {
+  const pinnedNow = pinnedWeekday('Tuesday', { weeks: 3 })
+  const date = formatDateParam(pinnedNow)
+  const { room, subject, meetingId } = await bookForTheStandardUser(api, 'AdminCancel', date)
+
+  await page.clock.setFixedTime(pinnedNow)
+  await signInAsAdminUser(page)
+  await page.goto(`/rooms/${date}/availability`)
+  await openMeetingDetail(page, room, subject)
+
+  await page.getByRole('button', { name: 'Cancel meeting', exact: true }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancel meeting' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+
+  const after = await api.graphql<{ meeting: { id: string } | null }>('query($id: ID!) { meeting(id: $id) { id } }', {
+    id: meetingId,
+  })
+  expect(after.meeting).toBeNull()
 })

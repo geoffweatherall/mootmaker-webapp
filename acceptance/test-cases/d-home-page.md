@@ -40,14 +40,14 @@ See [README.md](README.md) for the entry format and test-data conventions.
 **Status:** ✅ Automated — [`tests/home-page.spec.ts`](../tests/home-page.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. Two meetings created for today (different start times, deliberately out of chronological order when created) and one for tomorrow, all organised by or attending the demo user, via the real Add Meeting form. A room must exist first.
+**Preconditions:** Signed in as the standard user. Two meetings created for today (different start times, deliberately out of chronological order when created) and one for tomorrow, all organised by or attending the standard user, via the real Add Meeting form. A room must exist first.
 
 **Given** a signed-in user with a linked Person and known meetings today and tomorrow
 **When** they view the home page
 **Then** the "Today" and "Tomorrow" lists show exactly those meetings, each sorted by start time, and each links through to its own Meeting Details page
 
 **Steps:**
-1. Sign in as the demo user; create a room.
+1. Sign in as the standard user; create a room.
 2. Create three meetings via `/meetings/add`: two today at deliberately non-chronological creation order (e.g. create the 14:00 one before the 10:00 one) with distinct subjects, one tomorrow.
 3. Pin the clock (`page.clock.setFixedTime`) to a fixed business-hours time on the test's "today" throughout, so "today"/"tomorrow" are unambiguous and meetings land inside the visible business-hours window.
 4. Navigate to `/`.
@@ -75,7 +75,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 **Status:** ✅ Automated — [`tests/home-page.spec.ts`](../tests/home-page.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** A freshly signed-up account (`createConfirmedTestAccount`) — guaranteed to have zero meetings, unlike the demo user whose meeting history depends on what else has run against the environment.
+**Preconditions:** A freshly signed-up account (`createConfirmedTestAccount`) — guaranteed to have zero meetings, unlike the standard user whose meeting history depends on what else has run against the environment.
 
 **Given** a signed-in user with a linked Person and no meetings today or tomorrow
 **When** they view the home page
@@ -134,14 +134,14 @@ See [README.md](README.md) for the entry format and test-data conventions.
 **Status:** ✅ Automated — [`tests/home-page.spec.ts`](../tests/home-page.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user. Clock pinned to a known date.
+**Preconditions:** Signed in as the standard user. Clock pinned to a known date.
 
 **Given** a signed-in user on the home page
 **When** they click "Room availability today"
 **Then** they land on `/rooms/<today's date, YYYY-MM-DD>/availability` — specifically *today's* date, not a placeholder or yesterday's
 
 **Steps:**
-1. Sign in as the demo user; `page.clock.setFixedTime(new Date('2026-08-24T10:00:00'))` (a known Monday, safely inside business hours).
+1. Sign in as the standard user; `page.clock.setFixedTime(new Date('2026-08-24T10:00:00'))` (a known Monday, safely inside business hours).
 2. Navigate to `/`.
 3. Click **Room availability today**.
 4. Assert URL.
@@ -165,15 +165,15 @@ See [README.md](README.md) for the entry format and test-data conventions.
 **Status:** ✅ Automated — [`tests/attendee-response-status.spec.ts`](../tests/attendee-response-status.spec.ts), new 2026-09-21 — see `../../designs/attendee-response-status.md` in the hub repo.
 **Android:** not yet automated
 
-**Preconditions:** Signed in as the demo user, with a room and a second Person (created via Settings, as organiser) already present. A meeting created via the real `createMeeting` API with the demo user as an attendee (not organiser), on the pinned "today".
+**Preconditions:** Signed in as the standard user, with a room and a second Person (created via Settings, as organiser) already present. A meeting created via the real `createMeeting` API with the standard user as an attendee (not organiser), on the pinned "today".
 
 **Given** a signed-in user who is an attendee (not organiser) of an upcoming meeting they have not yet responded to
 **When** they view the home page
 **Then** the meeting appears as a card in "Needs your response", and clicking one of its Going/Maybe/Not going buttons both removes it from that section and updates its status badge on the Today card - live, with no reload
 
 **Steps:**
-1. Sign in as the demo user; create a room and (via Settings) a second Person as organiser.
-2. Create a meeting via the API with the demo user as the sole attendee, on the pinned today.
+1. Sign in as the standard user; create a room and (via Settings) a second Person as organiser.
+2. Create a meeting via the API with the standard user as the sole attendee, on the pinned today.
 3. Navigate to `/`; assert the meeting's card is present under "Needs your response".
 4. Click that card's "Going" button.
 5. Assert the card is gone from "Needs your response".
@@ -183,7 +183,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 **Assertions:**
 - Step 3: the card shows the meeting's subject, time, room, and organiser name.
 - Step 5/6: both update with no page reload.
-- Step 7: `attendees[demoPersonId].status` is `Going`.
+- Step 7: `attendees[userPersonId].status` is `Going`.
 
 **Out of scope:** the exact three-day window boundary (today/tomorrow/day-after) - covered at the unit/mocked-integration layer (`HomePage.tsx`'s own tests), not re-proven against a real deployment here. "Search further ahead" itself is D.112, below.
 
@@ -196,15 +196,15 @@ See [README.md](README.md) for the entry format and test-data conventions.
 **Status:** ✅ Automated — [`tests/home-page.spec.ts`](../tests/home-page.spec.ts), new 2026-09-22 — see `../../designs/home-and-misc-pages-redesign.md` in the hub repo.
 **Android:** N/A (webapp-specific)
 
-**Preconditions:** Signed in as the demo user, with a room and a second Person (created via Settings, as organiser) already present. A meeting booked via the real Add Meeting form, with the demo user as an attendee (not organiser), 6 days beyond the pinned "today" - past both the initial window and the first "Search further ahead" click's own new window.
+**Preconditions:** Signed in as the standard user, with a room and a second Person (created via Settings, as organiser) already present. A meeting booked via the real Add Meeting form, with the standard user as an attendee (not organiser), 6 days beyond the pinned "today" - past both the initial window and the first "Search further ahead" click's own new window.
 
 **Given** a signed-in user with an unresponded meeting further out than "Needs your response" currently searches
 **When** they click "Search further ahead" enough times to reach it
 **Then** the meeting appears as a card, with no card shown for the clicks before it's reached
 
 **Steps:**
-1. Sign in as the demo user; create a room and (via Settings) a second Person as organiser.
-2. Book a meeting via the real Add Meeting form: the new person as organiser, the demo user as an attendee, 6 days beyond the pinned today.
+1. Sign in as the standard user; create a room and (via Settings) a second Person as organiser.
+2. Book a meeting via the real Add Meeting form: the new person as organiser, the standard user as an attendee, 6 days beyond the pinned today.
 3. Navigate to `/`; assert the meeting is absent from "Needs your response".
 4. Click "Search further ahead" (bounded, up to 5 times) until the card appears.
 5. Assert the card is visible, naming the organiser.

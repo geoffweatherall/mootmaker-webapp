@@ -5,7 +5,7 @@ import { people, rooms } from '../src/testSupport/mocks/fixtures'
 // Covers designs/edit-and-cancel-meetings.md's webapp piece at the Integration layer (Playwright +
 // MSW, one browser, no real deployed environment - see that doc's own "Testing impacts" for why
 // this is the right layer for each case, and what it leaves for the acceptance layer instead).
-// The saved session (auth.setup.ts) signs in as the mock e2e test user, who has no linked Person -
+// The saved session (auth.setup.ts) signs in as the mock no-person user, who has no linked Person -
 // used deliberately below for the "not the organiser, not admin" case, since it guarantees canEdit
 // is false regardless of who organises. Every other case needs a linked Person, so signs in as
 // DEMO_USER or ADMIN_USER explicitly, same override attendee-response-status.spec.ts uses.
@@ -81,7 +81,7 @@ test.describe('Edit and cancel meetings', () => {
     })
 
     // Deliberately NOT overriding storageState here - keeps the default saved session (auth.setup.ts,
-    // E2E_USER, no linked Person), so canEdit is false unconditionally regardless of who organises.
+    // NO_PERSON_USER, no linked Person), so canEdit is false unconditionally regardless of who organises.
     test('someone who is neither the organiser nor admin sees neither button', async ({ page }) => {
       await page.goto('/')
       await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()

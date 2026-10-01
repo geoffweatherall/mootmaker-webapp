@@ -1,11 +1,12 @@
-import { expect, type Locator, type Page, test } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
+import { STANDARD_USER_NAME, signInAsStandardUser, standardUser } from './support/accounts'
 import { formatDateParam, pinnedWeekday } from './support/pinnedDates'
+import { expect, test } from './support/test'
 
 // mootmaker/docs/reference/use-cases.md, section H (Meeting Details), cases 68-71, 73-74. All sign
-// in as the demo user (a real, pre-verified, always-admin Cognito account with a linked Person
-// already resolved - see acceptance/README.md's "Which account to sign in as") except where a case
-// is specifically about what an unauthenticated-relationship user sees, which is still the demo
-// user, just with other Persons standing in for the organiser/attendee roles instead.
+// in as the standard fixture user (./support/accounts.ts) - an ordinary, non-admin user - with
+// other Persons, created over the API, standing in for the organiser/attendee roles where a case
+// is about a meeting the user did not organise.
 //
 // H.72 ("Back returns to whichever page the user actually came from") is GONE, not renumbered
 // around - see designs/meeting-detail-consolidation.md. It reached the full page by clicking
@@ -16,14 +17,6 @@ import { formatDateParam, pinnedWeekday } from './support/pinnedDates'
 // cold link - is covered by H.74 below (real, end-to-end) and by a mocked-integration test in
 // webapp/tests/ (client-routing logic, including a tab with unrelated prior history, which isn't
 // practical to simulate against a real deployed environment).
-function requireEnv(name: string): string {
-  const value = process.env[name]
-  if (!value) {
-    throw new Error(`${name} is not set - see acceptance/run.sh.`)
-  }
-  return value
-}
-
 // A fixed Monday, safely inside business hours (08:00-17:00) and clear of any weekend-sensitive
 // UI quirks - see acceptance/README.md's "Known gaps" note on clock pinning and
 // webapp/tests/meeting-details.spec.ts's own equivalent fix for the same class of problem.
@@ -46,35 +39,6 @@ test.beforeEach(async ({ page, context }) => {
   })
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
 })
-
-async function signInAsDemo(page: Page) {
-  const demoEmail = requireEnv('DEMO_USER_EMAIL')
-  const demoPassword = requireEnv('DEMO_USER_PASSWORD')
-  await page.goto('/signin')
-  await page.getByLabel('Email').fill(demoEmail)
-  await page.getByLabel('Password').fill(demoPassword)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page.getByText('Sign out')).toBeVisible()
-}
-
-async function createRoom(page: Page, name: string, capacity: string) {
-  await page.goto('/rooms')
-  await page.getByRole('button', { name: 'Add room' }).click()
-  const dialog = page.getByRole('dialog')
-  await dialog.getByLabel('Name').fill(name)
-  await dialog.getByLabel('Capacity').fill(capacity)
-  await dialog.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText(name)).toBeVisible()
-}
-
-async function createPerson(page: Page, name: string) {
-  await page.goto('/persons')
-  await page.getByRole('button', { name: 'Add person' }).click()
-  const dialog = page.getByRole('dialog')
-  await dialog.getByLabel('Name').fill(name)
-  await dialog.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText(name)).toBeVisible()
-}
 
 interface MeetingFormOptions {
   subject: string
@@ -144,18 +108,18 @@ async function createMeetingViaForm(page: Page, options: MeetingFormOptions): Pr
   if (!match) {
     throw new Error(`Could not extract a meeting id from the shared URL: ${url}`)
   }
-  // Scoped relative to "Cancel meeting", not a page-wide role query or a bare <main> scope -
-  // the "Link copied to clipboard." confirmation this Share click itself just triggered is its
-  // own MUI Alert rendered INSIDE the sheet (inside <main> too, unlike the app-wide SuccessToast
-  // in Layout.tsx), with its own identically-named "Close" button, so both a page-wide query and
-  // a <main>-scoped one resolve to two elements ambiguously (mootmaker-webapp#118's own
-  // acceptance run caught this). "Cancel meeting" is unique on the page while the sheet is open,
-  // and Close is reliably its next button sibling in the header (Share, Edit - a link, not a
-  // button - Cancel meeting, Close - see MeetingDetailContent.tsx), which the clipboard alert's
-  // own Close never is.
+  // Scoped relative to "Share meeting", not a page-wide role query or a bare <main> scope - the
+  // "Link copied to clipboard." confirmation this Share click itself just triggered is its own MUI
+  // Alert rendered INSIDE the sheet (inside <main> too, unlike the app-wide SuccessToast in
+  // Layout.tsx), with its own identically-named "Close" button, so both a page-wide query and a
+  // <main>-scoped one resolve to two elements ambiguously (mootmaker-webapp#118's own acceptance
+  // run caught this). Close is always the LAST button in the header after Share (Share, then Edit
+  // - a link - and Cancel meeting only for someone who can edit, then Close: see
+  // MeetingDetailContent.tsx). Anchoring on "Cancel meeting" instead only worked while every test
+  // ran as an admin, who sees Cancel on every meeting (mootmaker-webapp#138).
   await page
-    .getByRole('button', { name: 'Cancel meeting' })
-    .locator('xpath=following-sibling::button[1]')
+    .getByRole('button', { name: 'Share meeting' })
+    .locator('xpath=following-sibling::button[last()]')
     .click()
 
   return { id: match[1], url }
@@ -173,18 +137,18 @@ async function expectOrganiserIs(scope: Page | Locator, name: string): Promise<v
 }
 
 test.describe('H. Meeting Details', () => {
-  test('H.68: viewing details of a meeting you organise shows every field correctly', async ({ page }) => {
+  test('H.68: viewing details of a meeting you organise shows every field correctly', async ({ page, api }) => {
     const runId = `${Date.now()}-${Math.floor(Math.random() * 10_000)}`
     const roomName = `H68 Room ${runId}`
     const attendeeName = `H68 Attendee ${runId}`
     const subject = `H68 meeting ${runId}`
 
     await page.clock.setFixedTime(PINNED_NOW)
-    await signInAsDemo(page)
-    await createRoom(page, roomName, '4')
-    await createPerson(page, attendeeName)
+    await signInAsStandardUser(page)
+    await api.createRoom(roomName, 4)
+    await api.createPerson(attendeeName)
 
-    // Organiser omitted - defaults to the signed-in demo user's own Person ("Demo Strater").
+    // Organiser omitted - defaults to the signed-in user's own Person.
     const { id: meetingId } = await createMeetingViaForm(page, {
       subject,
       roomName,
@@ -198,15 +162,16 @@ test.describe('H. Meeting Details', () => {
     // showed it either) renders just the room name, not "<name> (capacity N)". See
     // designs/meeting-detail-consolidation.md's field-order decision.
     await expect(page.getByText(roomName, { exact: true })).toBeVisible()
-    // Scoped to <main> - the sidebar also shows the signed-in user's own name ("Demo Strater"),
-    // which is the organiser here too, so an unscoped query is ambiguous between the two.
+    // Scoped to <main> - the sidebar also shows the signed-in user's own name, which is the
+    // organiser here too, so an unscoped query is ambiguous between the two.
     const main = page.getByRole('main')
-    await expectOrganiserIs(main, 'Demo Strater')
+    await expectOrganiserIs(main, STANDARD_USER_NAME)
     await expect(main.getByText(attendeeName, { exact: true })).toBeVisible()
   })
 
   test('H.69: viewing details of a meeting you attend but did not organise shows the other person as organiser and yourself as an attendee', async ({
     page,
+    api,
   }) => {
     const runId = `${Date.now()}-${Math.floor(Math.random() * 10_000)}`
     const roomName = `H69 Room ${runId}`
@@ -214,17 +179,17 @@ test.describe('H. Meeting Details', () => {
     const subject = `H69 meeting ${runId}`
 
     await page.clock.setFixedTime(PINNED_NOW)
-    await signInAsDemo(page)
-    await createRoom(page, roomName, '4')
-    await createPerson(page, organiserName)
+    await signInAsStandardUser(page)
+    await api.createRoom(roomName, 4)
+    await api.createPerson(organiserName)
 
-    // Explicitly picking a different organiser overrides the default-to-self behaviour; the demo
-    // user is then added as an attendee instead.
+    // Explicitly picking a different organiser overrides the default-to-self behaviour; the
+    // signed-in user is then added as an attendee instead.
     const { id: meetingId } = await createMeetingViaForm(page, {
       subject,
       roomName,
       organiserName,
-      attendeeNames: ['Demo Strater'],
+      attendeeNames: [STANDARD_USER_NAME],
     })
 
     await page.goto(`/meetings/${meetingId}`)
@@ -232,15 +197,16 @@ test.describe('H. Meeting Details', () => {
     // Page loads with no access error (proving attendee-only access works) - the full details are
     // visible, with the other person as organiser and the signed-in user among the attendees.
     await expect(page.getByRole('heading', { name: subject })).toBeVisible()
-    // Scoped to <main> - the sidebar also shows the signed-in user's own name ("Demo Strater"),
-    // which is an attendee here too, so an unscoped query is ambiguous between the two.
+    // Scoped to <main> - the sidebar also shows the signed-in user's own name, which is an
+    // attendee here too, so an unscoped query is ambiguous between the two.
     const main = page.getByRole('main')
     await expectOrganiserIs(main, organiserName)
-    await expect(main.getByText('Demo Strater', { exact: true })).toBeVisible()
+    await expect(main.getByText(STANDARD_USER_NAME, { exact: true })).toBeVisible()
   })
 
   test('H.70: viewing details of a meeting you are neither organiser nor attendee of still loads full details', async ({
     page,
+    api,
   }) => {
     const runId = `${Date.now()}-${Math.floor(Math.random() * 10_000)}`
     const roomName = `H70 Room ${runId}`
@@ -249,13 +215,13 @@ test.describe('H. Meeting Details', () => {
     const subject = `H70 meeting ${runId}`
 
     await page.clock.setFixedTime(PINNED_NOW)
-    await signInAsDemo(page)
-    await createRoom(page, roomName, '4')
-    await createPerson(page, thirdPartyA)
-    await createPerson(page, thirdPartyB)
+    await signInAsStandardUser(page)
+    await api.createRoom(roomName, 4)
+    await api.createPerson(thirdPartyA)
+    await api.createPerson(thirdPartyB)
 
-    // The demo (admin) user submits this on behalf of two other Persons, ending up neither
-    // organiser nor attendee of the resulting meeting themselves.
+    // The signed-in user submits this on behalf of two other Persons, ending up neither organiser
+    // nor attendee of the resulting meeting themselves. Any user may book for another organiser.
     const { id: meetingId } = await createMeetingViaForm(page, {
       subject,
       roomName,
@@ -273,7 +239,7 @@ test.describe('H. Meeting Details', () => {
     await expect(page.getByText(thirdPartyB, { exact: true })).toBeVisible()
   })
 
-  test('H.71: date is shown once and time as a start-end range, never two full date-times', async ({ page }) => {
+  test('H.71: date is shown once and time as a start-end range, never two full date-times', async ({ page, api }) => {
     const runId = `${Date.now()}-${Math.floor(Math.random() * 10_000)}`
     const roomName = `H71 Room ${runId}`
     const subject = `H71 meeting ${runId}`
@@ -282,8 +248,8 @@ test.describe('H. Meeting Details', () => {
     // AddMeetingPage's defaults land on Date=2026-08-24, Start=10:00, End=11:00 without touching
     // any of those three fields.
     await page.clock.setFixedTime(PINNED_NOW)
-    await signInAsDemo(page)
-    await createRoom(page, roomName, '4')
+    await signInAsStandardUser(page)
+    await api.createRoom(roomName, 4)
 
     const { id: meetingId } = await createMeetingViaForm(page, { subject, roomName })
 
@@ -314,7 +280,7 @@ test.describe('H. Meeting Details', () => {
     const pageErrors: Error[] = []
     page.on('pageerror', (error) => pageErrors.push(error))
 
-    await signInAsDemo(page)
+    await signInAsStandardUser(page)
     await page.goto('/meetings/not-a-real-id-12345')
 
     await expect(page.getByText('Meeting not found.')).toBeVisible()
@@ -323,14 +289,15 @@ test.describe('H. Meeting Details', () => {
 
   test('H.74: a signed-out visitor who follows a real shared meeting link goes through a real sign-in and lands on the correct meeting', async ({
     page,
+    api,
   }) => {
     const runId = `${Date.now()}-${Math.floor(Math.random() * 10_000)}`
     const roomName = `H74 Room ${runId}`
     const subject = `H74 meeting ${runId}`
 
     await page.clock.setFixedTime(PINNED_NOW)
-    await signInAsDemo(page)
-    await createRoom(page, roomName, '4')
+    await signInAsStandardUser(page)
+    await api.createRoom(roomName, 4)
     const { url: meetingUrl } = await createMeetingViaForm(page, { subject, roomName })
 
     // Sign out, then follow the real link exactly as its recipient would - a signed-out visit to a
@@ -347,10 +314,8 @@ test.describe('H. Meeting Details', () => {
     await expect(page.getByRole('heading', { name: 'Sign In' })).toBeVisible()
     await expect(page).toHaveURL(/\/signin/)
 
-    const demoEmail = requireEnv('DEMO_USER_EMAIL')
-    const demoPassword = requireEnv('DEMO_USER_PASSWORD')
-    await page.getByLabel('Email').fill(demoEmail)
-    await page.getByLabel('Password').fill(demoPassword)
+    await page.getByLabel('Email').fill(standardUser().email)
+    await page.getByLabel('Password').fill(standardUser().password)
     await page.getByRole('button', { name: 'Sign in' }).click()
 
     await expect(page).toHaveURL(meetingUrl)

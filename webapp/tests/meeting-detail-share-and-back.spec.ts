@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { E2E_USER } from '../src/auth/cognito.mock'
+import { NO_PERSON_USER } from '../src/auth/cognito.mock'
 import { people } from '../src/testSupport/mocks/fixtures'
 
 // Covers two things new to designs/meeting-detail-consolidation.md:
@@ -20,7 +20,7 @@ import { people } from '../src/testSupport/mocks/fixtures'
 //    RequireAuth-redirect-then-sign-in round trip, which is exactly the shape a pasted link from
 //    someone else follows.
 
-/** Creates a meeting (organiser picked explicitly - E2E_USER has no linked Person, so there is no
+/** Creates a meeting (organiser picked explicitly - NO_PERSON_USER has no linked Person, so there is no
  * default-to-self to rely on), opens its row in Room Availability, and returns the page positioned
  * with that meeting's sheet/panel open. Mirrors the identical pattern in
  * acceptance/tests/meeting-details.spec.ts's createMeetingViaForm. */
@@ -117,8 +117,8 @@ test.describe('Meeting details - Back safety on a cold link', () => {
     await page.goto(meetingUrl)
     await expect(page.getByRole('heading', { name: 'Sign In' })).toBeVisible()
 
-    await page.getByLabel('Email').fill(E2E_USER.email)
-    await page.getByLabel('Password').fill(E2E_USER.password)
+    await page.getByLabel('Email').fill(NO_PERSON_USER.email)
+    await page.getByLabel('Password').fill(NO_PERSON_USER.password)
     await page.getByRole('button', { name: 'Sign in' }).click()
 
     await expect(page).toHaveURL(meetingUrl)

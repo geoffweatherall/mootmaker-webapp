@@ -76,27 +76,39 @@ outcome (data changed, something new is visible somewhere else), not just "no er
 
 ## Which account to sign in as
 
-- **A case that's actually testing sign-up, forgot-password, or anything else about the real
-  verification-code flow itself** needs a fresh account and a real code — see
-  `../support/testAccount.ts` and `../support/email.ts`.
-- **Every other case** should sign in as the **demo user** (`DEMO_USER_EMAIL`/`DEMO_USER_PASSWORD`,
-  populated by `run.sh` from SSM, where `mootmaker-api` publishes them) — a real, pre-verified,
-  always-admin Cognito account that exists in every environment already (see
-  `mootmaker-api/deploy/terraform/cognito.tf`), with a linked Person already resolved. No sign-up,
-  no email, no `support/cognitoAdmin.ts` bypass needed. This is the "pre-verified Cognito user"
-  option from this repo's own testing-strategy.md.
-- If a case specifically needs a **non-admin/standard** account signed in (e.g. asserting the
-  admin-only Settings sections are hidden), use `support/cognitoAdmin.ts`'s
-  `createConfirmedTestAccount` to create one directly via the Cognito Admin API, the same way
-  `../e2e/forgot-password.spec.ts` creates its own precondition account.
+Decided in mootmaker-api#95 and mootmaker-webapp#138. The accounts and sign-in helpers are in
+`tests/support/accounts.ts`.
+
+- **The standard user, by default.** An ordinary, non-admin account with a linked Person
+  ("E2E Standard"). Most of what this app does is done by ordinary users, so most tests are about
+  them.
+- **The admin user, only where admin functionality is the subject:** managing rooms or people,
+  granting admin, editing or cancelling someone else's meeting, admin-only UI.
+- **The no-person user** for the "signed in, but no linked Person" paths.
+- **A fresh account** (`../support/testAccount.ts` with `../support/cognitoAdmin.ts`, or the real
+  sign-up flow) only when the test changes the account itself - name, preferences, password,
+  deletion, an admin grant - or tests sign-up or forgot-password. Each fresh account counts
+  against Cognito's free monthly-active-user allowance, so don't reach for one by default.
+- **The demo user, never** - except B.11 and D.21, whose subject is the demo login on the home page.
+
+The three fixture users exist only in ephemeral environments. Database reset creates them if
+missing and repairs them to a known state, and **every test resets first**, so a test can rely on
+them being exactly as described - and must never change them.
+
+## Every test is independent
+
+`tests/support/test.ts` is the suite's `test`. Every test that touches the environment imports it
+instead of `@playwright/test`'s, and it:
+
+- **resets the environment before each test** (about a second), so any test can run alone or in
+  any order and still pass. A test relies on nothing from another test and nothing from
+  demo-data - only the reset baseline: no rooms, no meetings, the demo and fixture users;
+- gives each test an **`api`** (`tests/support/setupApi.ts`) to create the rooms, people, meetings
+  and avatars it needs over the API, as the machine-to-machine client. Setup goes through the
+  admin UI only when the admin UI is what's being tested.
 
 ## Known gaps
 
-- **Room/Person data has no Admin-API-style bypass.** Unlike Cognito accounts, there's no
-  backdoor for seeding rooms/people — a case that needs one has to create it through the real
-  Settings UI first, as its own precondition (see `add-meeting.spec.ts`). Fine for a small number
-  of specs; worth reconsidering (a seeding helper calling the GraphQL API directly, bypassing the
-  UI) if enough specs end up repeating the same room-creation boilerplate.
 - ~~`AddMeetingPage`'s success toast is never actually rendered.~~ **Fixed 2026-08-19.** Found while
   writing `add-meeting.spec.ts`: `useLocationToast.ts` existed and `SuccessToast.tsx` existed, but
   nothing ever wired them together. Fixed two bugs in `mootmaker-webapp/webapp/src/`:

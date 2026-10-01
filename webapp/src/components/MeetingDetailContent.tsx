@@ -1,14 +1,14 @@
-import { useFragment } from '@apollo/client/react'
+import { useApolloClient, useFragment } from '@apollo/client/react'
 import CloseIcon from '@mui/icons-material/Close'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
 import ShareIcon from '@mui/icons-material/Share'
-import { Box, IconButton, Stack, Typography } from '@mui/material'
-import { useRef, useState } from 'react'
+import { Box, IconButton, LinearProgress, Stack, Typography } from '@mui/material'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/authContext'
 import { formatLocalDate, formatLocalTime } from '../graphql/formatDateTime'
-import { MEETING_LIVE_FIELDS_FRAGMENT } from '../graphql/queries'
+import { MEETING_BY_ID, MEETING_LIVE_FIELDS_FRAGMENT } from '../graphql/queries'
 import type { MeetingDetails } from '../graphql/types'
 import { AttendeeStatusBadge } from './AttendeeStatusBadge'
 import { AttendeeStatusControl } from './AttendeeStatusControl'
@@ -88,30 +88,65 @@ export function MeetingDetailContent({
   })
 
   // Distinguishes "the fragment hasn't resolved complete yet" (true for an instant on first mount,
-  // before this hook's first re-render) from "it WAS complete, and now isn't" - only the latter
-  // means the meeting was genuinely cancelled out from under this open sheet/panel, via someone
-  // else's cancelMeeting evicting and then garbage-collecting the now-unreachable entity. A ref, not
-  // state: this must never itself trigger a re-render, only be read during one `complete` already
-  // caused.
+  // before this hook's first re-render) from "it WAS complete, and now isn't". A ref, not state:
+  // this must never itself trigger a re-render, only be read during one `complete` already caused.
   const wasEverComplete = useRef(false)
   if (complete) wasEverComplete.current = true
-  const cancelledElsewhere = wasEverComplete.current && !complete
+  const missing = wasEverComplete.current && !complete
+
+  // The meeting as last seen complete. While its entity is missing this is what stays on screen,
+  // rather than the snapshot `meeting` was opened with, which may be several edits old.
+  const lastSeen = useRef<MeetingDetails | null>(null)
+  if (complete && live) {
+    lastSeen.current = {
+      id: meeting.id,
+      subject: live.subject,
+      startTime: live.startTime,
+      endTime: live.endTime,
+      room: live.room,
+      organiser: live.organiser,
+      attendees: live.attendees,
+    }
+  }
+
+  // MISSING IS NOT CANCELLED. The entity goes incomplete whenever its day is evicted: any change
+  // to any meeting that day, by anyone, and every return to the tab or reconnect
+  // (useDaysInvalidated.ts) - and usually it is back moments later, when the refetch lands. It also
+  // goes missing for good when the meeting MOVES to a day nobody is watching. Treating "missing" as
+  // "cancelled" is what flashed "This meeting was cancelled." on every edit (mootmaker-webapp#132)
+  // and showed it permanently after a move (#134).
+  //
+  // So ask the API about this meeting itself. A meeting comes back: writing it to the cache makes
+  // the fragment complete again - with its new date if it moved. null comes back: it really is gone
+  // (cancelled, or aged out of retention), and only then does the sheet say so. Until the answer
+  // arrives the last-seen meeting stays up under a progress bar.
+  const client = useApolloClient()
+  const [confirmedGone, setConfirmedGone] = useState(false)
+  useEffect(() => {
+    if (!missing) {
+      setConfirmedGone(false)
+      return
+    }
+    let active = true
+    client
+      .query({ query: MEETING_BY_ID, variables: { id: meeting.id }, fetchPolicy: 'network-only' })
+      .then(({ data }) => {
+        if (active && !data?.meeting) setConfirmedGone(true)
+      })
+      .catch(() => {
+        // Left as "refreshing": the next broadcast, tab return or reconnect asks again.
+      })
+    return () => {
+      active = false
+    }
+  }, [missing, client, meeting.id])
+  const cancelledElsewhere = missing && confirmedGone
+  const refreshing = missing && !confirmedGone
 
   // The live fragment's own values once it has resolved (every field it covers, room/organiser/
   // attendee names included - MEETING_LIVE_FIELDS_FRAGMENT selects names directly, no separate
-  // lookup map needed here); the frozen snapshot otherwise, for the brief window before it does.
-  const current: MeetingDetails =
-    complete && live
-      ? {
-          id: meeting.id,
-          subject: live.subject,
-          startTime: live.startTime,
-          endTime: live.endTime,
-          room: live.room,
-          organiser: live.organiser,
-          attendees: live.attendees,
-        }
-      : meeting
+  // lookup map needed here); otherwise the last complete version, or the snapshot it opened with.
+  const current: MeetingDetails = lastSeen.current ?? meeting
 
   const myAttendee = current.attendees.find((attendee) => attendee.person.id === personId)
   const canEdit = isAdmin || (personId != null && current.organiser.id === personId)
@@ -137,6 +172,8 @@ export function MeetingDetailContent({
     // sizes itself (340px side panel, full-width bottom sheet); the full page's Paper sizes itself
     // too (MeetingDetailsPage.tsx). This fills whichever it's given.
     <Stack spacing={2} sx={{ p: 3, maxHeight: '80vh', overflowY: 'auto' }}>
+      {/* Held at a fixed height so the content below doesn't jump when it appears. */}
+      <Box sx={{ height: 4, mt: -2 }}>{refreshing && <LinearProgress aria-label="Refreshing meeting" />}</Box>
       <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <Typography variant="h6" component={headingComponent}>
           {current.subject}

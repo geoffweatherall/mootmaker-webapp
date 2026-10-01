@@ -70,6 +70,27 @@ describe('DayInvalidations', () => {
     expect(holdsMeeting(cache, 'Meeting:m-2026-09-15')).toBe(true)
   })
 
+  it('evicts a meeting held without its day, as the pop-out meeting page holds one', () => {
+    // MEETING_BY_ID caches the Meeting and nothing else - no Day references it (#135).
+    const cache = new InMemoryCache()
+    cache.writeQuery({
+      query: gql`
+        query M($id: ID!) {
+          meeting(id: $id) { id startTime }
+        }
+      `,
+      variables: { id: 'm-1' },
+      data: { meeting: { __typename: 'Meeting', id: 'm-1', startTime: '2026-03-04T10:00:00' } },
+    })
+    const invalidations = new DayInvalidations(cache)
+
+    expect(invalidations.invalidate(['2026-03-05'])).toEqual([])
+    expect(holdsMeeting(cache, 'Meeting:m-1')).toBe(true)
+
+    expect(invalidations.invalidate(['2026-03-04'])).toEqual(['2026-03-04'])
+    expect(holdsMeeting(cache, 'Meeting:m-1')).toBe(false)
+  })
+
   it('is a no-op for a day nobody has fetched', () => {
     // Row 3b of the cross-client table: evicting an absent day must be harmless, not an error.
     const cache = cacheHolding('2026-09-14')

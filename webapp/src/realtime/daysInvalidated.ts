@@ -120,9 +120,30 @@ export class DayInvalidations {
    */
   private evict(date: string): boolean {
     const id = this.cache.identify({ __typename: 'Day', date })
-    if (id === undefined) return false
-    this.evictMeetingsOf(id)
-    return this.cache.evict({ id })
+    let evicted = false
+    if (id !== undefined) {
+      this.evictMeetingsOf(id)
+      evicted = this.cache.evict({ id })
+    }
+    // Also every Meeting on that date that no cached Day references. The pop-out meeting page
+    // (MeetingDetailsPage) holds its meeting through MEETING_BY_ID alone, with no Day at all, so
+    // before this a broadcast for its date evicted nothing, triggered no refetch, and the page
+    // never changed however the meeting did (mootmaker-webapp#135). Evicting the entity puts it
+    // through the same path as the sheet/panel: MeetingDetailContent sees it go incomplete and asks
+    // the API what became of it.
+    return this.evictMeetingsDated(date) || evicted
+  }
+
+  /** Evicts every cached Meeting whose start falls on `date`. Returns whether any were held. */
+  private evictMeetingsDated(date: string): boolean {
+    const extracted = this.cache.extract() as Record<string, { __typename?: string; startTime?: string }>
+    let evicted = false
+    for (const [id, entity] of Object.entries(extracted)) {
+      if (entity?.__typename === 'Meeting' && entity.startTime?.startsWith(date)) {
+        evicted = this.cache.evict({ id }) || evicted
+      }
+    }
+    return evicted
   }
 
   /**

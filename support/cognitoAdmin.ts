@@ -4,7 +4,7 @@ import {
   CognitoIdentityProviderClient,
   SignUpCommand,
 } from '@aws-sdk/client-cognito-identity-provider'
-import { discardAnyPendingMessages } from './email'
+import { waitForVerificationCode } from './email'
 import type { TestAccount } from './testAccount'
 
 // Uses the caller's own AWS credentials (the same SSO session used for everything else in this
@@ -77,7 +77,13 @@ export async function createConfirmedTestAccount(account: TestAccount): Promise<
   // side effect, even though AdminConfirmSignUp bypasses needing that code - left in the shared
   // queue, a later waitForVerificationCode call for this same address (e.g. a subsequent
   // forgot-password request) could pick up this unrelated, unusable code instead of the real one,
-  // since the queue is a standard (unordered) SQS queue. Drain it now, before the caller does
+  // since the queue is a standard (unordered) SQS queue. Consume it now, before the caller does
   // anything that requests a real code.
-  await discardAnyPendingMessages(account.email)
+  //
+  // WAITS for that one email rather than draining whatever happens to be there. A best-effort drain
+  // that stopped at the first empty poll was the cause of mootmaker-webapp#82: when the sign-up
+  // email reached the queue after the drain had given up, a later wait for a password-reset code
+  // took the sign-up code instead, and Cognito rejected it as "Invalid verification code". SignUp
+  // always sends exactly one, so waiting for it is deterministic.
+  await waitForVerificationCode(account.email)
 }

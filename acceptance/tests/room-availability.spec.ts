@@ -131,8 +131,10 @@ test('E.26 - view room availability for today', async ({ page, api }) => {
   const roomName = `Today Room E26 ${runId}`
   const pinnedNow = pinnedWeekday('Wednesday')
   await page.clock.setFixedTime(pinnedNow)
-  await signInAsStandardUser(page)
+  // Before signing in: Home's agenda caches today's workspace, rooms included, and the in-app
+  // navigation below reads that cache - a room created after it would not be there.
   await api.createRoom(roomName, 4)
+  await signInAsStandardUser(page)
 
   await page.getByRole('link', { name: 'Room Availability' }).click()
 

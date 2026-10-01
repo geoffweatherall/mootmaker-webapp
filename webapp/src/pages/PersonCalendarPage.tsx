@@ -373,7 +373,9 @@ export default function PersonCalendarPage() {
             // opening Add Meeting from someone's calendar reads as "schedule a meeting with them".
             // See the design doc's FAB pre-fill decision. AddMeetingPage reads this via location.state
             // and resolves the name itself from its own reference data - only the id is needed here.
-            state={{ attendeeId: selectedPerson.id, ...returnHere }}
+            // Not on your own calendar, though: you are the default organiser, and an attendee can't
+            // also be the organiser, so pre-filling yourself left Organiser blank and Save refused.
+            state={{ ...(selectedPerson.id === ownPersonId ? {} : { attendeeId: selectedPerson.id }), ...returnHere }}
             color="primary"
             aria-label="Add Meeting"
             sx={{ pointerEvents: 'auto' }}

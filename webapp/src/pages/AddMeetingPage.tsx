@@ -41,6 +41,7 @@ import {
   prioritizeCurrentRoom,
   referenceDataReady,
   initialSuggestionCache,
+  pageAfterSave,
   snapToNearestQuarterHour,
   type DefaultMeetingTimes,
   type SuggestionCache,
@@ -111,7 +112,7 @@ export default function AddMeetingPage() {
   // same mounted page. Neither applies to edit - Edit always fetches the meeting fresh by id
   // (below), never trusting location.state, so a bookmarked/shared edit link works the same as a
   // freshly-clicked one.
-  const routerState = location.state as { date?: string; attendeeId?: string } | null
+  const routerState = location.state as { date?: string; attendeeId?: string; returnTo?: string } | null
   const viewedDate = isEdit ? undefined : routerState?.date
   const prefilledAttendeeId = isEdit ? undefined : routerState?.attendeeId
 
@@ -340,7 +341,7 @@ export default function AddMeetingPage() {
         dayInvalidations.noteOwnWrite(
           originalRoomId !== null && existingMeeting ? [existingMeeting.startTime.slice(0, 10), bookedDate] : [bookedDate],
         )
-        navigate(`/rooms/${bookedDate}/availability`, {
+        navigate(pageAfterSave(routerState?.returnTo, bookedDate), {
           state: { toast: 'Meeting was successfully updated.' },
         })
       }
@@ -368,7 +369,7 @@ export default function AddMeetingPage() {
       // already holds it. (This used to hand the new meeting over, because the old read went
       // through a GSI and DynamoDB rejects ConsistentRead on an index - both the GSI and that race
       // are gone.)
-      navigate(`/rooms/${bookedDate}/availability`, {
+      navigate(pageAfterSave(routerState?.returnTo, bookedDate), {
         state: { toast: 'Meeting was successfully scheduled.' },
       })
     }

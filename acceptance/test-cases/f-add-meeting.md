@@ -24,7 +24,7 @@ business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 
 **Given** a signed-in user with a linked Person, a room, and the form's own sensible defaults for everything else
 **When** they fill in only Subject and Room and submit
-**Then** the meeting is created, the app navigates to that day's Room Availability for the meeting's room, a success toast appears, and the new meeting is visible on the grid
+**Then** the meeting is created, the app navigates to that day's Room Availability for the meeting's room (the form was opened directly, so there is no page to return to - see mootmaker-webapp#146), a success toast appears, and the new meeting is visible on the grid
 
 **Steps:** (already implemented — see the spec file for the exact selectors used)
 1. Sign in as the standard user.

@@ -1,7 +1,13 @@
 import type { Page } from '@playwright/test'
-import { formatDayCell, pinnedWeekday } from './support/pinnedDates'
+import { formatDateParam, formatDayCell, pinnedWeekday } from './support/pinnedDates'
 import { uniqueId } from './support/env'
-import { STANDARD_USER_NAME, signInAsAdminUser, signInAsNoPersonUser, signInAsStandardUser } from './support/accounts'
+import {
+  STANDARD_USER_NAME,
+  signInAsAdminUser,
+  signInAsNoPersonUser,
+  signInAsStandardUser,
+  standardUser,
+} from './support/accounts'
 import { expect, test } from './support/test'
 
 // mootmaker/docs/reference/use-cases.md, section G (Person Calendar), cases 59-63 and 65-67. Case 64 ("no people
@@ -333,4 +339,62 @@ test('G.67 - the sidebar\'s Calendar item is disabled, not hidden, for a signed-
   const urlBefore = page.url()
   await calendarItem.click({ timeout: 2_000 }).catch(() => {})
   expect(page.url()).toBe(urlBefore)
+})
+
+// mootmaker-webapp#146: Save returns to the page the form was opened from - here, the calendar -
+// rather than always landing on Room Availability.
+test('adding a meeting from the calendar returns to the calendar, showing it', async ({ page, api }) => {
+  await page.clock.setFixedTime(pinnedWeekday('Wednesday'))
+  const id = uniqueId()
+  const roomName = `Calendar Add Room ${id}`
+  const subject = `Calendar add meeting ${id}`
+  await api.createRoom(roomName, 4)
+  await signInAsStandardUser(page)
+  await goToOwnCalendar(page)
+  const calendarUrl = page.url()
+
+  await page.getByRole('link', { name: 'Add Meeting' }).click()
+  await expect(page.getByRole('heading', { name: 'Add Meeting' })).toBeVisible()
+  await page.getByLabel('Subject').fill(subject)
+  await page.getByRole('combobox', { name: 'Room' }).click()
+  await page.getByRole('option', { name: roomName, exact: false }).click()
+  await fillTime(page, 'Start time', '1000')
+  await fillTime(page, 'End time', '1030')
+  await page.getByRole('button', { name: 'Save' }).click()
+
+  await expect(page).toHaveURL(calendarUrl)
+  await expect(page.getByText('Meeting was successfully scheduled.')).toBeVisible()
+  await expect(page.getByText(subject, { exact: false })).toBeVisible()
+})
+
+test("editing a meeting from the calendar's detail panel returns to the calendar, showing the change", async ({
+  page,
+  api,
+}) => {
+  const pinnedNow = pinnedWeekday('Wednesday')
+  await page.clock.setFixedTime(pinnedNow)
+  const id = uniqueId()
+  const subject = `Calendar edit meeting ${id}`
+  const renamed = `Calendar edited meeting ${id}`
+  const date = formatDateParam(pinnedNow)
+  await api.createMeeting({
+    subject,
+    roomId: await api.createRoom(`Calendar Edit Room ${id}`, 4),
+    organiserId: await api.personIdByEmail(standardUser().email),
+    startTime: `${date}T10:00:00`,
+    endTime: `${date}T10:30:00`,
+  })
+  await signInAsStandardUser(page)
+  await goToOwnCalendar(page)
+  const calendarUrl = page.url()
+
+  await page.getByText(subject, { exact: false }).click()
+  await page.getByRole('link', { name: 'Edit meeting' }).click()
+  await expect(page.getByLabel('Subject')).toHaveValue(subject)
+  await page.getByLabel('Subject').fill(renamed)
+  await page.getByRole('button', { name: 'Save' }).click()
+
+  await expect(page).toHaveURL(calendarUrl)
+  await expect(page.getByText('Meeting was successfully updated.')).toBeVisible()
+  await expect(page.getByText(renamed, { exact: false })).toBeVisible()
 })

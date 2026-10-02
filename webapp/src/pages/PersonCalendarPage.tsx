@@ -20,6 +20,7 @@ import {
 import dayjs, { type Dayjs } from 'dayjs'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useReturnHereState } from '../components/useReturnHereState'
 import { useAuth } from '../auth/authContext'
 import { EmptyState } from '../components/EmptyState'
 import { ErrorBanner } from '../components/ErrorBanner'
@@ -47,6 +48,7 @@ function startOfWorkWeek(from: Dayjs): Dayjs {
 export default function PersonCalendarPage() {
   const { personId } = useParams<{ personId: string }>()
   const navigate = useNavigate()
+  const returnHere = useReturnHereState()
   const [dismissedError, setDismissedError] = useState(false)
   const { personId: ownPersonId, displayName: ownDisplayName, timeFormat } = useAuth()
   const theme = useTheme()
@@ -371,7 +373,9 @@ export default function PersonCalendarPage() {
             // opening Add Meeting from someone's calendar reads as "schedule a meeting with them".
             // See the design doc's FAB pre-fill decision. AddMeetingPage reads this via location.state
             // and resolves the name itself from its own reference data - only the id is needed here.
-            state={{ attendeeId: selectedPerson.id }}
+            // Not on your own calendar, though: you are the default organiser, and an attendee can't
+            // also be the organiser, so pre-filling yourself left Organiser blank and Save refused.
+            state={{ ...(selectedPerson.id === ownPersonId ? {} : { attendeeId: selectedPerson.id }), ...returnHere }}
             color="primary"
             aria-label="Add Meeting"
             sx={{ pointerEvents: 'auto' }}

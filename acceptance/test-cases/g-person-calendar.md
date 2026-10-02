@@ -277,3 +277,31 @@ not be a reachable real-world state for this product at all. Left unautomated pe
 **Out of scope:** the brief "awaiting resolution" spinner state `MenuContent.tsx` also has (that's for a not-yet-resolved `personId` mid-lookup — already deterministically covered by `webapp/tests/calendar-menu.spec.ts`'s mocked-layer test, which can gate the query open on demand in a way a real backend can't easily be made to do).
 
 **Notes:** None.
+
+### G.68 — Adding a meeting from the calendar returns to the calendar
+
+**Use case:** mootmaker-webapp#146 — Save returns to the page the form was opened from.
+**Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
+**Android:** not yet automated
+
+**Preconditions:** Signed in as the standard user. A uniquely-named room created over the API.
+
+**Given** the standard user's own calendar
+**When** they press the Add Meeting button, fill in Subject, Room and a time today, and Save
+**Then** they are back on the same calendar URL, the success toast shows, and the new meeting is listed
+
+**Notes:** Before #146, Save always went to the booked day's Room Availability.
+
+### G.69 — Editing a meeting from the calendar's detail panel returns to the calendar
+
+**Use case:** mootmaker-webapp#146 — Save returns to the page the form was opened from.
+**Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
+**Android:** not yet automated
+
+**Preconditions:** Signed in as the standard user, who organises a meeting today created over the API.
+
+**Given** the meeting's detail panel open on the standard user's calendar
+**When** they press Edit meeting, change the subject, and Save
+**Then** they are back on the same calendar URL, the "updated" toast shows, and the new subject is listed
+
+**Notes:** Opened from Room Availability instead, Save goes to the booked day's Room Availability (O-section edit cases), since the meeting may have moved to another date.

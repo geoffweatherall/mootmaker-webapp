@@ -5,6 +5,7 @@ import { formatDateParam, pinnedWeekday } from './support/pinnedDates'
 import { STANDARD_USER_NAME, signInAsAdminUser, signInAsStandardUser, standardUser } from './support/accounts'
 import { requireEnv, uniqueId } from './support/env'
 import { expect, test } from './support/test'
+import { m2mAccessToken } from './support/setupApi'
 
 /**
  * designs/edit-and-cancel-meetings.md's acceptance-layer coverage: the cases that genuinely need a
@@ -103,27 +104,6 @@ async function extractIdToken(page: Page): Promise<string> {
     throw new Error('Could not find a Cognito idToken in localStorage - is the page signed in?')
   }
   return token
-}
-
-/** M2M admin-equivalent token via OAuth2 client_credentials - see authorization-boundaries.spec.ts's
- * own copy for the full explanation of what this is and why it is safe to use for fixture setup
- * (a real createRoom call through the real handler) as well as, here, for the "another client"
- * side of the two live-update cases, where the point under test is the OBSERVER's page updating,
- * not who the editor happens to be. */
-async function fetchAdminAccessToken(request: APIRequestContext): Promise<string> {
-  const response = await request.post(requireEnv('COGNITO_TOKEN_URL'), {
-    form: {
-      grant_type: 'client_credentials',
-      client_id: requireEnv('COGNITO_TEST_CLIENT_ID'),
-      client_secret: requireEnv('COGNITO_TEST_CLIENT_SECRET'),
-      scope: requireEnv('COGNITO_TEST_SCOPE'),
-    },
-  })
-  const body = await response.json()
-  if (!body.access_token) {
-    throw new Error(`Cognito token endpoint returned no access_token: ${JSON.stringify(body)}`)
-  }
-  return body.access_token as string
 }
 
 const CREATE_MEETING = `
@@ -301,7 +281,7 @@ test('O.119 - the second of two cancellations of the same meeting gets MeetingNo
 
   const meetingId = await createMeetingViaApi(page, token, { roomId, organiserId, attendeeIds: [], subject, date })
 
-  const adminToken = await fetchAdminAccessToken(request)
+  const adminToken = await m2mAccessToken(request)
 
   const first = await rawGraphql(request, adminToken, CANCEL_MEETING, { id: meetingId })
   const firstErrors = (first.data?.cancelMeeting as { errors: string[] } | undefined)?.errors
@@ -432,7 +412,7 @@ test('M.112 - an edit made by another client is reflected live on an already-ope
   await expect(page.getByRole('heading', { name: subject, exact: true })).toBeVisible()
 
   const newSubject = `${subject} (edited elsewhere)`
-  const adminToken = await fetchAdminAccessToken(request)
+  const adminToken = await m2mAccessToken(request)
   const editResult = await rawGraphql(request, adminToken, UPDATE_MEETING, {
     id: meetingId,
     meeting: {
@@ -486,7 +466,7 @@ test('M.113 - a cancellation made by another client is reflected live on an alre
   await openMeetingDetail(page, room, subject)
   await expect(page.getByRole('heading', { name: subject, exact: true })).toBeVisible()
 
-  const adminToken = await fetchAdminAccessToken(request)
+  const adminToken = await m2mAccessToken(request)
   const cancelResult = await rawGraphql(request, adminToken, CANCEL_MEETING, { id: meetingId })
   const cancelErrors = (cancelResult.data?.cancelMeeting as { errors: string[] } | undefined)?.errors
   expect(cancelErrors).toEqual([])

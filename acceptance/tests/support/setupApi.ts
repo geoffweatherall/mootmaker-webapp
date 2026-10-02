@@ -13,14 +13,12 @@ import { requireEnv } from './env'
  * and could not connect at all from a workstation where Playwright's client works fine.
  */
 export class SetupApi {
-  private token: string | undefined
-
   constructor(private readonly request: APIRequestContext) {}
 
   /** Runs any GraphQL operation as the machine-to-machine client. Throws on GraphQL errors. */
   async graphql<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
     const response = await this.request.post(requireEnv('GRAPHQL_API_URL'), {
-      headers: { Authorization: await this.accessToken() },
+      headers: { Authorization: await m2mAccessToken(this.request) },
       data: { query, variables },
     })
     const body = (await response.json()) as { data?: T; errors?: unknown }
@@ -125,24 +123,37 @@ export class SetupApi {
     failIfRejected('confirmAvatarUpload', confirmed.confirmAvatarUpload.errors)
     return confirmed.confirmAvatarUpload.person!.avatarUrl
   }
+}
 
-  private async accessToken(): Promise<string> {
-    if (this.token) return this.token
-    const response = await this.request.post(requireEnv('COGNITO_TOKEN_URL'), {
-      form: {
-        grant_type: 'client_credentials',
-        client_id: requireEnv('COGNITO_TEST_CLIENT_ID'),
-        client_secret: requireEnv('COGNITO_TEST_CLIENT_SECRET'),
-        scope: requireEnv('COGNITO_TEST_SCOPE'),
-      },
-    })
-    const body = await response.json()
-    if (!body.access_token) {
-      throw new Error(`Cognito token endpoint returned no access_token: ${JSON.stringify(body)}`)
-    }
-    this.token = body.access_token as string
-    return this.token
+let cachedToken: { value: string; expiresAt: number } | undefined
+
+/**
+ * The machine-to-machine client's access token, fetched once and reused for as long as it is valid
+ * rather than once per test. Cognito bills every token request, with no free tier, and the `api`
+ * fixture is test-scoped, so a token per SetupApi was a token per test - about 100 per run, and the
+ * largest single line on the September 2026 bill. Refetched a few minutes before it expires
+ * (mootmaker-api sets the client's token validity to 4 hours), so a run of any length still works.
+ */
+export async function m2mAccessToken(request: APIRequestContext): Promise<string> {
+  if (cachedToken && Date.now() < cachedToken.expiresAt) return cachedToken.value
+  const response = await request.post(requireEnv('COGNITO_TOKEN_URL'), {
+    form: {
+      grant_type: 'client_credentials',
+      client_id: requireEnv('COGNITO_TEST_CLIENT_ID'),
+      client_secret: requireEnv('COGNITO_TEST_CLIENT_SECRET'),
+      scope: requireEnv('COGNITO_TEST_SCOPE'),
+    },
+  })
+  const body = await response.json()
+  if (!body.access_token) {
+    throw new Error(`Cognito token endpoint returned no access_token: ${JSON.stringify(body)}`)
   }
+  const refreshMarginSeconds = 300
+  cachedToken = {
+    value: body.access_token as string,
+    expiresAt: Date.now() + (Number(body.expires_in) - refreshMarginSeconds) * 1000,
+  }
+  return cachedToken.value
 }
 
 function failIfRejected(operation: string, errors: string[]): void {

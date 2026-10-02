@@ -45,20 +45,29 @@ function parseDateParam(value: string | undefined): Dayjs | null {
   return parsed.isValid() ? parsed : null
 }
 
+const NO_ROOMS: ReadonlySet<string> = new Set()
+
 export default function RoomAvailabilityPage() {
   const { timeFormat } = useAuth()
   const { date } = useParams<{ date: string }>()
   const navigate = useNavigate()
   const [dismissedError, setDismissedError] = useState(false)
   const theme = useTheme()
-  const [expandedRoomIds, setExpandedRoomIds] = useState<Set<string>>(new Set())
+  // Which rooms are expanded belongs to the day being viewed (mootmaker-webapp#116): changing day
+  // only changes the URL, so this page stays mounted, and a plain Set carried every expanded room
+  // over to the next day. Remembering the day alongside it means a new day starts collapsed.
+  const [expanded, setExpanded] = useState<{ date: string | undefined; roomIds: Set<string> }>(() => ({
+    date,
+    roomIds: new Set(),
+  }))
+  const expandedRoomIds = expanded.date === date ? expanded.roomIds : NO_ROOMS
 
   function toggleExpanded(roomId: string) {
-    setExpandedRoomIds((current) => {
-      const next = new Set(current)
+    setExpanded((current) => {
+      const next = new Set(current.date === date ? current.roomIds : [])
       if (next.has(roomId)) next.delete(roomId)
       else next.add(roomId)
-      return next
+      return { date, roomIds: next }
     })
   }
 

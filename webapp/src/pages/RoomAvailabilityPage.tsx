@@ -28,6 +28,7 @@ import { useMeetingDetailOverlay } from '../components/useMeetingDetailOverlay'
 import { errorMessages } from '../graphql/errorMessages'
 import { useAuth } from '../auth/authContext'
 import { formatLocalTime } from '../graphql/formatDateTime'
+import { BOUNDARIES } from '../graphql/boundaries'
 import { DAYS, REFERENCE_DATA } from '../graphql/queries'
 import type { Meeting, Person } from '../graphql/types'
 import { AvailabilityIcon } from '../icons'
@@ -86,6 +87,18 @@ export default function RoomAvailabilityPage() {
   function goToDate(next: Dayjs) {
     navigate(`/rooms/${next.format(DATE_PARAM_FORMAT)}/availability`)
   }
+
+  // Bounded like PersonCalendarPage's week navigation (mootmaker-webapp#60): not before the oldest
+  // day the server still keeps, nor after the last day it takes bookings for. Unbounded until the
+  // boundaries arrive, rather than briefly disabling everything.
+  const { data: boundariesData } = useQuery(BOUNDARIES, { fetchPolicy: 'cache-first' })
+  const boundaries = boundariesData?.workspace.boundaries
+  const earliestDate = boundaries ? dayjs(boundaries.earliestRetainedDate) : undefined
+  const latestDate = boundaries ? dayjs(boundaries.latestBookableDate) : undefined
+  const canGoBack =
+    !boundaries || selectedDate.subtract(1, 'day').format(DATE_PARAM_FORMAT) >= boundaries.earliestRetainedDate
+  const canGoForward =
+    !boundaries || selectedDate.add(1, 'day').format(DATE_PARAM_FORMAT) <= boundaries.latestBookableDate
 
   // Rooms change rarely, so `cache-first` fetches once and reuses the cache from then on; a full
   // page refresh resets the in-memory cache and picks up any changes. Meetings change constantly,
@@ -175,16 +188,23 @@ export default function RoomAvailabilityPage() {
           <IconButton
             onClick={() => goToDate(selectedDate.subtract(1, 'day'))}
             aria-label="Previous day"
+            disabled={!canGoBack}
           >
             <ChevronLeftIcon />
           </IconButton>
           <DatePicker
             value={selectedDate}
             onChange={(value) => value && goToDate(value)}
+            minDate={earliestDate}
+            maxDate={latestDate}
             format="dddd D MMM YYYY"
             slotProps={{ textField: { size: 'small' } }}
           />
-          <IconButton onClick={() => goToDate(selectedDate.add(1, 'day'))} aria-label="Next day">
+          <IconButton
+            onClick={() => goToDate(selectedDate.add(1, 'day'))}
+            aria-label="Next day"
+            disabled={!canGoForward}
+          >
             <ChevronRightIcon />
           </IconButton>
         </Stack>

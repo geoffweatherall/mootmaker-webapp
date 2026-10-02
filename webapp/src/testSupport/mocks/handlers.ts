@@ -344,6 +344,9 @@ export const handlers: HttpHandler[] = [
           },
         })
 
+      case 'Boundaries':
+        return HttpResponse.json({ data: { workspace: { __typename: 'Workspace', boundaries: BOUNDARIES } } })
+
       case 'MeetingVersion': {
         const found = meetings.find((candidate) => candidate.id === variables.id) ?? null
         return HttpResponse.json({

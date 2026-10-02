@@ -359,3 +359,19 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 **Out of scope:** the Home page's own "Add Meeting" entry point, which pre-fills *today* instead (D.25) — this case is specifically the *contrast* with that one.
 
 **Notes:** Cross-check this against `AddMeetingPage.tsx`'s actual `defaultDate()` implementation when this is written — as of this catalog, `defaultDate()` always returns `dayjs().startOf('day')` (i.e. today), with no apparent wiring to a date passed from `RoomAvailabilityPage`'s "Add Meeting" link. **This may be a real gap, not yet implemented** — if so, this test should be written to fail honestly against current behaviour (documenting the gap) rather than adjusted to match what the code happens to do; flag it for a decision (build the feature, or correct the use case's wording) rather than silently treating whichever the code does as correct.
+
+<a id="tc-e38"></a>
+### E.38 — Day navigation stops at the server's published window
+
+**Use case:** mootmaker-webapp#60 — Room Availability's day navigation is bounded like Person Calendar's week navigation.
+**Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
+**Android:** not yet automated
+
+**Preconditions:** Signed in as the standard user. The window (`workspace.boundaries`) is read over the API, not recomputed.
+
+**Given** Room Availability on the last bookable day
+**Then** Next day is disabled and Previous day is enabled
+**Given** Room Availability on the oldest retained day
+**Then** Previous day is disabled and Next day is enabled
+
+**Notes:** The date picker gets the same window as `minDate`/`maxDate`. Navigation stays unbounded until the boundaries arrive, rather than briefly disabling everything.

@@ -548,3 +548,21 @@ test('E.37 - "Add Meeting" from this page pre-fills the currently viewed date, n
   // viewed (today + 3 days), not the pinned clock's actual "today".
   await expectDateFieldShows(page.getByRole('group', { name: 'Date' }), viewedDate)
 })
+
+// mootmaker-webapp#60: day navigation is bounded like Person Calendar's week navigation - by the
+// server's published window, read here over the API rather than recomputed.
+test('E.38 - Previous/Next day stop at the oldest kept day and the last bookable day', async ({ page, api }) => {
+  const { workspace } = await api.graphql<{
+    workspace: { boundaries: { earliestRetainedDate: string; latestBookableDate: string } }
+  }>('{ workspace { boundaries { earliestRetainedDate latestBookableDate } } }')
+  const { earliestRetainedDate, latestBookableDate } = workspace.boundaries
+  await signInAsStandardUser(page)
+
+  await page.goto(`/rooms/${latestBookableDate}/availability`)
+  await expect(page.getByRole('button', { name: 'Next day' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Previous day' })).toBeEnabled()
+
+  await page.goto(`/rooms/${earliestRetainedDate}/availability`)
+  await expect(page.getByRole('button', { name: 'Previous day' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Next day' })).toBeEnabled()
+})

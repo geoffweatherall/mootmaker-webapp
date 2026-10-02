@@ -169,22 +169,18 @@ renames, but far wider, since almost every spec asserts on a date or a time some
 ---
 
 <a id="tc-n106"></a>
-### N.106 — Hour labels that belong to no meeting
+### N.106 — Room Availability's meeting times follow the format
 
-**Use case:** [use-cases.md#uc-106](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-106) — "Time labels that are not part of any meeting — the Room Availability hour axis, and its \"Showing business hours\" caption — follow the format too."
+**Use case:** [use-cases.md#uc-106](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-106) — "Meeting times in Room Availability's expanded per-room list follow the format too."
 **Status:** ✅ Automated — [`tests/settings-date-time-format.spec.ts`](../tests/settings-date-time-format.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** A freshly signed-up account, at the defaults. No meeting required — the axis and caption render on an empty grid.
+**Preconditions:** A freshly signed-up account, at the defaults, with a meeting at 09:00 on a pinned day.
 
-**Given** a signed-in user viewing Room Availability
-**When** they switch their time format to AM/PM
-**Then** the grid's hour-axis labels and the "Showing business hours" caption both change with it
+**Given** a signed-in user viewing that day's Room Availability, with the meeting's room expanded
+**When** they switch their time format to AM/PM and return
+**Then** the meeting's row changes from `09:00` to `09:00 AM`
 
-**Assertions:**
-- At the default: the caption reads `Showing business hours (08:00–17:00).` and `08:00` appears as an axis label.
-- After switching to AM/PM: the caption reads `Showing business hours (08:00 AM–05:00 PM).`, and `08:00 AM` / `05:00 PM` appear as axis labels.
+**Out of scope:** the day-navigation `DatePicker` above the list, which deliberately stays fixed at `dddd D MMM YYYY` (see Trade-offs and decisions in the design) — it is a navigation aid whose weekday name is the useful part, not a record of when a meeting is.
 
-**Out of scope:** the day-navigation `DatePicker` above the grid, which deliberately stays fixed at `dddd D MMM YYYY` (see Trade-offs and decisions in the design) — it is a navigation aid whose weekday name is the useful part, not a record of when a meeting is.
-
-**Notes:** These two displays were missed on the first implementation pass, and the gap is instructive: the design's "Impacts on components" was built by grepping for `formatLocalTime`/`formatLocalDate` call sites, so it found every place a *meeting's* time is rendered and none of the places an hour is rendered from a constant. A time shown to a human is in scope however it was derived.
+**Notes:** This case used to cover the grid's hour axis and its "Showing business hours" caption: time labels derived from a constant rather than a meeting, which the first implementation pass missed because the design's impact list came from grepping `formatLocalTime`/`formatLocalDate` call sites. The 2026-09-19 Room Availability redesign removed both, so the expanded meeting list is the only time display left on the page (mootmaker#103). The lesson stands: a time shown to a human is in scope however it was derived.

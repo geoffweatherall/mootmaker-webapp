@@ -153,9 +153,10 @@ test.describe('live updates show no false states on the way', () => {
     page,
     api,
   }) => {
-    // Today, so Home's agenda shows it as well as the calendar.
-    const today = new Date()
-    today.setHours(9, 0, 0, 0)
+    // The pinned "today", so Home's agenda shows it as well as the calendar. A pinned weekday, not
+    // the real today: the calendar shows only Monday-Friday, so on a weekend the meeting had no day
+    // to appear in (see support/pinnedDates.ts).
+    const today = pinnedWeekday('Wednesday', { hour: 9 })
     await page.clock.setFixedTime(today)
     const booked = await bookForTheStandardUser(api, 'LiveRename', formatDateParam(today), '11:00:00')
     await signInAsStandardUser(page)

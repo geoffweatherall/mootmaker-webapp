@@ -6,6 +6,7 @@ import { STANDARD_USER_NAME, signInAsAdminUser, signInAsStandardUser, standardUs
 import { requireEnv, uniqueId } from './support/env'
 import { expect, test } from './support/test'
 import { m2mAccessToken } from './support/setupApi'
+import { gql } from './support/gql'
 
 /**
  * designs/edit-and-cancel-meetings.md's acceptance-layer coverage: the cases that genuinely need a
@@ -79,7 +80,7 @@ async function myPersonId(page: Page, token: string): Promise<string> {
   const result = await graphql<{ workspace: { me: { id: string } | null } }>(
     page,
     token,
-    `query { workspace { me { id } } }`,
+    gql`query { workspace { me { id } } }`,
     {},
   )
   if (!result.workspace.me) {
@@ -106,7 +107,7 @@ async function extractIdToken(page: Page): Promise<string> {
   return token
 }
 
-const CREATE_MEETING = `
+const CREATE_MEETING = gql`
   mutation CreateMeeting($meeting: MeetingInput!) {
     createMeeting(meeting: $meeting) { meeting { id } errors }
   }
@@ -145,13 +146,13 @@ function addMinutes(time: string, minutes: number): string {
   return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}:00`
 }
 
-const UPDATE_MEETING = `
+const UPDATE_MEETING = gql`
   mutation UpdateMeeting($id: ID!, $meeting: MeetingInput!) {
     updateMeeting(id: $id, meeting: $meeting) { meeting { id } errors }
   }
 `
 
-const CANCEL_MEETING = `
+const CANCEL_MEETING = gql`
   mutation CancelMeeting($id: ID!) {
     cancelMeeting(id: $id) { errors }
   }
@@ -194,7 +195,7 @@ test('O.116 - a user who is neither organiser nor admin calling updateMeeting/ca
   const reference = await graphql<{ workspace: { rooms: { id: string; name: string }[] } }>(
     page,
     organiserToken,
-    `query { workspace { rooms { id name } } }`,
+    gql`query { workspace { rooms { id name } } }`,
     {},
   )
   const roomId = reference.workspace.rooms.find((r) => r.name === room)!.id
@@ -247,7 +248,7 @@ test('O.116 - a user who is neither organiser nor admin calling updateMeeting/ca
   const after = await graphql<{ meeting: { subject: string } | null }>(
     page,
     organiserToken,
-    `query($id: ID!) { meeting(id: $id) { subject } }`,
+    gql`query($id: ID!) { meeting(id: $id) { subject } }`,
     { id: meetingId },
   )
   expect(after.meeting).not.toBeNull()
@@ -274,7 +275,7 @@ test('O.119 - the second of two cancellations of the same meeting gets MeetingNo
   const reference = await graphql<{ workspace: { rooms: { id: string; name: string }[] } }>(
     page,
     token,
-    `query { workspace { rooms { id name } } }`,
+    gql`query { workspace { rooms { id name } } }`,
     {},
   )
   const roomId = reference.workspace.rooms.find((r) => r.name === room)!.id
@@ -317,7 +318,7 @@ test('O.121 - editing a meeting to a different date moves it there, without chan
   const reference = await graphql<{ workspace: { rooms: { id: string; name: string }[] } }>(
     page,
     token,
-    `query { workspace { rooms { id name } } }`,
+    gql`query { workspace { rooms { id name } } }`,
     {},
   )
   const roomId = reference.workspace.rooms.find((r) => r.name === room)!.id
@@ -346,7 +347,7 @@ test('O.121 - editing a meeting to a different date moves it there, without chan
   const days = await graphql<{ workspace: { days: { date: string; meetings: { id: string }[] }[] } }>(
     page,
     token,
-    `query($dates: [String!]) { workspace(dates: $dates) { days { date meetings { id } } } }`,
+    gql`query($dates: [String!]) { workspace(dates: $dates) { days { date meetings { id } } } }`,
     { dates: [dateA, dateB] },
   )
   const dayA = days.workspace.days.find((d) => d.date === dateA)!
@@ -357,7 +358,7 @@ test('O.121 - editing a meeting to a different date moves it there, without chan
   const byId = await graphql<{ meeting: { id: string; startTime: string } | null }>(
     page,
     token,
-    `query($id: ID!) { meeting(id: $id) { id startTime } }`,
+    gql`query($id: ID!) { meeting(id: $id) { id startTime } }`,
     { id: meetingId },
   )
   expect(byId.meeting).not.toBeNull()
@@ -399,7 +400,7 @@ test('M.112 - an edit made by another client is reflected live on an already-ope
   const reference = await graphql<{ workspace: { rooms: { id: string; name: string }[] } }>(
     page,
     token,
-    `query { workspace { rooms { id name } } }`,
+    gql`query { workspace { rooms { id name } } }`,
     {},
   )
   const roomId = reference.workspace.rooms.find((r) => r.name === room)!.id
@@ -455,7 +456,7 @@ test('M.113 - a cancellation made by another client is reflected live on an alre
   const reference = await graphql<{ workspace: { rooms: { id: string; name: string }[] } }>(
     page,
     token,
-    `query { workspace { rooms { id name } } }`,
+    gql`query { workspace { rooms { id name } } }`,
     {},
   )
   const roomId = reference.workspace.rooms.find((r) => r.name === room)!.id
@@ -548,7 +549,7 @@ test("an admin cancels a meeting someone else organises", async ({ page, api }) 
   await page.getByRole('dialog').getByRole('button', { name: 'Cancel meeting' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
-  const after = await api.graphql<{ meeting: { id: string } | null }>('query($id: ID!) { meeting(id: $id) { id } }', {
+  const after = await api.graphql<{ meeting: { id: string } | null }>(gql`query($id: ID!) { meeting(id: $id) { id } }`, {
     id: meetingId,
   })
   expect(after.meeting).toBeNull()

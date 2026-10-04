@@ -77,6 +77,13 @@ jobs:
       - name: GraphQL codegen is up to date
         run: npm run codegen:check
 
+      # codegen only sees webapp/src. The acceptance suite's operations are hand-written gql``
+      # templates, checked here against the same schema without a deployed environment
+      # (mootmaker-webapp#62). Needs only this directory's node_modules, which hold the parser,
+      # graphql-js and @mootmaker/schema.
+      - name: Test suites' GraphQL is valid against the schema
+        run: npm run graphql:check:tests
+
       # Both Playwright projects pin `channel: 'chrome'` (see webapp/playwright.config.ts),
       # so this installs real Google Chrome, not the bundled chromium build.
       - name: Install Playwright browser

@@ -13,6 +13,7 @@ import {
 import { formatDateParam, pinnedWeekday } from './support/pinnedDates'
 import type { SetupApi } from './support/setupApi'
 import { expect, test } from './support/test'
+import { gql } from './support/gql'
 
 /**
  * What a user sees WHILE someone else changes a meeting, not just afterwards (mootmaker-webapp#137).
@@ -89,7 +90,7 @@ async function update(api: SetupApi, booked: Booked, changes: { subject?: string
   const start = changes.start ?? '10:00:00'
   const end = `${String(Number(start.slice(0, 2)) + 1).padStart(2, '0')}${start.slice(2)}`
   const result = await api.graphql<{ updateMeeting: { errors: string[] } }>(
-    'mutation($id: ID!, $meeting: MeetingInput!) { updateMeeting(id: $id, meeting: $meeting) { errors } }',
+    gql`mutation($id: ID!, $meeting: MeetingInput!) { updateMeeting(id: $id, meeting: $meeting) { errors } }`,
     {
       id: booked.meetingId,
       meeting: {
@@ -236,7 +237,7 @@ test.describe('live updates show no false states on the way', () => {
     await ready({ sheet: page, popout }, [booked.subject])
 
     const cancelled = await api.graphql<{ cancelMeeting: { errors: string[] } }>(
-      'mutation($id: ID!) { cancelMeeting(id: $id) { errors } }',
+      gql`mutation($id: ID!) { cancelMeeting(id: $id) { errors } }`,
       { id: booked.meetingId },
     )
     expect(cancelled.cancelMeeting.errors).toEqual([])

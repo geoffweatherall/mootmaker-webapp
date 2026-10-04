@@ -3,6 +3,7 @@ import { formatDateParam, pinnedWeekday } from './support/pinnedDates'
 import { STANDARD_USER_NAME, signInAsStandardUser } from './support/accounts'
 import { requireEnv, uniqueId } from './support/env'
 import { expect, test } from './support/test'
+import { gql } from './support/gql'
 
 /**
  * The cross-client guarantee: a booking made by one client appears on another's screen without a
@@ -54,9 +55,9 @@ async function graphql<T>(page: Page, token: string, query: string, variables: R
   return body.data as T
 }
 
-const REFERENCE_DATA = `query { workspace { rooms { id name } people { id name } } }`
+const REFERENCE_DATA = gql`query { workspace { rooms { id name } people { id name } } }`
 
-const CREATE_MEETING = `
+const CREATE_MEETING = gql`
   mutation CreateMeeting($meeting: MeetingInput!) {
     createMeeting(meeting: $meeting) { meeting { id } errors }
   }

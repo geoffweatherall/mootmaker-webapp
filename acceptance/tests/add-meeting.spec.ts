@@ -778,12 +778,21 @@ test('a rejected submission shows the error banner and briefly flashes the Save 
   await expect(page.getByRole('alert')).toBeVisible()
   await expect(page.getByText('Please enter a subject.')).toBeVisible()
 
-  // Sampled immediately after the error becomes visible (same render as the error state update
-  // that also drives SubmitButton's flash), well inside the 600ms FLASH_DURATION_MS window - see
-  // F.58's catalog Notes on why this can't tolerate any extra awaiting first.
-  const flashedColor = await saveButton.evaluate((el) => getComputedStyle(el).backgroundColor)
-  expect(flashedColor).not.toBe(restingColor)
-  const [r, g, b] = flashedColor.match(/\d+/g)!.map(Number)
-  expect(r).toBeGreaterThan(g)
-  expect(r).toBeGreaterThan(b)
+  // POLLED, not sampled once (mootmaker-webapp#119). Validation is server-side, so Save is
+  // disabled while the mutation is in flight (MUI's disabled grey, rgba(0, 0, 0, 0.12)), and MUI
+  // then transitions background-color over ~250ms from there to red. A single read the moment the
+  // alert appears could land on the grey or partway through, which is how this flaked with r = 0.
+  // Polling closely until red, with the 600ms FLASH_DURATION_MS window as the deadline, asserts
+  // what F.58 actually requires: the button turns red, briefly, after a rejected submission.
+  const isRed = (color: string) => {
+    const [r, g, b] = color.match(/\d+/g)!.map(Number)
+    return r > g && r > b
+  }
+  await expect
+    .poll(async () => isRed(await saveButton.evaluate((el) => getComputedStyle(el).backgroundColor)), {
+      intervals: [20],
+      timeout: 600,
+    })
+    .toBe(true)
+  expect(isRed(restingColor)).toBe(false)
 })

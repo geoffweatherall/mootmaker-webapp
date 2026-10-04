@@ -5,6 +5,7 @@ import { signInAsStandardUser } from './support/accounts'
 import { requireEnv, uniqueId } from './support/env'
 import { pinnedWeekday, formatDateParam } from './support/pinnedDates'
 import { expect, test } from './support/test'
+import { gql } from './support/gql'
 
 /**
  * designs/attendee-response-status.md's acceptance-layer coverage: the feature itself (response
@@ -61,7 +62,7 @@ async function myPersonId(page: Page, token: string): Promise<string> {
   const result = await graphql<{ workspace: { me: { id: string } | null } }>(
     page,
     token,
-    `query { workspace { me { id } } }`,
+    gql`query { workspace { me { id } } }`,
     {},
   )
   if (!result.workspace.me) {
@@ -70,7 +71,7 @@ async function myPersonId(page: Page, token: string): Promise<string> {
   return result.workspace.me.id
 }
 
-const CREATE_MEETING = `
+const CREATE_MEETING = gql`
   mutation CreateMeeting($meeting: MeetingInput!) {
     createMeeting(meeting: $meeting) { meeting { id } errors }
   }
@@ -112,7 +113,7 @@ function addMinutes(time: string, minutes: number): string {
   return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}:00`
 }
 
-const RESPOND_TO_MEETING = `
+const RESPOND_TO_MEETING = gql`
   mutation RespondToMeeting($meetingId: ID!, $status: AttendeeStatus!) {
     respondToMeeting(meetingId: $meetingId, status: $status) { meeting { id } errors }
   }
@@ -140,7 +141,7 @@ async function readAttendeeStatuses(
 ): Promise<Record<string, string>> {
   const result = await graphql<{
     meeting: { attendees: { person: { id: string }; status: string }[] } | null
-  }>(page, token, `query($id: ID!) { meeting(id: $id) { attendees { person { id } status } } }`, { id: meetingId })
+  }>(page, token, gql`query($id: ID!) { meeting(id: $id) { attendees { person { id } status } } }`, { id: meetingId })
   if (!result.meeting) {
     throw new Error(`Meeting ${meetingId} not found`)
   }
@@ -173,7 +174,7 @@ test('Home page shows a real "Needs your response" card, and quick-respond updat
 
     const reference = await graphql<{
       workspace: { rooms: { id: string; name: string }[]; people: { id: string; name: string }[] }
-    }>(page, token, `query { workspace { rooms { id name } people { id name } } }`, {})
+    }>(page, token, gql`query { workspace { rooms { id name } people { id name } } }`, {})
     const roomId = reference.workspace.rooms.find((r) => r.name === room)!.id
     const organiserId = reference.workspace.people.find((p) => p.name === organiser)!.id
 
@@ -253,7 +254,7 @@ test('two different attendees of the same meeting responding at once both land -
     const reference = await graphql<{ workspace: { rooms: { id: string; name: string }[] } }>(
       userPage,
       userToken,
-      `query { workspace { rooms { id name } } }`,
+      gql`query { workspace { rooms { id name } } }`,
       {},
     )
     const roomId = reference.workspace.rooms.find((r) => r.name === room)!.id
@@ -316,7 +317,7 @@ test('one person responding to two different meetings on the same day both land 
 
     const reference = await graphql<{
       workspace: { rooms: { id: string; name: string }[]; people: { id: string; name: string }[] }
-    }>(page, token, `query { workspace { rooms { id name } people { id name } } }`, {})
+    }>(page, token, gql`query { workspace { rooms { id name } people { id name } } }`, {})
     const roomAId = reference.workspace.rooms.find((r) => r.name === roomA)!.id
     const roomBId = reference.workspace.rooms.find((r) => r.name === roomB)!.id
     const organiserId = reference.workspace.people.find((p) => p.name === organiserName)!.id
@@ -382,7 +383,7 @@ test('a response made by another client is reflected live, without a refresh', a
     const reference = await graphql<{ workspace: { rooms: { id: string; name: string }[] } }>(
       observer,
       observerToken,
-      `query { workspace { rooms { id name } } }`,
+      gql`query { workspace { rooms { id name } } }`,
       {},
     )
     const roomId = reference.workspace.rooms.find((r) => r.name === room)!.id

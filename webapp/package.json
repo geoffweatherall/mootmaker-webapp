@@ -8,6 +8,7 @@
     "dev": "vite",
     "codegen": "graphql-codegen --config codegen.ts",
     "codegen:check": "graphql-codegen --config codegen.ts && git diff --exit-code src/graphql/generated",
+    "graphql:check:tests": "node scripts/check-test-graphql.mjs",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",

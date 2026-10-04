@@ -1,5 +1,6 @@
 import type { APIRequestContext } from '@playwright/test'
 import { requireEnv } from './env'
+import { gql } from './gql'
 
 /**
  * Test setup over the API, as mootmaker-api's machine-to-machine client, which has the admin scope
@@ -30,7 +31,7 @@ export class SetupApi {
 
   async createRoom(name: string, capacity: number): Promise<string> {
     const data = await this.graphql<{ createRoom: { room: { id: string } | null; errors: string[] } }>(
-      'mutation($room: RoomInput!) { createRoom(room: $room) { room { id } errors } }',
+      gql`mutation($room: RoomInput!) { createRoom(room: $room) { room { id } errors } }`,
       { room: { name, capacity } },
     )
     failIfRejected('createRoom', data.createRoom.errors)
@@ -40,7 +41,7 @@ export class SetupApi {
   /** A guest person, with no sign-in of their own. */
   async createPerson(name: string): Promise<string> {
     const data = await this.graphql<{ createPerson: { person: { id: string } | null; errors: string[] } }>(
-      'mutation($name: String!) { createPerson(name: $name) { person { id } errors } }',
+      gql`mutation($name: String!) { createPerson(name: $name) { person { id } errors } }`,
       { name },
     )
     failIfRejected('createPerson', data.createPerson.errors)
@@ -50,7 +51,7 @@ export class SetupApi {
   /** The id of the Person linked to a signed-up account, found by its email. */
   async personIdByEmail(email: string): Promise<string> {
     const data = await this.graphql<{ workspace: { people: { id: string; linkedEmails: string[] }[] } }>(
-      'query { workspace { people { id linkedEmails } } }',
+      gql`query { workspace { people { id linkedEmails } } }`,
     )
     const person = data.workspace.people.find((p) =>
       p.linkedEmails.some((linked) => linked.toLowerCase() === email.toLowerCase()),
@@ -72,7 +73,7 @@ export class SetupApi {
     endTime: string
   }): Promise<string> {
     const data = await this.graphql<{ createMeeting: { meeting: { id: string } | null; errors: string[] } }>(
-      'mutation($meeting: MeetingInput!) { createMeeting(meeting: $meeting) { meeting { id } errors } }',
+      gql`mutation($meeting: MeetingInput!) { createMeeting(meeting: $meeting) { meeting { id } errors } }`,
       { meeting: { attendeeIds: [], ...meeting } },
     )
     failIfRejected('createMeeting', data.createMeeting.errors)
@@ -80,7 +81,7 @@ export class SetupApi {
   }
 
   async setPersonAdmin(personId: string, isAdmin: boolean): Promise<void> {
-    await this.graphql('mutation($id: ID!, $isAdmin: Boolean!) { setPersonAdmin(id: $id, isAdmin: $isAdmin) { cognitoSyncFailed } }', {
+    await this.graphql(gql`mutation($id: ID!, $isAdmin: Boolean!) { setPersonAdmin(id: $id, isAdmin: $isAdmin) { cognitoSyncFailed } }`, {
       id: personId,
       isAdmin,
     })
@@ -95,7 +96,7 @@ export class SetupApi {
     const requested = await this.graphql<{
       requestAvatarUpload: { upload: { uploadId: string; url: string } | null; errors: string[] }
     }>(
-      `mutation Request($personId: ID!, $contentType: String!, $contentLength: Int!) {
+      gql`mutation Request($personId: ID!, $contentType: String!, $contentLength: Int!) {
          requestAvatarUpload(personId: $personId, contentType: $contentType, contentLength: $contentLength) {
            upload { uploadId url } errors
          }
@@ -115,7 +116,7 @@ export class SetupApi {
     const confirmed = await this.graphql<{
       confirmAvatarUpload: { person: { avatarUrl: string } | null; errors: string[] }
     }>(
-      `mutation Confirm($personId: ID!, $uploadId: ID!) {
+      gql`mutation Confirm($personId: ID!, $uploadId: ID!) {
          confirmAvatarUpload(personId: $personId, uploadId: $uploadId) { person { avatarUrl } errors }
        }`,
       { personId, uploadId: upload.uploadId },

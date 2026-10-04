@@ -3,6 +3,7 @@ import { formatDateParam, pinnedFutureWeekday, pinnedWeekday } from './support/p
 import { requireEnv, uniqueId } from './support/env'
 import { signInAsNoPersonUser, signInAsStandardUser } from './support/accounts'
 import { expect, test } from './support/test'
+import { gql } from './support/gql'
 
 // mootmaker/docs/reference/use-cases.md, section D (Home page), cases 21-25 - see
 // acceptance/test-cases/d-home-page.md for the full Given/When/Then design each test below
@@ -324,7 +325,7 @@ async function ownName(page: Page): Promise<string> {
   const result = await graphqlQuery<{ workspace: { me: { name: string } | null } }>(
     page,
     token,
-    `query { workspace { me { name } } }`,
+    gql`query { workspace { me { name } } }`,
   )
   if (!result.workspace.me) {
     throw new Error('Signed-in account has no linked Person')

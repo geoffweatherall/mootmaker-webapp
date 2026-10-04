@@ -4,6 +4,7 @@ import { requireEnv, uniqueId } from './support/env'
 import { STANDARD_USER_NAME, signInAsNoPersonUser, signInAsStandardUser } from './support/accounts'
 import type { SetupApi } from './support/setupApi'
 import { expect, test } from './support/test'
+import { gql } from './support/gql'
 
 // mootmaker/docs/reference/use-cases.md, section F (Add Meeting), cases 38-58. Signs in as the
 // standard fixture user (./support/accounts.ts): adding a meeting is something every user does, so
@@ -120,7 +121,7 @@ async function graphqlRequest<T>(
   return response.json()
 }
 
-const CREATE_MEETING_MUTATION = `
+const CREATE_MEETING_MUTATION = gql`
   mutation CreateMeeting($meeting: MeetingInput!) {
     createMeeting(meeting: $meeting) {
       meeting { id }
@@ -141,7 +142,7 @@ async function directApiContext(page: Page, api: SetupApi, roomName: string): Pr
   // workspace { me }, not the deleted Query.myPerson: the caller's own Person is resolved from the
   // custom:personId claim on the token, which is what removed the myPerson -> meetings waterfall.
   const personResult = await graphqlRequest<{ workspace: { me: { id: string } | null } }>(
-    page, token, 'query { workspace { me { id } } }', {})
+    page, token, gql`query { workspace { me { id } } }`, {})
   const organiserId = personResult.data?.workspace.me?.id
   if (!organiserId) {
     throw new Error(`Could not resolve the signed-in user's own Person via workspace { me }: ${JSON.stringify(personResult)}`)
@@ -149,7 +150,7 @@ async function directApiContext(page: Page, api: SetupApi, roomName: string): Pr
 
   // workspace { rooms }, not the deleted Query.rooms - the same composite entry point as above.
   const roomsResult = await graphqlRequest<{ workspace: { rooms: { id: string; name: string }[] } }>(
-    page, token, 'query { workspace { rooms { id name } } }', {})
+    page, token, gql`query { workspace { rooms { id name } } }`, {})
   const room = roomsResult.data?.workspace.rooms.find((candidate) => candidate.name === roomName)
   if (!room) {
     throw new Error(`Room "${roomName}" not found via a direct GraphQL query: ${JSON.stringify(roomsResult)}`)

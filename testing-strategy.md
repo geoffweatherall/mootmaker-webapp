@@ -110,9 +110,21 @@ helpers) and one root `package.json`/`tsconfig.json` — see that directory's ow
 duplicates the webapp's own `webapp/package.json` (React/MUI/Vite/Apollo), which stays entirely
 separate.
 
-## GraphQL codegen
+## Checking GraphQL against the schema, without a deployed environment
 
-Tracked as a to-do in [mootmaker's
-README](https://github.com/geoffweatherall/mootmaker/blob/main/README.md#to-do), deferred until
-CI/CD pipelines exist: generate `graphql/types.ts` from `mootmaker-api/api/mootmaker.graphql`
-instead of hand-mirroring it, to close the contract-drift gap between the two repos.
+Two PR checks in `webapp/` compare hand-written GraphQL with `mootmaker-api`'s schema. Both read
+the sibling `../mootmaker-api` checkout when it is present and the published `@mootmaker/schema`
+package otherwise (CI).
+
+- **The app's operations: `npm run codegen:check`.** Regenerates `webapp/src/graphql/generated/`
+  and fails if the result differs from what is committed, so any operation the app sends has been
+  validated and typed against the schema.
+- **The test suites' operations: `npm run graphql:check:tests`**
+  ([check-test-graphql.mjs](webapp/scripts/check-test-graphql.mjs), mootmaker-webapp#62). Codegen
+  never sees `acceptance/`, `e2e/` or `support/`, so every operation there is written as a
+  `` gql`...` `` template ([acceptance/tests/support/gql.ts](acceptance/tests/support/gql.ts)) and
+  the script validates each one. It also fails on a template that uses `${}` (pass values as
+  variables) and on any **untagged** string that looks like an operation, so a new one cannot
+  bypass the check by accident. This matters more than it sounds: in #55, a query on a deleted root
+  field did not fail. It returned null, `?? []` turned that into an empty list, and an
+  authorization test passed while asserting nothing.

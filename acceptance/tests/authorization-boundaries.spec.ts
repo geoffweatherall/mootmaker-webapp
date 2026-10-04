@@ -1,6 +1,7 @@
 import { ADMIN_USER_NAME, adminUser, signInAsStandardUser } from './support/accounts'
 import { requireEnv } from './support/env'
 import { expect, test } from './support/test'
+import { gql } from './support/gql'
 
 // mootmaker/docs/reference/use-cases.md, section L (Authorization boundaries), cases 89-91.
 //
@@ -66,7 +67,7 @@ test('L.90 - a standard user directly calling any admin mutation is rejected ser
   const createRoomResponse = await request.post(graphqlUrl, {
     headers: { Authorization: token },
     data: {
-      query: `mutation ($room: RoomInput!) { createRoom(room: $room) { room { id } errors } }`,
+      query: gql`mutation ($room: RoomInput!) { createRoom(room: $room) { room { id } errors } }`,
       variables: { room: { name: `L90 Room ${runId}`, capacity: 4 } },
     },
   })
@@ -75,7 +76,7 @@ test('L.90 - a standard user directly calling any admin mutation is rejected ser
   const updateRoomResponse = await request.post(graphqlUrl, {
     headers: { Authorization: token },
     data: {
-      query: `mutation ($id: ID!, $room: RoomInput!) { updateRoom(id: $id, room: $room) { room { id } errors } }`,
+      query: gql`mutation ($id: ID!, $room: RoomInput!) { updateRoom(id: $id, room: $room) { room { id } errors } }`,
       variables: { id: existingRoomId, room: { name: `L90 Renamed ${runId}`, capacity: 4 } },
     },
   })
@@ -84,7 +85,7 @@ test('L.90 - a standard user directly calling any admin mutation is rejected ser
   const deleteRoomResponse = await request.post(graphqlUrl, {
     headers: { Authorization: token },
     data: {
-      query: `mutation ($id: ID!) { deleteRoom(id: $id) { rooms { id } errors } }`,
+      query: gql`mutation ($id: ID!) { deleteRoom(id: $id) { rooms { id } errors } }`,
       variables: { id: existingRoomId },
     },
   })
@@ -93,7 +94,7 @@ test('L.90 - a standard user directly calling any admin mutation is rejected ser
   const createPersonResponse = await request.post(graphqlUrl, {
     headers: { Authorization: token },
     data: {
-      query: `mutation ($name: String!) { createPerson(name: $name) { person { id name } errors } }`,
+      query: gql`mutation ($name: String!) { createPerson(name: $name) { person { id name } errors } }`,
       variables: { name: `L90 Person ${runId}` },
     },
   })
@@ -102,7 +103,7 @@ test('L.90 - a standard user directly calling any admin mutation is rejected ser
   const renamePersonResponse = await request.post(graphqlUrl, {
     headers: { Authorization: token },
     data: {
-      query: `mutation ($id: ID!, $name: String!) { renamePerson(id: $id, name: $name) { person { id } errors } }`,
+      query: gql`mutation ($id: ID!, $name: String!) { renamePerson(id: $id, name: $name) { person { id } errors } }`,
       variables: { id: existingPersonId, name: `L90 Renamed Person ${runId}` },
     },
   })
@@ -111,7 +112,7 @@ test('L.90 - a standard user directly calling any admin mutation is rejected ser
   const setPersonAdminResponse = await request.post(graphqlUrl, {
     headers: { Authorization: token },
     data: {
-      query: `mutation ($id: ID!, $isAdmin: Boolean!) { setPersonAdmin(id: $id, isAdmin: $isAdmin) { person { id } errors } }`,
+      query: gql`mutation ($id: ID!, $isAdmin: Boolean!) { setPersonAdmin(id: $id, isAdmin: $isAdmin) { person { id } errors } }`,
       variables: { id: existingPersonId, isAdmin: true },
     },
   })
@@ -120,7 +121,7 @@ test('L.90 - a standard user directly calling any admin mutation is rejected ser
   const deletePersonResponse = await request.post(graphqlUrl, {
     headers: { Authorization: token },
     data: {
-      query: `mutation ($id: ID!) { deletePerson(id: $id) { people { id } errors } }`,
+      query: gql`mutation ($id: ID!) { deletePerson(id: $id) { people { id } errors } }`,
       variables: { id: existingPersonId },
     },
   })
@@ -133,7 +134,7 @@ test('L.90 - a standard user directly calling any admin mutation is rejected ser
   const requestAvatarUploadResponse = await request.post(graphqlUrl, {
     headers: { Authorization: token },
     data: {
-      query: `mutation ($personId: ID!) { requestAvatarUpload(personId: $personId, contentType: "image/png", contentLength: 1000) { upload { url } errors } }`,
+      query: gql`mutation ($personId: ID!) { requestAvatarUpload(personId: $personId, contentType: "image/png", contentLength: 1000) { upload { url } errors } }`,
       variables: { personId: existingPersonId },
     },
   })
@@ -142,7 +143,7 @@ test('L.90 - a standard user directly calling any admin mutation is rejected ser
   const confirmAvatarUploadResponse = await request.post(graphqlUrl, {
     headers: { Authorization: token },
     data: {
-      query: `mutation ($personId: ID!) { confirmAvatarUpload(personId: $personId, uploadId: "AAAAAAAA") { person { id } errors } }`,
+      query: gql`mutation ($personId: ID!) { confirmAvatarUpload(personId: $personId, uploadId: "AAAAAAAA") { person { id } errors } }`,
       variables: { personId: existingPersonId },
     },
   })
@@ -151,7 +152,7 @@ test('L.90 - a standard user directly calling any admin mutation is rejected ser
   const removeAvatarResponse = await request.post(graphqlUrl, {
     headers: { Authorization: token },
     data: {
-      query: `mutation ($personId: ID!) { removeAvatar(personId: $personId) { person { id } errors } }`,
+      query: gql`mutation ($personId: ID!) { removeAvatar(personId: $personId) { person { id } errors } }`,
       variables: { personId: existingPersonId },
     },
   })
@@ -166,7 +167,7 @@ test('L.90 - a standard user directly calling any admin mutation is rejected ser
   const ownAvatarUploadResponse = await request.post(graphqlUrl, {
     headers: { Authorization: token },
     data: {
-      query: `mutation ($personId: ID!) { requestAvatarUpload(personId: $personId, contentType: "image/png", contentLength: 1000) { upload { url } errors } }`,
+      query: gql`mutation ($personId: ID!) { requestAvatarUpload(personId: $personId, contentType: "image/png", contentLength: 1000) { upload { url } errors } }`,
       variables: { personId: ownPersonId },
     },
   })
@@ -202,7 +203,7 @@ test('L.90 - a standard user directly calling any admin mutation is rejected ser
   // just a response-shape artefact.
   const afterResponse = await request.post(graphqlUrl, {
     headers: { Authorization: token },
-    data: { query: 'query { workspace { rooms { id name } people { id name } } }' },
+    data: { query: gql`query { workspace { rooms { id name } people { id name } } }` },
   })
   const afterBody = await afterResponse.json()
   // Fail loudly if the query itself did not resolve. Reading through `?? []` alone made this
@@ -247,7 +248,7 @@ test('L.91 - a standard user cannot rename another user\'s Person, even by forci
   // *section* is hidden from accountA's UI.
   const peopleResponse = await request.post(graphqlUrl, {
     headers: { Authorization: token },
-    data: { query: 'query { workspace { people { id name } } }' },
+    data: { query: gql`query { workspace { people { id name } } }` },
   })
   const peopleBody = await peopleResponse.json()
   const personB = (peopleBody.data?.workspace?.people ?? []).find(
@@ -268,7 +269,7 @@ test('L.91 - a standard user cannot rename another user\'s Person, even by forci
   const renamePersonResponse = await request.post(graphqlUrl, {
     headers: { Authorization: token },
     data: {
-      query: `mutation ($id: ID!, $name: String!) { renamePerson(id: $id, name: $name) { person { id name } errors } }`,
+      query: gql`mutation ($id: ID!, $name: String!) { renamePerson(id: $id, name: $name) { person { id name } errors } }`,
       variables: { id: personB.id, name: `Hijacked ${runId}` },
     },
   })
@@ -280,7 +281,7 @@ test('L.91 - a standard user cannot rename another user\'s Person, even by forci
   // accountB's Person name is unchanged afterward.
   const afterResponse = await request.post(graphqlUrl, {
     headers: { Authorization: token },
-    data: { query: 'query { workspace { people { id name } } }' },
+    data: { query: gql`query { workspace { people { id name } } }` },
   })
   const afterBody = await afterResponse.json()
   const personBAfter = (afterBody.data?.workspace?.people ?? []).find(

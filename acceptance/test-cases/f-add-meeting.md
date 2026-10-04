@@ -646,12 +646,12 @@ values rather than colliding on the same one.
 1. Sign in; navigate to `/meetings/add`.
 2. Scroll down so the Save button is in view but the top-of-form banner position is not (relevant mainly at viewports where the banner isn't already `top: 0` sticky — see `ErrorBanner.tsx`'s responsive `top` offset).
 3. Leave Subject blank; click **Save**.
-4. Immediately read the Save button's computed background colour / `class` for the error-flash state.
+4. Poll the Save button's computed background colour until it is red, within the flash window.
 
 **Assertions:**
 - `ErrorBanner` is visible (sticky positioning brought it into view, or it was already at the top).
-- The Save button's colour transitions to MUI's `error` palette colour within the ~600ms flash window (`FLASH_DURATION_MS` in `SubmitButton.tsx`) — assert via computed `background-color` sampled shortly after the click, before the timeout clears it.
+- The Save button's colour transitions to MUI's `error` palette colour within the ~600ms flash window (`FLASH_DURATION_MS` in `SubmitButton.tsx`) — assert by polling the computed `background-color` closely (every 20ms) until it is red, with that window as the deadline.
 
 **Out of scope:** the exact shake-animation keyframes (a purely cosmetic CSS detail, not meaningfully assertable/valuable to pin down in a browser test).
 
-**Notes:** Timing-sensitive (the flash is intentionally brief, `FLASH_DURATION_MS = 600`) — sample the button's style immediately after the click resolves, not after any additional `await` that could let the 600ms window lapse first.
+**Notes:** Timing-sensitive (the flash is intentionally brief, `FLASH_DURATION_MS = 600`). Do **not** sample once: validation is server-side, so Save is disabled (grey) while the mutation is in flight, and MUI then *transitions* `background-color` over ~250ms to red. A single read when the banner appears can land on the grey or mid-transition, which is how this flaked with `r = 0` ([mootmaker-webapp#119](https://github.com/geoffweatherall/mootmaker-webapp/issues/119)). Polling until red catches the flash wherever in that window it settles.

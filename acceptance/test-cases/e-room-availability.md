@@ -128,7 +128,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 ### E.30 — No rooms exist yet shows an empty state
 
 **Use case:** [use-cases.md#uc-30](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-30) — "No rooms exist yet → empty state."
-**Status:** ✅ Automated — [`tests/00-room-availability-empty.spec.ts`](../tests/00-room-availability-empty.spec.ts)
+**Status:** ✅ Automated — [`tests/room-availability-empty.spec.ts`](../tests/room-availability-empty.spec.ts)
 **Android:** not yet automated
 
 **Preconditions:** A **genuinely fresh environment with zero rooms** — this is the one precondition in this whole catalog that can't be created by the test itself (rooms can only be added, never removed, through this app's own UI/API).

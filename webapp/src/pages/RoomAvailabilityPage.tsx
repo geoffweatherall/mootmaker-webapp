@@ -169,7 +169,7 @@ export default function RoomAvailabilityPage() {
   const now = dayjs()
   // "today"/"tomorrow" for the two near days (Google Calendar/Fantastical convention), the plain
   // weekday name beyond that - avoids "in 4 days" while still reading naturally in "See Friday's
-  // meetings". See designs/room-availability-and-person-calendar-redesign.md's "Day-relative
+  // meetings". See designs/archive/room-availability-and-person-calendar-redesign.md's "Day-relative
   // framing" decision.
   const relative = dayRelativeLabel(selectedDate, now)
   const isToday = relative === 'today'

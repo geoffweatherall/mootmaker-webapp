@@ -399,7 +399,7 @@ test('N.105: an account with no linked Person sees the section disabled with an 
 })
 
 test("N.106: a meeting's time in Room Availability's expanded list follows the time format", async ({ page }) => {
-  // Room Availability's redesign (designs/room-availability-and-person-calendar-redesign.md)
+  // Room Availability's redesign (designs/archive/room-availability-and-person-calendar-redesign.md)
   // replaced the old fixed-hour grid - and with it, the hour axis and "Showing business hours"
   // caption this case used to check without needing a meeting at all - with room-status cards.
   // There's no longer a plain, data-independent time rendering to check, so this books a real

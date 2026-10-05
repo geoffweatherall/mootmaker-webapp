@@ -10,6 +10,7 @@ import {
   Stack,
   TextField,
   Typography,
+  useTheme,
 } from '@mui/material'
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import { TimePicker } from '@mui/x-date-pickers/TimePicker'
@@ -33,6 +34,7 @@ import {
 } from '../graphql/validationMessages'
 import type { CreateMeetingResult, Person, Room, UpdateMeetingResult } from '../graphql/types'
 import { SparkleIcon } from '../icons'
+import { roomColorFor } from '../theme/roomColor'
 import {
   advanceSuggestion,
   defaultMeetingTimes,
@@ -99,6 +101,7 @@ function combineDateAndTime(date: Dayjs | null, time: Dayjs | null): string {
  */
 export default function AddMeetingPage() {
   const navigate = useNavigate()
+  const theme = useTheme()
   const location = useLocation()
   const { meetingId } = useParams<{ meetingId?: string }>()
   const isEdit = Boolean(meetingId)
@@ -242,6 +245,9 @@ export default function AddMeetingPage() {
   // Sorted alphabetically, matching the convention SettingsPage/RoomAvailabilityPage/
   // PersonCalendarPage already use for these same lists.
   const rooms = [...(referenceData?.workspace.rooms ?? [])].sort((a, b) => a.name.localeCompare(b.name))
+  // A room's colour comes from its position in this name-sorted list, the same order every other
+  // page assigns colours from, so a room is the same colour here as on Room Availability.
+  const roomColor = (room: Room) => roomColorFor(room, rooms.indexOf(room), theme.palette.mode)
   const people = [...(referenceData?.workspace.people ?? [])].sort((a, b) => a.name.localeCompare(b.name))
 
   // The organiser and attendees are kept mutually exclusive: whoever is picked as one is not
@@ -502,7 +508,31 @@ export default function AddMeetingPage() {
                 value={rooms.find((room) => room.id === roomId) ?? null}
                 onChange={(_event, selected) => handleRoomChange(selected)}
                 autoHighlight
-                renderInput={(params) => <TextField {...params} label="Room" />}
+                renderOption={(props, option) => {
+                  const { key, ...optionProps } = props
+                  return (
+                    <Box component="li" key={key} {...optionProps} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <RoomColorDot color={roomColor(option)} />
+                      <ListItemText primary={`${option.name} (capacity ${option.capacity})`} />
+                    </Box>
+                  )
+                }}
+                renderInput={(params) => {
+                  const selected = rooms.find((room) => room.id === roomId)
+                  return (
+                    <TextField
+                      {...params}
+                      label="Room"
+                      slotProps={{
+                        ...params.slotProps,
+                        input: {
+                          ...params.slotProps.input,
+                          startAdornment: selected ? <RoomColorDot color={roomColor(selected)} /> : undefined,
+                        },
+                      }}
+                    />
+                  )
+                }}
               />
               <Button
                 onClick={handleSuggestRoom}
@@ -544,5 +574,16 @@ export default function AddMeetingPage() {
         )}
       </Paper>
     </Stack>
+  )
+}
+
+/** The same 10px colour dot Room Availability shows beside each room name. Decorative: the name is
+ * always next to it, so it is hidden from assistive technology rather than announced. */
+function RoomColorDot({ color }: { color: string }) {
+  return (
+    <Box
+      aria-hidden
+      sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: color, flexShrink: 0, ml: 0.5 }}
+    />
   )
 }

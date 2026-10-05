@@ -12,12 +12,10 @@
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.940.0",
     "@aws-sdk/client-lambda": "^3.1144.0",
-    "@aws-sdk/client-sqs": "^3.940.0",
-    "mailparser": "^3.7.4"
+    "mootmaker-email-testing": "github:geoffweatherall/mootmaker-email-testing#v1.0.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
-    "@types/mailparser": "^3.4.6",
     "@types/node": "^24.13.2",
     "typescript": "~6.0.2"
   }

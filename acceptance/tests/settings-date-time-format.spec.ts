@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
-import { freshTestAccount, type TestAccount } from '../../support/testAccount'
+import { freshTestAccount, type TestAccount } from 'mootmaker-email-testing'
 import { signInAsNoPersonUser } from './support/accounts'
 import { expect, test } from './support/test'
 

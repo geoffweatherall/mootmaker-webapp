@@ -1,6 +1,5 @@
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
-import { waitForVerificationCode } from '../../support/email'
-import { freshTestAccount } from '../../support/testAccount'
+import { waitForVerificationCode, freshTestAccount } from 'mootmaker-email-testing'
 import { pinnedWeekday } from './support/pinnedDates'
 import { expect, test } from './support/test'
 

@@ -1,6 +1,6 @@
 import type { APIRequestContext, Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
-import { freshTestAccount } from '../../support/testAccount'
+import { freshTestAccount } from 'mootmaker-email-testing'
 import { formatDateParam, pinnedWeekday } from './support/pinnedDates'
 import { STANDARD_USER_NAME, signInAsAdminUser, signInAsStandardUser, standardUser } from './support/accounts'
 import { requireEnv, uniqueId } from './support/env'

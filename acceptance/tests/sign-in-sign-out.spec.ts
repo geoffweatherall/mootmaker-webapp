@@ -1,4 +1,4 @@
-import { uniqueTestEmail } from '../../support/email'
+import { uniqueTestEmail } from 'mootmaker-email-testing'
 import { standardUser } from './support/accounts'
 import { requireEnv } from './support/env'
 import { expect, test } from './support/test'

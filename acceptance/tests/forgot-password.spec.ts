@@ -1,6 +1,5 @@
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
-import { uniqueTestEmail, waitForVerificationCode } from '../../support/email'
-import { freshTestAccount } from '../../support/testAccount'
+import { uniqueTestEmail, waitForVerificationCode, freshTestAccount } from 'mootmaker-email-testing'
 import { expect, test } from './support/test'
 
 // mootmaker/docs/reference/use-cases.md, section C (Forgot password), cases 16-20. See e2e/tests/forgot-password.spec.ts

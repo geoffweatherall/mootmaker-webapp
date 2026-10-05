@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
-import { freshTestAccount } from '../../support/testAccount'
+import { freshTestAccount } from 'mootmaker-email-testing'
 import { expect, test } from './support/test'
 
 // A second, parameterized run of a small number of scenarios that already pass under the default

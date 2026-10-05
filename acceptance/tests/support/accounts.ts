@@ -12,7 +12,7 @@ import { requireEnv } from './env'
  * Database reset (run before every test - see ./test.ts) creates them if missing and repairs them
  * back to exactly this state, so a test may rely on that at its start and must never change them.
  * A test that changes the account itself (name, preferences, password, deletion) signs up a fresh
- * account instead - see ../../../support/testAccount.ts.
+ * account instead - see freshTestAccount in the mootmaker-email-testing package.
  *
  * The demo user is not here on purpose. Only tests whose subject is the demo login itself (B.11,
  * D.21) use it, and they read DEMO_USER_EMAIL/DEMO_USER_PASSWORD directly.

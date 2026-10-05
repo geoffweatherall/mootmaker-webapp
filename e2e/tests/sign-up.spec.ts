@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { waitForVerificationCode } from '../../support/email'
-import { freshTestAccount } from '../../support/testAccount'
+import { waitForVerificationCode, freshTestAccount } from 'mootmaker-email-testing'
 
 // The one thing only this layer can prove: a real sign-up, through the real deployed webapp,
 // against a real Cognito pool, receiving a real emailed code via the SES->SNS->SQS pipeline (see

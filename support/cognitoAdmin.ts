@@ -4,8 +4,7 @@ import {
   CognitoIdentityProviderClient,
   SignUpCommand,
 } from '@aws-sdk/client-cognito-identity-provider'
-import { waitForVerificationCode } from './email'
-import type { TestAccount } from './testAccount'
+import { waitForVerificationCode, type TestAccount } from 'mootmaker-email-testing'
 
 // Uses the caller's own AWS credentials (the same SSO session used for everything else in this
 // project - see mootmaker-bootstrap-aws-accounts), not a Lambda execution role: this runs on the

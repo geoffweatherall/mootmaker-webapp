@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
-import { freshTestAccount } from '../../support/testAccount'
+import { freshTestAccount } from 'mootmaker-email-testing'
 import { signInAsNoPersonUser } from './support/accounts'
 import { expect, test } from './support/test'
 

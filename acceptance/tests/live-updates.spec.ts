@@ -257,7 +257,7 @@ test.describe('live updates show no false states on the way', () => {
   }) => {
     // A second real person, in their own browser, organising a meeting the standard user attends.
     const { createConfirmedTestAccount } = await import('../../support/cognitoAdmin')
-    const { freshTestAccount } = await import('../../support/testAccount')
+    const { freshTestAccount } = await import('mootmaker-email-testing')
     const other = freshTestAccount()
     await createConfirmedTestAccount(other)
     const date = formatDateParam(pinnedWeekday('Friday'))

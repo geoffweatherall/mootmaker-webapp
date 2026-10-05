@@ -17,7 +17,7 @@ whole point is proving the real sign-up + email + PostConfirmation-trigger chain
 **Status:** ✅ Automated — [`tests/sign-up.spec.ts`](../tests/sign-up.spec.ts)
 **Android:** not yet automated
 
-**Preconditions:** Signed out. A fresh, never-used email address (`support/email.ts`'s `uniqueTestEmail`).
+**Preconditions:** Signed out. A fresh, never-used email address (`uniqueTestEmail` from `mootmaker-email-testing`).
 
 **Given** a signed-out visitor on the sign-up page with a valid name, a fresh email, and a password meeting the strength rule
 **When** they submit the details step, then enter the code emailed to that address and submit the confirm step
@@ -38,7 +38,7 @@ whole point is proving the real sign-up + email + PostConfirmation-trigger chain
 
 **Out of scope:** the linked-Person auto-creation and its name/class (A.5), immediately scheduling a meeting as the new user (A.6), a wrong code (A.4), a duplicate email (A.3), a too-weak password (A.2).
 
-**Notes:** Every test in this section must call `uniqueTestEmail()` fresh — never reuse an address across tests/runs, or a slow/retried `waitForVerificationCode` poll could pick up a different test's code (see `support/email.ts`'s own doc comment).
+**Notes:** Every test in this section must call `uniqueTestEmail()` fresh — never reuse an address across tests/runs, or a slow/retried `waitForVerificationCode` poll could pick up a different test's code (see the doc comment in `mootmaker-email-testing`'s `client/index.js`).
 
 ---
 

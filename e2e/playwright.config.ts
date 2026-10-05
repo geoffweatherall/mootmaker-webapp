@@ -16,7 +16,7 @@ export default defineConfig({
   testDir: './tests',
   // Deliberately NOT fullyParallel: every test signs up or resets a real Cognito account and
   // waits on a real email through the shared SQS queue - each test already generates its own
-  // uniquely-tagged address (see support/email.ts) so cross-talk isn't the concern, but real
+  // uniquely-tagged address (see uniqueTestEmail in mootmaker-email-testing) so cross-talk isn't the concern, but real
   // infrastructure this thin a layer is meant to run rarely, not hammered concurrently.
   fullyParallel: false,
   workers: 1,

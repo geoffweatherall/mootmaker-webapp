@@ -116,7 +116,7 @@ account to sign in as". In short:
   someone else's meeting, admin-only UI).
 - **The no-person user** (`E2E_NO_PERSON_USER_EMAIL` / `_PASSWORD`) - standard, with **no linked
   Person**. For "signed in, but no linked Person" cases.
-- **A fresh signed-up account** - through the real UI + `support/email.ts`'s
+- **A fresh signed-up account** - through the real UI + `mootmaker-email-testing`'s
   `waitForVerificationCode` when the sign-up or reset flow itself is under test, or via
   `support/cognitoAdmin.ts`'s `createConfirmedTestAccount` when a test changes its own account
   (name, preferences, deletion, an admin grant) or needs another real user. Either way it gets a

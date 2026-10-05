@@ -77,7 +77,7 @@ Decided in mootmaker-api#95 and mootmaker-webapp#138. The accounts and sign-in h
 - **The admin user, only where admin functionality is the subject:** managing rooms or people,
   granting admin, editing or cancelling someone else's meeting, admin-only UI.
 - **The no-person user** for the "signed in, but no linked Person" paths.
-- **A fresh account** (`../support/testAccount.ts` with `../support/cognitoAdmin.ts`, or the real
+- **A fresh account** (`freshTestAccount` from `mootmaker-email-testing` with `../support/cognitoAdmin.ts`, or the real
   sign-up flow) only when the test changes the account itself - name, preferences, password,
   deletion, an admin grant - or tests sign-up or forgot-password. Each fresh account counts
   against Cognito's free monthly-active-user allowance, so don't reach for one by default.

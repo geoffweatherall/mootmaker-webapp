@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
-import { waitForVerificationCode } from '../../support/email'
-import { freshTestAccount } from '../../support/testAccount'
+import { waitForVerificationCode, freshTestAccount } from 'mootmaker-email-testing'
 
 // Same reasoning as sign-up.spec.ts: the only thing this test needs to prove is that a real
 // reset code, requested through the real deployed webapp, actually arrives via the real

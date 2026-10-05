@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test'
 import { createConfirmedTestAccount } from '../../support/cognitoAdmin'
-import { freshTestAccount } from '../../support/testAccount'
+import { freshTestAccount } from 'mootmaker-email-testing'
 import { signInAsStandardUser } from './support/accounts'
 import { requireEnv, uniqueId } from './support/env'
 import { pinnedWeekday, formatDateParam } from './support/pinnedDates'

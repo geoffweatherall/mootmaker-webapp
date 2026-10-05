@@ -17,7 +17,7 @@
  *   no day section to assert against.
  * - **A normal hour of day.** Kept as a matter of habit from when RoomAvailabilityPage only ever
  *   rendered 08:00-17:00 (neither the API nor the page enforce that any more - see
- *   designs/room-availability-and-person-calendar-redesign.md) - there's no live reason to move it
+ *   designs/archive/room-availability-and-person-calendar-redesign.md) - there's no live reason to move it
  *   off a business hour either, so every pinned time in this suite still defaults to one.
  * - **Relationships between dates.** Some tests need consecutive days, or the same weekday across
  *   consecutive weeks. Those must move together, not be re-derived independently.

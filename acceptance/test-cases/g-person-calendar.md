@@ -3,7 +3,7 @@
 Use cases [mootmaker/use-cases.md § G](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#g-person-calendar).
 See [README.md](README.md) for the entry format and test-data conventions. This page shows one
 Monday–Friday work week at a time (not the six-week grid these cases originally described) — see
-`designs/room-availability-and-person-calendar-redesign.md` and G.61/G.62's own Notes.
+`designs/archive/room-availability-and-person-calendar-redesign.md` and G.61/G.62's own Notes.
 
 ---
 
@@ -88,7 +88,7 @@ Monday–Friday work week at a time (not the six-week grid these cases originall
 
 **Notes:** None.
 
-**2026-09-19: redesigned along with the whole page.** `PersonCalendarPage` replaced its six-stacked-weeks grid (30 day cells) with a single scrollable week (5 day sections) - see `designs/room-availability-and-person-calendar-redesign.md`. The "work days only" claim carries over unchanged; only the count (5, not 30) and the day-section markup (a plain `Box`, not an outlined `Paper`) changed.
+**2026-09-19: redesigned along with the whole page.** `PersonCalendarPage` replaced its six-stacked-weeks grid (30 day cells) with a single scrollable week (5 day sections) - see `designs/archive/room-availability-and-person-calendar-redesign.md`. The "work days only" claim carries over unchanged; only the count (5, not 30) and the day-section markup (a plain `Box`, not an outlined `Paper`) changed.
 
 ---
 
@@ -120,7 +120,7 @@ Monday–Friday work week at a time (not the six-week grid these cases originall
 
 **Notes:** None.
 
-**2026-09-19: this case is now automatable - it previously named a real product gap.** `PersonCalendarPage.tsx` used to compute its 6-week window as a fixed `useMemo(() => startOfWorkWeek(dayjs()), [])`, with no control anywhere on the page to view any other week - a confirmed gap this catalog left on record rather than silently dropping. The redesign added `Previous week`/`Next week`/`This week` controls alongside the new one-week agenda, closing that gap as part of the same change. See `designs/room-availability-and-person-calendar-redesign.md`.
+**2026-09-19: this case is now automatable - it previously named a real product gap.** `PersonCalendarPage.tsx` used to compute its 6-week window as a fixed `useMemo(() => startOfWorkWeek(dayjs()), [])`, with no control anywhere on the page to view any other week - a confirmed gap this catalog left on record rather than silently dropping. The redesign added `Previous week`/`Next week`/`This week` controls alongside the new one-week agenda, closing that gap as part of the same change. See `designs/archive/room-availability-and-person-calendar-redesign.md`.
 
 ---
 
@@ -151,7 +151,7 @@ Monday–Friday work week at a time (not the six-week grid these cases originall
 
 **Notes:** None.
 
-**2026-09-19: redesigned along with the whole page.** Day sections are no longer an outlined `Paper` (`.MuiPaper-outlined`), and a meeting row is a `ButtonBase` (role `button`) rather than an `<a>`, since clicking one now opens a detail panel first - see G.65 and `designs/room-availability-and-person-calendar-redesign.md`.
+**2026-09-19: redesigned along with the whole page.** Day sections are no longer an outlined `Paper` (`.MuiPaper-outlined`), and a meeting row is a `ButtonBase` (role `button`) rather than an `<a>`, since clicking one now opens a detail panel first - see G.65 and `designs/archive/room-availability-and-person-calendar-redesign.md`.
 
 ---
 

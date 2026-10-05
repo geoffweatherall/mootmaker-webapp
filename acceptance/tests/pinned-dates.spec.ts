@@ -50,7 +50,7 @@ test('the named weekday is the weekday you get', () => {
 test('pinned dates default to inside 08:00-17:00', () => {
   // A legacy default from when RoomAvailabilityPage only ever rendered business hours - neither
   // the API nor the page enforce that any more (see
-  // designs/room-availability-and-person-calendar-redesign.md), but there's no live reason to move
+  // designs/archive/room-availability-and-person-calendar-redesign.md), but there's no live reason to move
   // it off a normal business hour either, so it stays as the shared default every other pinned
   // time in this suite is computed relative to.
   const pinned = pinnedWeekday('Wednesday')

@@ -33,7 +33,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **Notes:** None.
 
-**2026-09-19: redesigned along with the whole page.** The old fixed-hour timeline grid, and its "Showing business hours (08:00–17:00)." caption, were replaced by room-status cards with no fixed hour range - see `designs/room-availability-and-person-calendar-redesign.md`. Meetings outside 08:00-17:00 are no longer hidden; a card's status simply reflects whatever meetings exist that day.
+**2026-09-19: redesigned along with the whole page.** The old fixed-hour timeline grid, and its "Showing business hours (08:00–17:00)." caption, were replaced by room-status cards with no fixed hour range - see `designs/archive/room-availability-and-person-calendar-redesign.md`. Meetings outside 08:00-17:00 are no longer hidden; a card's status simply reflects whatever meetings exist that day.
 
 **2026-09-23: the busy/free timeline bar (not the status label or expanded list) was narrowed to an 08:00-18:00 visible window** - a meeting straddling the edge is clipped to it, and one entirely outside is not rendered in the bar. See mootmaker-webapp#114. The card's status and expanded meeting list are unaffected and still reflect every meeting regardless of time.
 
@@ -176,7 +176,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **Notes:** Picking a date far enough in the future to be collision-free with every other fixture in this catalog is simpler than trying to guarantee isolation any other way, given there's no way to query/clear meetings directly.
 
-**2026-09-19: redesigned along with the whole page.** `RoomAvailabilityPage`'s fixed-hour timeline grid was replaced by a scrollable list of room-status cards - see `designs/room-availability-and-person-calendar-redesign.md`. The "grid, not empty state" distinction this case checks still holds, just via the card's own zero-meetings status rather than an empty lane in an hour-axis grid.
+**2026-09-19: redesigned along with the whole page.** `RoomAvailabilityPage`'s fixed-hour timeline grid was replaced by a scrollable list of room-status cards - see `designs/archive/room-availability-and-person-calendar-redesign.md`. The "grid, not empty state" distinction this case checks still holds, just via the card's own zero-meetings status rather than an empty lane in an hour-axis grid.
 
 ---
 
@@ -208,7 +208,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **Notes:** The meeting row isn't reliably locatable by plain subject text alone: the card's own status sublabel (e.g. "Busy until 09:30", or its bare subject when a meeting is in progress right now) can independently contain the same subject as a substring or, for an in-progress meeting, an exact duplicate. Scoping by role `link` - only the meeting row itself has one - avoids that ambiguity regardless of which status branch is showing.
 
-**2026-09-19: redesigned along with the whole page.** This case used to be about a `Tooltip`'s `aria-label` on an always-visible, absolutely-positioned meeting block. The card redesign removed both the tooltip and the block layout: a meeting is now a plain row in a list, shown only once its room's card is expanded. See `designs/room-availability-and-person-calendar-redesign.md`.
+**2026-09-19: redesigned along with the whole page.** This case used to be about a `Tooltip`'s `aria-label` on an always-visible, absolutely-positioned meeting block. The card redesign removed both the tooltip and the block layout: a meeting is now a plain row in a list, shown only once its room's card is expanded. See `designs/archive/room-availability-and-person-calendar-redesign.md`.
 
 ---
 
@@ -240,7 +240,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **Notes:** "Without leaking into another room's card" is operationalised as "each meeting is scoped to the correct room's own card" — each room's meetings are only ever rendered inside that room's own `Collapse`, so this is a structural guarantee rather than something that could flake.
 
-**2026-09-19: redesigned along with the whole page.** Previously about two rows in a grid; now about two cards. See `designs/room-availability-and-person-calendar-redesign.md`.
+**2026-09-19: redesigned along with the whole page.** Previously about two rows in a grid; now about two cards. See `designs/archive/room-availability-and-person-calendar-redesign.md`.
 
 ---
 
@@ -270,7 +270,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **Notes:** This is the most direct proof in the whole catalog of the `[startTime, endTime)` half-open interval semantics actually working end-to-end (API + UI), not just documented.
 
-**2026-09-19: redesigned along with the whole page.** The old assertion read the two meeting blocks' bounding boxes to confirm no horizontal pixel overlap - a concept specific to the old grid's absolutely-positioned blocks. The card redesign renders meetings as a plain vertical list, so "distinct, non-overlapping" is now checked as "two separate rows, correctly ordered" instead. See `designs/room-availability-and-person-calendar-redesign.md`.
+**2026-09-19: redesigned along with the whole page.** The old assertion read the two meeting blocks' bounding boxes to confirm no horizontal pixel overlap - a concept specific to the old grid's absolutely-positioned blocks. The card redesign renders meetings as a plain vertical list, so "distinct, non-overlapping" is now checked as "two separate rows, correctly ordered" instead. See `designs/archive/room-availability-and-person-calendar-redesign.md`.
 
 ---
 
@@ -297,7 +297,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **Out of scope:** the actual palette-assignment algorithm (position-in-sorted-room-list) or its 8-hue wraparound — that's `theme/roomColor.ts` logic, already unit-tested per the main README's "Unit tests" section; this case only checks the two pages agree with *each other*, not that the algorithm itself is "correct" in some abstract sense.
 
-**2026-09-19: locators updated for the redesign.** Room Availability's own colour-dot markup is unchanged. Person Calendar's meeting row changed from an `<a>` to a `ButtonBase` (see G.65), so step 3's locator changed from role `link` to role `button` accordingly. See `designs/room-availability-and-person-calendar-redesign.md`.
+**2026-09-19: locators updated for the redesign.** Room Availability's own colour-dot markup is unchanged. Person Calendar's meeting row changed from an `<a>` to a `ButtonBase` (see G.65), so step 3's locator changed from role `link` to role `button` accordingly. See `designs/archive/room-availability-and-person-calendar-redesign.md`.
 
 **Notes:** Both pages sort rooms the same way (`name.localeCompare`) specifically so this holds — if this test ever fails, check whether that sort order assumption still holds in both places before assuming a real regression.
 
@@ -330,7 +330,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **Notes:** N/A.
 
-**2026-09-19: redesigned along with the whole page.** This case used to be about a fixed-hour timeline grid wide enough to force horizontal scrolling on a narrow screen (`mootmaker-webapp#11`, the defect this whole redesign exists to close) - the room-name column staying pinned via `position: sticky`, and scroll-fade hints tracking the scrollable edges. The card redesign removes horizontal scrolling from this page entirely: cards stack vertically at every viewport width via a responsive CSS grid (`{ xs: '1fr', md: 'repeat(2, 1fr)' }`), so there is no sticky column and no fade hints to test any more - the case now checks the thing the redesign actually set out to fix. See `designs/room-availability-and-person-calendar-redesign.md`.
+**2026-09-19: redesigned along with the whole page.** This case used to be about a fixed-hour timeline grid wide enough to force horizontal scrolling on a narrow screen (`mootmaker-webapp#11`, the defect this whole redesign exists to close) - the room-name column staying pinned via `position: sticky`, and scroll-fade hints tracking the scrollable edges. The card redesign removes horizontal scrolling from this page entirely: cards stack vertically at every viewport width via a responsive CSS grid (`{ xs: '1fr', md: 'repeat(2, 1fr)' }`), so there is no sticky column and no fade hints to test any more - the case now checks the thing the redesign actually set out to fix. See `designs/archive/room-availability-and-person-calendar-redesign.md`.
 
 ---
 

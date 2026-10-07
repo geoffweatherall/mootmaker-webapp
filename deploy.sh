@@ -122,6 +122,26 @@ window.__MOOTMAKER_CONFIG__ = {
 }
 EOF
 
+# The Android app's equivalent of env-config.js: plain JSON served beside it, so the app can fetch
+# https://<site>/mobile-config.json and learn which API and Cognito clients to use. Same
+# after-the-build rule, for the same reason. Nothing here is secret (see README, "Calling the API").
+# COGNITO_ANDROID_CLIENT_ID is omitted if the API has not published one yet.
+if [[ -z "${COGNITO_ANDROID_CLIENT_ID}" ]]; then
+  echo "WARNING: no /mootmaker/${environment}/api/cognito/android-client-id in SSM; mobile-config.json will lack COGNITO_ANDROID_CLIENT_ID." >&2
+fi
+jq -n \
+  --arg graphql "${GRAPHQL_API_URL}" \
+  --arg pool "${COGNITO_USER_POOL_ID}" \
+  --arg webapp "${COGNITO_WEBAPP_CLIENT_ID}" \
+  --arg android "${COGNITO_ANDROID_CLIENT_ID}" \
+  --arg email "${DEMO_USER_EMAIL}" \
+  --arg password "${DEMO_USER_PASSWORD}" \
+  '{GRAPHQL_API_URL: $graphql, COGNITO_USER_POOL_ID: $pool, COGNITO_CLIENT_ID: $webapp}
+   + (if $android != "" then {COGNITO_ANDROID_CLIENT_ID: $android} else {} end)
+   + (if $email != "" then {DEMO_USER_EMAIL: $email} else {} end)
+   + (if $password != "" then {DEMO_USER_PASSWORD: $password} else {} end)' \
+  > webapp/dist/mobile-config.json
+
 aws s3 sync webapp/dist "s3://${site_bucket}" --delete
 aws cloudfront create-invalidation --distribution-id "${distribution_id}" --paths "/*" >/dev/null
 

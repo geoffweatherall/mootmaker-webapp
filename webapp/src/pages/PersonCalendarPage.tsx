@@ -289,7 +289,7 @@ export default function PersonCalendarPage() {
                     // Not shown while meetingsLoading: workspace's cache-and-network refetch (for
                     // a new week/person) can leave dayMeetings transiently empty for days it
                     // hasn't resolved yet, since Query.fields.workspace shares one cache slot
-                    // across every `dates` window (see apolloClient.ts's keyArgs: false) - without
+                    // across every `dates` window (see cachePolicies.ts's keyArgs: false) - without
                     // this guard, that gap flashes "No meetings" even on days that do have
                     // meetings, right before the real list renders (mootmaker-webapp#72). The
                     // header's LinearProgress already signals this refetch is in flight.

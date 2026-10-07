@@ -57,7 +57,7 @@ export default function RoomsPage() {
   // the meantime (that's the whole point - see M.99). A create/edit/delete fired while that leg is
   // still in flight writes the mutation's own returned `rooms` into the cache first, then loses it
   // when the OLDER, now-stale network response for the SAME field lands after and overwrites it
-  // wholesale (Query.workspace's merge policy in apolloClient.ts is a shallow spread, so whichever
+  // wholesale (Query.workspace's merge policy in cachePolicies.ts is a shallow spread, so whichever
   // write to `rooms` lands last wins - there's no positional/id-aware reconciliation). `loading`
   // only stays true for that one initial leg per mount, so disabling these three actions until it
   // settles closes the window without needing the FAB to move or disappear (see the layout-

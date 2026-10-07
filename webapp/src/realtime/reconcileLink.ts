@@ -1,6 +1,5 @@
 import { ApolloLink, Observable } from '@apollo/client'
 import { OperationTypeNode } from 'graphql'
-import type { DayInvalidations } from './daysInvalidated'
 
 /**
  * Closes the in-flight race: re-evicts the days a query's response carries if any of them was
@@ -16,15 +15,17 @@ import type { DayInvalidations } from './daysInvalidated'
  * the broadcast that write causes reaches this tab around the same time - re-evicting on it would
  * throw away exactly the data the own-write guard exists to keep.
  *
- * `onReEvicted` must refetch active queries: eviction alone does not refill a multi-day query, which
- * reads back complete minus the evicted day (see the pinned test in daysInvalidated.test.ts).
+ * `reconcile` is called with the response's dates and the time its request left, once Apollo has
+ * written the response. It should run `DayInvalidations.reconcileAfterFetch` through
+ * evictAndRefetch: eviction alone does not refill a multi-day query, which reads back complete
+ * minus the evicted day (see the pinned test in daysInvalidated.test.ts), and evictAndRefetch
+ * refetches exactly the queries the re-eviction changed (#164). apolloClient.ts wires it.
  *
  * Unwired for its first month - `reconcileAfterFetch` existed and was unit-tested, but nothing
  * called it (mootmaker-webapp#162).
  */
 export function reconcileLink(
-  invalidations: DayInvalidations,
-  onReEvicted: () => void,
+  reconcile: (dates: string[], issuedAt: number) => void,
   now: () => number = Date.now,
 ): ApolloLink {
   return new ApolloLink((operation, forward) => {
@@ -43,9 +44,7 @@ export function reconcileLink(
           // cache - evicting first would just let the stale write land on top. Apollo writes it
           // synchronously inside observer.next above; reconcileLink.test.ts drives a real
           // ApolloClient to pin that ordering rather than assume it.
-          setTimeout(() => {
-            if (invalidations.reconcileAfterFetch(dates, issuedAt).length > 0) onReEvicted()
-          }, 0)
+          setTimeout(() => reconcile(dates, issuedAt), 0)
         },
         error: (error) => observer.error(error),
         complete: () => observer.complete(),

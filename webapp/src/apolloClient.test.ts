@@ -1,34 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { InMemoryCache } from '@apollo/client'
+import { ApolloClient, ApolloLink, InMemoryCache, Observable, gql } from '@apollo/client'
+import { defaultOptions, typePolicies } from './cachePolicies'
 import { DAYS, PAGE_LOAD } from './graphql/queries'
 
-// Mirrors the real typePolicies from apolloClient.ts, built inline rather than imported - that
-// module reads `window.__MOOTMAKER_CONFIG__` at import time, so it needs a browser environment.
-// Same pattern as graphql/referenceDataCache.test.ts.
+// The real policies, not a copy: they live in their own module precisely so tests can import them
+// (apolloClient.ts reads `window.__MOOTMAKER_CONFIG__` at import time).
 function newCache(): InMemoryCache {
-  return new InMemoryCache({
-    typePolicies: {
-      Day: { keyFields: ['date'] },
-      Workspace: { keyFields: false, fields: { days: { merge: false } } },
-      Query: {
-        fields: {
-          workspace: {
-            keyArgs: false,
-            read(existing: { days?: unknown } | undefined, { args, toReference, canRead }) {
-              const dates = args?.dates as string[] | undefined
-              if (!dates) return existing
-              const days = dates.map((date) => toReference({ __typename: 'Day', date }))
-              if (!days.some((day) => canRead(day))) {
-                const { days: _staleDays, ...rest } = existing ?? {}
-                return rest
-              }
-              return { ...existing, days }
-            },
-          },
-        },
-      },
-    },
-  })
+  return new InMemoryCache({ typePolicies })
 }
 
 function day(date: string) {
@@ -162,5 +140,64 @@ describe('apolloClient cache: workspace.days honours the requested dates (mootma
       workspace: { days: { date: string }[] }
     } | null
     expect(known?.workspace.days.map((d) => d.date)).toEqual(['2026-11-01'])
+  })
+})
+
+describe('refetches of one workspace query', () => {
+  const DAYS_ONLY = gql`
+    query DaysOnly($dates: [String!]) {
+      workspace(dates: $dates) { days { date meetings { id } } }
+    }
+  `
+  const ROOMS_ONLY = gql`
+    query RoomsOnly {
+      workspace { rooms { id name } }
+    }
+  `
+
+  async function pageWith(options: ApolloClient.DefaultOptions | undefined) {
+    const requests: string[] = []
+    const link = new ApolloLink(
+      (operation) =>
+        new Observable((observer) => {
+          requests.push(operation.operationName ?? '?')
+          const data =
+            operation.operationName === 'DaysOnly'
+              ? { workspace: { __typename: 'Workspace', days: [{ __typename: 'Day', date: '2026-10-08', meetings: [] }] } }
+              : { workspace: { __typename: 'Workspace', rooms: [{ __typename: 'Room', id: 'r-1', name: 'Kauri' }] } }
+          setTimeout(() => {
+            observer.next({ data } as never)
+            observer.complete()
+          }, 1)
+        }),
+    )
+    const cache = new InMemoryCache({ typePolicies })
+    const client = new ApolloClient({ cache, link, defaultOptions: options })
+    client.watchQuery({ query: DAYS_ONLY, variables: { dates: ['2026-10-08'] }, fetchPolicy: 'cache-and-network' }).subscribe({})
+    client.watchQuery({ query: ROOMS_ONLY, fetchPolicy: 'cache-first' }).subscribe({})
+    await settle()
+    requests.length = 0
+    await client.refetchQueries({ include: ['DaysOnly'] })
+    await settle()
+    const workspace = (cache.extract() as { ROOT_QUERY: { workspace: Record<string, unknown> } }).ROOT_QUERY.workspace
+    return { requests, workspace }
+  }
+
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 20))
+
+  it('leave the fields other queries wrote in place, so nothing else goes back to the network', async () => {
+    const { requests, workspace } = await pageWith(defaultOptions)
+
+    expect(workspace).toHaveProperty('rooms')
+    expect(requests).toEqual(['DaysOnly'])
+  })
+
+  it("would wipe them under Apollo's default overwrite-on-refetch, which is why it is overridden", async () => {
+    // Pins the Apollo behaviour defaultOptions exists for. If this starts failing, a future Apollo
+    // merges on refetch by default and the override in cachePolicies.ts can go.
+    const { requests, workspace } = await pageWith(undefined)
+
+    expect(workspace).not.toHaveProperty('rooms')
+    expect(requests).toEqual(['DaysOnly', 'RoomsOnly'])
   })
 })

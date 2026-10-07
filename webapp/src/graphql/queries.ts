@@ -205,11 +205,13 @@ export const SESSION = graphql(`
  * Originally existed just for attendee status, because the detail sheet/panel's `meeting` prop is
  * a snapshot captured once, not itself reactive - and attendee status changes underneath an
  * already-open sheet whenever anyone (including another client) responds. Now the same reasoning
- * covers every field an edit can change, and the meeting being cancelled entirely: `useFragment`'s
- * `complete` flag flips to `false` once `cache.gc()` collects the now-unreachable entity after a
- * cancellation, which `MeetingDetailContent` uses to show "This meeting was cancelled" instead of
- * stale content. `useFragment` is Apollo's purpose-built tool for exactly this: a live view of one
- * normalised entity, independent of which query is currently mounted.
+ * covers every field an edit can change, and the meeting disappearing from the cache: `useFragment`'s
+ * `complete` flag flips to `false` whenever the entity is evicted. That is NOT the same as
+ * cancelled - every eviction of its day does it, and so does a move to a day nobody is watching -
+ * so `MeetingDetailContent` treats it as "refreshing" and asks the API about the meeting itself,
+ * showing "This meeting was cancelled" only when that lookup returns null (#132, #134).
+ * `useFragment` is Apollo's purpose-built tool for exactly this: a live view of one normalised
+ * entity, independent of which query is currently mounted.
  */
 export const MEETING_LIVE_FIELDS_FRAGMENT = graphql(`
   fragment MeetingLiveFields on Meeting {

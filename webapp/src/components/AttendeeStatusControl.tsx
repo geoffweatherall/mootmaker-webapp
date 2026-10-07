@@ -1,6 +1,7 @@
 import { useMutation } from '@apollo/client/react'
 import { Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
 import { useState } from 'react'
+import { dayInvalidations } from '../apolloClient'
 import { RESPOND_TO_MEETING } from '../graphql/mutations'
 import type { AttendeeStatus, RespondToMeetingResult } from '../graphql/types'
 import { RESPOND_TO_MEETING_ERROR_MESSAGES } from '../graphql/validationMessages'
@@ -20,9 +21,12 @@ import { RESPOND_TO_MEETING_ERROR_MESSAGES } from '../graphql/validationMessages
  */
 export function AttendeeStatusControl({
   meetingId,
+  meetingDate,
   status,
 }: {
   meetingId: string
+  /** The meeting's own date (YYYY-MM-DD), for `dayInvalidations.noteOwnWrite` - see below. */
+  meetingDate: string
   status: AttendeeStatus
 }) {
   const [respondToMeeting, { loading, error: transportError }] = useMutation<{
@@ -33,6 +37,10 @@ export function AttendeeStatusControl({
   async function handleChange(next: AttendeeStatus | null) {
     if (!next || next === status) return
     setFieldErrors([])
+    // The response overwrites Meeting:<id> authoritatively, so this tab's copy of the broadcast
+    // is one to ignore, like every other meeting mutation's. Noted before the request because the
+    // API broadcasts inside it, so the broadcast can beat the response (mootmaker-webapp#162).
+    dayInvalidations.noteOwnWrite([meetingDate])
     const result = await respondToMeeting({ variables: { meetingId, status: next } })
     const payload = result.data?.respondToMeeting
     if (!payload?.meeting && payload?.errors.length) {

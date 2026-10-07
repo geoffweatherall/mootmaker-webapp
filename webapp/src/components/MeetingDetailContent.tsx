@@ -294,7 +294,7 @@ export function MeetingDetailContent({
         {/* Only when the caller is actually an attendee - the organiser has nothing to set (see
             AttendeeStatusControl.tsx), and someone viewing a shared link they have no part in gets
             no control either. */}
-        {myAttendee && <AttendeeStatusControl meetingId={meeting.id} status={myAttendee.status} />}
+        {myAttendee && <AttendeeStatusControl meetingId={meeting.id} meetingDate={currentDate} status={myAttendee.status} />}
       </Stack>
 
       <SuccessToast message={linkCopied ? 'Link copied to clipboard.' : null} onClose={() => setLinkCopied(false)} />

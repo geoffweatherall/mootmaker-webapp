@@ -71,6 +71,7 @@ export class DayInvalidations {
 
   /**
    * Call with the time a fetch was ISSUED, once its response has been written to the cache.
+   * reconcileLink.ts does, for every query.
    *
    * Any date invalidated after that moment was invalidated while the response was in flight, so the
    * data just written may predate the change. Evicting again is the only safe answer: the response

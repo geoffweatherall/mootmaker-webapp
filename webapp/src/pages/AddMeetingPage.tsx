@@ -330,7 +330,24 @@ export default function AddMeetingPage() {
       endTime: meetingEndTime,
     }
 
+    // This tab is also a subscriber, so the server's broadcast for this save comes back to us.
+    // Without the guard it would evict the Day our own mutation response writes authoritatively,
+    // and re-render empty while refetching - the person who saved watching their own screen flicker.
+    //
+    // Noted BEFORE the request, not once the response arrives: the API publishes the broadcast
+    // inside this very request - after the write commits, before it responds - so the broadcast can
+    // reach this tab ahead of the response, and a guard set on the response is then too late
+    // (mootmaker-webapp#162). A rejected save publishes nothing, so noting early costs only the
+    // guard's own accepted trade-off (see `noteOwnWrite`).
+    const requestedDate = meetingStartTime.slice(0, 10)
+
     if (isEdit) {
+      // Both dates: a same-day edit only touches one, but a cross-day one touches two, and
+      // suppressing eviction for the wrong (or only one) of them would flicker the other -
+      // see designs/edit-and-cancel-meetings.md's "Real-time" technical consideration.
+      dayInvalidations.noteOwnWrite(
+        existingMeeting ? [existingMeeting.startTime.slice(0, 10), requestedDate] : [requestedDate],
+      )
       const result = await updateMeeting({
         variables: { id: meetingId ?? '', meeting: { ...meetingInput, expectedVersion: editedVersion } },
       })
@@ -341,12 +358,6 @@ export default function AddMeetingPage() {
       }
       if (payload?.meeting) {
         const bookedDate = payload.meeting.startTime.slice(0, 10)
-        // Both dates: a same-day edit only touches one, but a cross-day one touches two, and
-        // suppressing eviction for the wrong (or only one) of them would flicker the other -
-        // see designs/edit-and-cancel-meetings.md's "Real-time" technical consideration.
-        dayInvalidations.noteOwnWrite(
-          originalRoomId !== null && existingMeeting ? [existingMeeting.startTime.slice(0, 10), bookedDate] : [bookedDate],
-        )
         navigate(pageAfterSave(routerState?.returnTo, bookedDate), {
           state: { toast: 'Meeting was successfully updated.' },
         })
@@ -354,6 +365,7 @@ export default function AddMeetingPage() {
       return
     }
 
+    dayInvalidations.noteOwnWrite([requestedDate])
     const result = await createMeeting({ variables: { meeting: meetingInput } })
 
     const payload = result.data?.createMeeting
@@ -363,12 +375,6 @@ export default function AddMeetingPage() {
     }
     if (payload?.meeting) {
       const bookedDate = payload.meeting.startTime.slice(0, 10)
-
-      // This tab is also a subscriber, so the server's broadcast for this booking comes back to
-      // us. Without this it would evict the Day our own mutation response just wrote
-      // authoritatively, and re-render empty while refetching - the person who made the booking
-      // watching their own screen flicker, on every create.
-      dayInvalidations.noteOwnWrite([bookedDate])
 
       // Nothing is carried with the navigation any more: createMeeting returns the whole affected
       // Day, which Apollo has written over that day's cache entity, so the page being navigated to

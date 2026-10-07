@@ -1,5 +1,5 @@
 import { ApolloClient, ApolloLink, InMemoryCache, HttpLink } from '@apollo/client'
-import { typePolicies } from './cachePolicies'
+import { defaultOptions, typePolicies } from './cachePolicies'
 import { DayInvalidations } from './realtime/daysInvalidated'
 import { reconcileLink } from './realtime/reconcileLink'
 import { SetContextLink } from '@apollo/client/link/context'
@@ -40,4 +40,6 @@ export const apolloClient: ApolloClient = new ApolloClient({
     }),
   ]),
   cache,
+  // Refetches merge rather than overwrite - see cachePolicies.ts.
+  defaultOptions,
 })

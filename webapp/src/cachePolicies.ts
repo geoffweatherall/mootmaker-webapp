@@ -1,4 +1,4 @@
-import type { TypePolicies } from '@apollo/client'
+import type { ApolloClient, TypePolicies } from '@apollo/client'
 
 /**
  * Three policies, and each one is load-bearing.
@@ -106,4 +106,24 @@ export const typePolicies: TypePolicies = {
       },
     },
   },
+}
+
+/**
+ * Refetches MERGE into the cache, like every other write, instead of overwriting.
+ *
+ * Apollo's default for a watched query's refetch is to overwrite: merge functions are called with no
+ * `existing` value. For `Query.workspace` that is destructive, because one stored `workspace` object
+ * is shared by every query that reads it - `DAYS` writes `days`, `REFERENCE_DATA` writes `rooms` and
+ * `people`, `BOUNDARIES` writes `boundaries`. A refetch of `DAYS` (every live update triggers one)
+ * replaced the whole object with `{ days }`, wiping the others, so every other workspace query on the
+ * page went incomplete and back to the network, `cache-first` or not. Measured with a real
+ * ApolloClient before this was set: refetching `DAYS` alone also refetched an unrelated rooms query
+ * (mootmaker-webapp#164).
+ *
+ * Safe here because `Query.workspace`'s shallow spread is the only `merge` function that keeps
+ * anything; `Workspace.days` is `merge: false` and other fields replace by default, so a refetched
+ * list is still replaced outright, not appended to.
+ */
+export const defaultOptions: ApolloClient.DefaultOptions = {
+  watchQuery: { refetchWritePolicy: 'merge' },
 }

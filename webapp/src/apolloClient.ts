@@ -1,5 +1,6 @@
-import { ApolloClient, InMemoryCache, HttpLink } from '@apollo/client'
+import { ApolloClient, ApolloLink, InMemoryCache, HttpLink } from '@apollo/client'
 import { DayInvalidations } from './realtime/daysInvalidated'
+import { reconcileLink } from './realtime/reconcileLink'
 import { SetContextLink } from '@apollo/client/link/context'
 import { currentIdToken } from './auth/cognito'
 import { runtimeConfig } from './config'
@@ -126,18 +127,23 @@ export const cache = new InMemoryCache({
   },
 })
 
-export const apolloClient = new ApolloClient({
-  link: authLink.concat(
-    new HttpLink({
-      uri: runtimeConfig.GRAPHQL_API_URL,
-    }),
-  ),
-  cache,
-})
-
 /**
  * Turns day-invalidation broadcasts into cache evictions. Lives here so there is exactly one
  * instance bound to exactly one cache - its self-invalidation guard and in-flight-race marker are
  * per-client state, and a second instance would silently hold half the picture.
  */
 export const dayInvalidations = new DayInvalidations(cache)
+
+export const apolloClient: ApolloClient = new ApolloClient({
+  link: ApolloLink.from([
+    authLink,
+    // Re-evicts a query's days if one was invalidated while its response was in flight, then
+    // refetches - see realtime/reconcileLink.ts. The callback only runs after a response, by which
+    // time apolloClient is initialised.
+    reconcileLink(dayInvalidations, () => void apolloClient.refetchQueries({ include: 'active' })),
+    new HttpLink({
+      uri: runtimeConfig.GRAPHQL_API_URL,
+    }),
+  ]),
+  cache,
+})

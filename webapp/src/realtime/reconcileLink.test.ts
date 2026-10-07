@@ -71,7 +71,12 @@ function setup() {
   const server = heldServer()
   const client = new ApolloClient({
     cache,
-    link: ApolloLink.from([reconcileLink(invalidations, onReEvicted, now), server.link]),
+    link: ApolloLink.from([
+      reconcileLink((dates, issuedAt) => {
+        if (invalidations.reconcileAfterFetch(dates, issuedAt).length > 0) onReEvicted()
+      }, now),
+      server.link,
+    ]),
   })
   cache.writeQuery({
     query: WORKSPACE,

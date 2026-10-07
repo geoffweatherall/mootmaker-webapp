@@ -1,6 +1,7 @@
 import { ApolloClient, ApolloLink, InMemoryCache, HttpLink } from '@apollo/client'
 import { defaultOptions, typePolicies } from './cachePolicies'
 import { DayInvalidations } from './realtime/daysInvalidated'
+import { evictAndRefetch } from './realtime/evictAndRefetch'
 import { reconcileLink } from './realtime/reconcileLink'
 import { SetContextLink } from '@apollo/client/link/context'
 import { currentIdToken } from './auth/cognito'
@@ -32,9 +33,11 @@ export const apolloClient: ApolloClient = new ApolloClient({
   link: ApolloLink.from([
     authLink,
     // Re-evicts a query's days if one was invalidated while its response was in flight, then
-    // refetches - see realtime/reconcileLink.ts. The callback only runs after a response, by which
-    // time apolloClient is initialised.
-    reconcileLink(dayInvalidations, () => void apolloClient.refetchQueries({ include: 'active' })),
+    // refetches what that changed - see realtime/reconcileLink.ts. The callback only runs after a
+    // response, by which time apolloClient is initialised.
+    reconcileLink((dates, issuedAt) =>
+      evictAndRefetch(apolloClient, () => dayInvalidations.reconcileAfterFetch(dates, issuedAt)),
+    ),
     new HttpLink({
       uri: runtimeConfig.GRAPHQL_API_URL,
     }),

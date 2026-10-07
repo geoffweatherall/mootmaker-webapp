@@ -3,6 +3,7 @@ import { apolloClient, cache, dayInvalidations } from '../apolloClient'
 import { currentIdToken } from '../auth/cognito'
 import { runtimeConfig } from '../config'
 import { openAppSyncSubscription } from './appsyncSocket'
+import { evictAndRefetch } from './evictAndRefetch'
 
 const SUBSCRIPTION = 'subscription DaysInvalidated { daysInvalidated { dates } }'
 
@@ -33,8 +34,6 @@ export function useDaysInvalidated(signedIn: boolean): void {
       onData: (payload) => {
         const dates = (payload as InvalidationPayload).data?.daysInvalidated?.dates
         if (!dates?.length) return
-        const evicted = dayInvalidations.invalidate(dates)
-
         // Evicting is not enough on its own, which is the one place the design's stated mechanism
         // does not survive contact with Apollo 4. `workspace.days` still holds a reference to the
         // evicted Day, Apollo filters dangling references out of a list on read, and the query
@@ -42,13 +41,17 @@ export function useDaysInvalidated(signedIn: boolean): void {
         // and the screen shows "no meetings" indefinitely rather than refetching. Measured, not
         // assumed: after evicting, cache.diff reports complete: true and days: [].
         //
-        // Conditional on something actually being evicted, so a broadcast for a day this client is
-        // not holding stays the complete no-op it should be.
-        if (evicted.length > 0) void apolloClient.refetchQueries({ include: 'active' })
+        // So the eviction runs through evictAndRefetch, which refetches exactly the watched queries
+        // whose results it changed - not every active query (#164). A broadcast for a day this
+        // client is not holding, or one ignored as its own write, changes nothing and refetches
+        // nothing.
+        evictAndRefetch(apolloClient, () => dayInvalidations.invalidate(dates))
       },
       // A gap in the connection is a gap in knowledge: anything published while disconnected is
       // gone, so everything held is suspect. Refetching active queries is what refills whatever the
       // user is actually looking at; days nobody is watching stay evicted until navigated to.
+      // Deliberately ALL active queries, not evictAndRefetch's narrower set: rooms and people are
+      // not broadcast, so this is one of the few things that refreshes them.
       onResubscribed: () => {
         dayInvalidations.invalidateEverything()
         void apolloClient.refetchQueries({ include: 'active' })

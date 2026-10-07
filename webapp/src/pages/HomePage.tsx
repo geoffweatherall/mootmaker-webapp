@@ -212,7 +212,7 @@ export default function HomePage() {
   //
   // cache-and-network, not the default cache-first, for the same reason RoomAvailabilityPage and
   // PersonCalendarPage's own DAYS queries already need it: Query.workspace's field policy in
-  // apolloClient.ts is `keyArgs: false` with a `read` that reconstructs `days` from whatever
+  // cachePolicies.ts is `keyArgs: false` with a `read` that reconstructs `days` from whatever
   // Day entities are already normalized. Once extraDates grows to include even one date already
   // cached from an earlier click, that read looks "complete enough" under cache-first and the
   // genuinely new dates in the same request never get fetched at all - caught while writing this

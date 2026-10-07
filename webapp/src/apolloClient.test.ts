@@ -1,34 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { InMemoryCache } from '@apollo/client'
+import { typePolicies } from './cachePolicies'
 import { DAYS, PAGE_LOAD } from './graphql/queries'
 
-// Mirrors the real typePolicies from apolloClient.ts, built inline rather than imported - that
-// module reads `window.__MOOTMAKER_CONFIG__` at import time, so it needs a browser environment.
-// Same pattern as graphql/referenceDataCache.test.ts.
+// The real policies, not a copy: they live in their own module precisely so tests can import them
+// (apolloClient.ts reads `window.__MOOTMAKER_CONFIG__` at import time).
 function newCache(): InMemoryCache {
-  return new InMemoryCache({
-    typePolicies: {
-      Day: { keyFields: ['date'] },
-      Workspace: { keyFields: false, fields: { days: { merge: false } } },
-      Query: {
-        fields: {
-          workspace: {
-            keyArgs: false,
-            read(existing: { days?: unknown } | undefined, { args, toReference, canRead }) {
-              const dates = args?.dates as string[] | undefined
-              if (!dates) return existing
-              const days = dates.map((date) => toReference({ __typename: 'Day', date }))
-              if (!days.some((day) => canRead(day))) {
-                const { days: _staleDays, ...rest } = existing ?? {}
-                return rest
-              }
-              return { ...existing, days }
-            },
-          },
-        },
-      },
-    },
-  })
+  return new InMemoryCache({ typePolicies })
 }
 
 function day(date: string) {

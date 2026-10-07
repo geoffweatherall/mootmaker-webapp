@@ -326,8 +326,9 @@ npm run build               # type-check (tsc -b) + production build into dist/ 
 2. `terraform init` (state key `<environment>/mootmaker-webapp/terraform.tfstate`) + `terraform apply -auto-approve -var="environment=<environment>"` in [deploy/terraform](deploy/terraform) to create/update the S3 bucket and CloudFront distribution, and publish the site URL to SSM as `/mootmaker/<environment>/webapp/site-url`.
 3. `npm install` and `npm run build` to produce `webapp/dist/` — an environment-agnostic build, no config baked in.
 4. Writes `webapp/dist/env-config.js` with the API URL, Cognito user pool id, webapp client id, and demo user email/password from step 1 — see [Calling the API](#calling-the-api).
-5. `aws s3 sync webapp/dist s3://<bucket> --delete` to upload the build (including `env-config.js`) and remove stale files.
-6. Creates a CloudFront invalidation for `/*` so the new version is served immediately, then prints the site URL.
+5. Writes `webapp/dist/mobile-config.json`, the Android app's equivalent of `env-config.js`: plain JSON with `GRAPHQL_API_URL`, `COGNITO_USER_POOL_ID`, `COGNITO_CLIENT_ID` (the webapp client), `COGNITO_ANDROID_CLIENT_ID` (SSM `cognito/android-client-id`; left out with a warning if the API has not published it) and the demo user's `DEMO_USER_EMAIL`/`DEMO_USER_PASSWORD`. Served at `/mobile-config.json` on the site.
+6. `aws s3 sync webapp/dist s3://<bucket> --delete` to upload the build (including `env-config.js` and `mobile-config.json`) and remove stale files.
+7. Creates a CloudFront invalidation for `/*` so the new version is served immediately, then prints the site URL.
 
 `./undeploy.sh <environment>` runs `terraform destroy` (with interactive confirmation) — it deletes that environment's distribution and bucket including all uploaded assets.
 

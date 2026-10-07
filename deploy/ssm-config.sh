@@ -31,11 +31,16 @@ export_api_deploy_config() {
   COGNITO_WEBAPP_CLIENT_ID="$(ssm_value "${api}/cognito/webapp-client-id")"
   DEMO_USER_EMAIL="$(ssm_value "${api}/demo-user/email")"
   DEMO_USER_PASSWORD="$(ssm_value "${api}/demo-user/password")"
+  # Optional: published by an mootmaker-api new enough to have the Android app client. Absent on an
+  # older API, in which case deploy.sh leaves it out of mobile-config.json (the app then reports
+  # the config as incomplete) rather than failing a webapp deploy that has nothing to do with it.
+  COGNITO_ANDROID_CLIENT_ID="$(ssm_value_optional "${api}/cognito/android-client-id")"
+  [[ "${COGNITO_ANDROID_CLIENT_ID}" == "None" ]] && COGNITO_ANDROID_CLIENT_ID=""
   COGNITO_TOKEN_URL="$(ssm_value "${api}/m2m-client/token-url")"
   COGNITO_TEST_CLIENT_ID="$(ssm_value "${api}/m2m-client/client-id")"
   COGNITO_TEST_CLIENT_SECRET="$(ssm_value "${api}/m2m-client/client-secret")"
   COGNITO_TEST_SCOPE="$(ssm_value "${api}/m2m-client/scope")"
-  export GRAPHQL_API_URL COGNITO_USER_POOL_ID COGNITO_WEBAPP_CLIENT_ID DEMO_USER_EMAIL DEMO_USER_PASSWORD \
+  export GRAPHQL_API_URL COGNITO_USER_POOL_ID COGNITO_WEBAPP_CLIENT_ID COGNITO_ANDROID_CLIENT_ID DEMO_USER_EMAIL DEMO_USER_PASSWORD \
     COGNITO_TOKEN_URL COGNITO_TEST_CLIENT_ID COGNITO_TEST_CLIENT_SECRET COGNITO_TEST_SCOPE
 }
 

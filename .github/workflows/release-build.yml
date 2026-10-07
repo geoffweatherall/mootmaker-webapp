@@ -214,7 +214,7 @@ jobs:
         id: artifact
         run: echo "name=mootmaker-webapp-${{ inputs.version }}" >> "$GITHUB_OUTPUT"
 
-      # env-config.js is deliberately NOT included: deploy.sh writes it per environment after the
+      # env-config.js and mobile-config.json are deliberately NOT included: deploy.sh writes them per environment after the
       # build, so shipping the ephemeral environment's copy would point production at a torn-down
       # API. Excluding it is what makes the bundle promotable.
       - uses: actions/upload-artifact@v6
@@ -223,5 +223,6 @@ jobs:
           path: |
             mootmaker-webapp/webapp/dist
             !mootmaker-webapp/webapp/dist/env-config.js
+            !mootmaker-webapp/webapp/dist/mobile-config.json
           if-no-files-found: error
           retention-days: 30

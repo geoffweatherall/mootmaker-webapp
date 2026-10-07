@@ -25,6 +25,7 @@ import { AttendeeStatusBadge } from '../components/AttendeeStatusBadge'
 import { EmptyState } from '../components/EmptyState'
 import { AvailabilityIcon, CalendarIcon, CheckCircleIcon, PersonIcon } from '../icons'
 import { SignInForm } from '../components/SignInForm'
+import { dayInvalidations } from '../apolloClient'
 import { useMeetingDetailOverlay } from '../components/useMeetingDetailOverlay'
 import { formatLocalTime } from '../graphql/formatDateTime'
 import { RESPOND_TO_MEETING } from '../graphql/mutations'
@@ -57,12 +58,15 @@ const RETURN_HOME = { returnTo: '/' }
  * group: every card this appears on is, by construction, still at NoResponse (see
  * needsResponseEntriesForDay), so there is no "currently selected" state to show.
  */
-function QuickRespondButtons({ meetingId }: { meetingId: string }) {
+function QuickRespondButtons({ meetingId, meetingDate }: { meetingId: string; meetingDate: string }) {
   const [respondToMeeting, { loading }] = useMutation<{ respondToMeeting: RespondToMeetingResult }>(
     RESPOND_TO_MEETING,
   )
 
   function respond(status: AttendeeStatus) {
+    // Same own-write guard, and the same reason for noting it before the request, as
+    // AttendeeStatusControl.tsx (mootmaker-webapp#162).
+    dayInvalidations.noteOwnWrite([meetingDate])
     void respondToMeeting({ variables: { meetingId, status } })
   }
 
@@ -119,7 +123,7 @@ function NeedsResponseCard({ meeting, organiserName, roomName, source, today, to
             {whenLabel} · {roomName} · organised by {organiserName}
           </Typography>
         </Box>
-        <QuickRespondButtons meetingId={meeting.id} />
+        <QuickRespondButtons meetingId={meeting.id} meetingDate={meeting.startTime.slice(0, 10)} />
       </Stack>
     </Card>
   )

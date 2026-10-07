@@ -38,8 +38,8 @@ export function CancelMeetingDialog({
 }: {
   open: boolean
   meetingId: string
-  /** The meeting's own date (YYYY-MM-DD), so a successful cancel can suppress this client's own
-   * flicker the same way every other meeting mutation does - see `dayInvalidations.noteOwnWrite`. */
+  /** The meeting's own date (YYYY-MM-DD), so a cancel can suppress this client's own flicker the
+   * same way every other meeting mutation does - see `dayInvalidations.noteOwnWrite`. */
   meetingDate: string
   subject: string
   onClose: () => void
@@ -68,6 +68,11 @@ export function CancelMeetingDialog({
 
   async function handleConfirm() {
     setFieldErrors([])
+    // Before the request, not on its response: the API broadcasts inside the request, so the
+    // broadcast can arrive first. Noted late, an open detail panel would see its own meeting go
+    // missing, look it up, and briefly say "This meeting was cancelled." to the person who just
+    // cancelled it, before onCancelled closes it (mootmaker-webapp#162).
+    dayInvalidations.noteOwnWrite([meetingDate])
     const result = await cancelMeeting({ variables: { id: meetingId } })
     const payload = result.data?.cancelMeeting
     if (payload?.errors.length) {
@@ -75,7 +80,6 @@ export function CancelMeetingDialog({
       return
     }
     if (payload?.day) {
-      dayInvalidations.noteOwnWrite([meetingDate])
       onCancelled()
     }
   }

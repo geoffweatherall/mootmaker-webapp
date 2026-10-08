@@ -12,7 +12,7 @@ otherwise-fast, hard-to-catch transient state reliably observable — each says 
 
 **Use case:** [use-cases.md#uc-92](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-92) — "Loading states: spinner on first load, slim progress bar on background refetch with stale data still shown."
 **Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. A room, so there's a real room to book into.
 
@@ -47,7 +47,7 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 
 **Use case:** [use-cases.md#uc-93](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-93) — "Network/transport error (e.g. API unreachable) surfaces a readable message in the error banner, not a blank/broken page."
 **Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user.
 
@@ -75,7 +75,7 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 
 **Use case:** [use-cases.md#uc-94](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-94) — "Expired/invalid session mid-use → next API call fails gracefully, ideally prompting re-authentication."
 **Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user.
 
@@ -105,7 +105,7 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 
 **Use case:** [use-cases.md#uc-95](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-95) — "Deep link directly to a client-side route (e.g. `/meetings/add`) loads the SPA correctly rather than 404ing."
 **Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user (or signed out, for the redirect-to-signin variant — either proves the deep link itself resolved rather than 404ing).
 
@@ -132,7 +132,7 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 
 **Use case:** [use-cases.md#uc-96](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-96) — "Light/dark mode follows OS `prefers-color-scheme` correctly on every page."
 **Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user.
 
@@ -160,7 +160,7 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 
 **Use case:** [use-cases.md#uc-97](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-97) — "Mobile nav flyout opens/closes correctly, including auto-closing after navigating to any page (Settings included)."
 **Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. Narrow viewport.
 
@@ -194,7 +194,7 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 
 **Use case:** [use-cases.md#uc-98](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-98) — "Data edited in one place (e.g. a room renamed in Settings) is consistent everywhere it's cached (meeting lists, availability grid) without needing a manual refresh."
 **Status:** ✅ Satisfied by [`tests/p-rooms.spec.ts`](../tests/p-rooms.spec.ts)'s P.128 test — see Notes
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions/Steps/Assertions:** Identical to [P.128](p-rooms.md#tc-p128) — same mechanism (Apollo `InMemoryCache` normalization), same room-rename fixture, same "no reload" assertion.
 
@@ -209,7 +209,7 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 
 **Use case:** [use-cases.md#uc-99](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-99) — "Refreshing the page picks up any changes made outside the current session (cache reset)."
 **Status:** ✅ Automated — [`tests/cross-cutting.spec.ts`](../tests/cross-cutting.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Two separate browser contexts (simulating two independent sessions/devices), both signed in as the standard user.
 
@@ -241,7 +241,7 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 
 **Use case:** [use-cases.md#uc-109](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-109) — "Two different attendees of the same meeting responding to it at the same moment both land - neither overwrites the other, even under a real DynamoDB optimistic-lock conflict."
 **Status:** ✅ Automated — [`tests/attendee-response-status.spec.ts`](../tests/attendee-response-status.spec.ts), new 2026-09-21 — see `../../designs/attendee-response-status.md` in the hub repo.
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Three real identities in three separate browser contexts: the standard user and two freshly-created, admin-confirmed accounts (`support/cognitoAdmin.ts`'s `createConfirmedTestAccount`, bypassing the email-code UI). One organises; the standard user and the other fresh account are both attendees of one meeting, created via the API.
 
@@ -268,7 +268,7 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 
 **Use case:** [use-cases.md#uc-110](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-110) — "One person responding to two different meetings that happen to fall on the same calendar day - and so share the same DynamoDB day item - at the same moment: both responses land."
 **Status:** ✅ Automated — [`tests/attendee-response-status.spec.ts`](../tests/attendee-response-status.spec.ts), new 2026-09-21 — see `../../designs/attendee-response-status.md` in the hub repo.
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user, with two rooms and one other Person (organiser) already present. Two meetings on the same pinned day (different rooms/times), both via the API, with the standard user as the sole attendee of each.
 
@@ -295,7 +295,7 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 
 **Use case:** [use-cases.md#uc-111](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-111) — "A response made by another client (e.g. a different attendee, or the same person in another tab) is reflected on an already-open meeting detail sheet without a refresh."
 **Status:** ✅ Automated — [`tests/attendee-response-status.spec.ts`](../tests/attendee-response-status.spec.ts), new 2026-09-21 — see `../../designs/attendee-response-status.md` in the hub repo.
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Two browser contexts: the standard user (observer, organiser) and one fresh account (the meeting's sole attendee). A meeting created via the API, on the pinned "today".
 
@@ -322,7 +322,7 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 
 **Use case:** [use-cases.md#uc-122](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-122) — "An edit made by another client (e.g. the organiser, in another tab or by another admin) is reflected on an already-open meeting detail sheet without a refresh." (Cross-references [M.112](#tc-m112)/[M.113](#tc-m113) - see `../../designs/edit-and-cancel-meetings.md`.)
 **Status:** ✅ Automated — [`tests/edit-and-cancel-meetings.spec.ts`](../tests/edit-and-cancel-meetings.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Two browser contexts: the standard user (observer) and a second confirmed account (the editor - an admin, or the meeting's organiser in another tab). A meeting created via the API, on the pinned "today".
 
@@ -349,7 +349,7 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 
 **Use case:** [use-cases.md#uc-123](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-123) — "A cancellation made by another client is reflected on an already-open meeting detail sheet without a refresh - the sheet shows the meeting was cancelled elsewhere, rather than continuing to display stale content or erroring." (Cross-references [M.112](#tc-m112)/[M.113](#tc-m113) - see `../../designs/edit-and-cancel-meetings.md`.)
 **Status:** ✅ Automated — [`tests/edit-and-cancel-meetings.spec.ts`](../tests/edit-and-cancel-meetings.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Two browser contexts: the standard user (observer) and a second confirmed account (the canceller - an admin, or the meeting's organiser in another tab). A meeting created via the API, on the pinned "today".
 

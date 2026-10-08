@@ -18,7 +18,7 @@ standard user forcing `renamePerson`/`setPersonAdmin`/`deletePerson` directly is
 
 **Use case:** [use-cases.md#uc-132](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-132)
 **Status:** ✅ Automated — [`tests/q-persons.spec.ts`](../tests/q-persons.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 Same shape as P.124, for `/persons`.
 
@@ -32,7 +32,7 @@ Same shape as P.124, for `/persons`.
 
 **Use case:** [use-cases.md#uc-133](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-133)
 **Status:** ✅ Automated — [`tests/q-persons.spec.ts`](../tests/q-persons.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 Same as K.85, against `/persons`.
 
@@ -45,7 +45,7 @@ Same as K.85, against `/persons`.
 
 **Use case:** [use-cases.md#uc-134](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-134)
 **Status:** ✅ Automated — [`tests/q-persons.spec.ts`](../tests/q-persons.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 Same as K.86.
 
@@ -58,7 +58,7 @@ Same as K.86.
 
 **Use case:** [use-cases.md#uc-135](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-135)
 **Status:** ✅ Automated — [`tests/q-persons.spec.ts`](../tests/q-persons.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 Same as K.87 (a real, Cognito-linked test account, renamed by the admin, sees the new name in
 their own sidebar on next sign-in). **Reduced scope from K.87:** does not separately re-check a
@@ -76,7 +76,7 @@ meeting-details check if this case is revisited.
 
 **Use case:** [use-cases.md#uc-136](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-136)
 **Status:** ✅ Automated — [`tests/q-persons.spec.ts`](../tests/q-persons.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 Same as K.88 (no auth-side propagation needed for a guest Person).
 
@@ -89,7 +89,7 @@ Same as K.88 (no auth-side propagation needed for a guest Person).
 
 **Use case:** [use-cases.md#uc-137](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-137) — "Persons with a linked Cognito account show its email address(es); an admin shows an Admin badge; a guest shows a 'not signed up' indicator." **New in this design** — this was the very first prototype requirement (`Person.linkedEmails`/`isAdmin` didn't exist before it).
 **Status:** ✅ Automated — [`tests/q-persons.spec.ts`](../tests/q-persons.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Given** the Persons grid, with a Cognito-linked person, a guest, and the (admin) admin user all present
 **Then** the linked person's card shows their email, the guest's card shows "Not signed up yet", and the admin user's card shows an "Admin" badge alongside their own email
@@ -116,7 +116,7 @@ account to an existing Person today — see mootmaker-api#70, out of scope for t
 
 **Use case:** [use-cases.md#uc-138](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-138) — "Admin flips the Admin switch for a Cognito-linked person → they gain admin access, provably (their own next sign-in shows the admin nav)." **New in this design.**
 **Status:** ✅ Automated — [`tests/q-persons.spec.ts`](../tests/q-persons.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Given** a real, Cognito-linked, non-admin person
 **When** an admin enables their Admin switch and saves
@@ -145,7 +145,7 @@ design doc's own Testing impacts section.
 
 **Use case:** [use-cases.md#uc-139](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-139) — "Editing a guest Person's admin switch is disabled with inline copy explaining why, rather than allowing a flip that silently can't apply." **New in this design.**
 **Status:** ✅ Automated — [`tests/q-persons.spec.ts`](../tests/q-persons.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Assertions:** the switch is disabled; inline copy names why ("hasn't signed in yet").
 
@@ -158,7 +158,7 @@ design doc's own Testing impacts section.
 
 **Use case:** [use-cases.md#uc-140](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-140) — "An admin editing their own Person sees the admin switch disabled, rather than being able to attempt (and have rejected) revoking their own access." **New in this design.**
 **Status:** ✅ Automated — [`tests/q-persons.spec.ts`](../tests/q-persons.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Assertions:** the switch is disabled; inline copy names why.
 
@@ -171,7 +171,7 @@ design doc's own Testing impacts section.
 
 **Use case:** [use-cases.md#uc-141](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-141) — "Admin deletes a Person → every upcoming meeting they organise is cancelled, they're removed from every upcoming meeting they only attend, past meetings are untouched." **New in this design** — `deletePerson` didn't exist before it.
 **Status:** ✅ Automated — [`tests/q-persons.spec.ts`](../tests/q-persons.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Given** a person who organises one upcoming meeting and attends a second (organised by someone else)
 **When** an admin deletes them
@@ -203,7 +203,7 @@ call, itself unit-tested in `DeletePersonHandlerTest`).
 
 **Use case:** [use-cases.md#uc-142](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-142) — "An admin attempting to delete their own Person via the admin Persons page is rejected, with a pointer to Delete account in Settings instead." **New in this design.**
 **Status:** ✅ Automated — [`tests/q-persons.spec.ts`](../tests/q-persons.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Assertions:** the deletion is rejected with copy pointing at "Delete account in Settings"; the admin's own card is unaffected.
 
@@ -222,7 +222,7 @@ thing not worth risking against a real environment for a guard already unit-test
 
 **Use case:** [use-cases.md#uc-143](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-143) — "A person who has an avatar is shown with it wherever people appear; a person who has none is shown with their initials."
 **Status:** ✅ Automated — [`tests/q-persons.spec.ts`](../tests/q-persons.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Given** one person who has an avatar and one who has none
 **When** an admin views the Persons page, and then the person picker on a Person Calendar

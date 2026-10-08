@@ -12,7 +12,7 @@ Monday–Friday work week at a time (not the six-week grid these cases originall
 
 **Use case:** [use-cases.md#uc-59](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-59) — "View your own calendar (default when navigating from Home/sidebar)."
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user.
 
@@ -39,7 +39,7 @@ Monday–Friday work week at a time (not the six-week grid these cases originall
 
 **Use case:** [use-cases.md#uc-60](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-60) — "Navigate to a different person's calendar via the person selector (admin and standard user, if permitted)."
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** A second Person exists ("Alice", created by the standard user via Settings). A confirmed standard test account with its own linked Person (`createConfirmedTestAccount`), to check the "standard user" half.
 
@@ -68,7 +68,7 @@ Monday–Friday work week at a time (not the six-week grid these cases originall
 
 **Use case:** [use-cases.md#uc-61](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-61) — "The weekly agenda shows only work days (Mon–Fri), one week at a time."
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user.
 
@@ -97,7 +97,7 @@ Monday–Friday work week at a time (not the six-week grid these cases originall
 
 **Use case:** [use-cases.md#uc-62](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-62) — "Previous/Next week and This week navigate the visible one-week window, disabled at the server-published booking boundaries."
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. Clock pinned (this case books nothing, so a literal instant is fine - see the spec's own comment on why).
 
@@ -129,7 +129,7 @@ Monday–Friday work week at a time (not the six-week grid these cases originall
 
 **Use case:** [use-cases.md#uc-63](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-63) — "A day with no meetings vs a day with several, sorted correctly."
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. A room. Three meetings on the same day (within the visible week) at non-chronological creation order (e.g. 14:00, then 09:00, then 11:00), all organised by the standard user.
 
@@ -160,7 +160,7 @@ Monday–Friday work week at a time (not the six-week grid these cases originall
 
 **Use case:** [use-cases.md#uc-64](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-64) — "No people exist yet → empty state (edge case, admin-only-created scenario)."
 **Status:** ❓ Infeasible as designed — see Notes
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** A genuinely fresh environment with zero people — same class of precondition as E.30.
 
@@ -201,7 +201,7 @@ not be a reachable real-world state for this product at all. Left unautomated pe
 
 **Use case:** [use-cases.md#uc-65](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-65) — "Clicking a meeting row opens its detail panel (bottom sheet on narrow viewports, a side panel at ≥900px); its Share action hands out a link to the standalone Meeting Details page."
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. A room and one meeting on a date within the visible week.
 
@@ -234,7 +234,7 @@ not be a reachable real-world state for this product at all. Left unautomated pe
 
 **Use case:** [use-cases.md#uc-66](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-66) — "Room colour dot next to each meeting matches the same room's colour on Room Availability."
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Same as E.35 — this is the same check, initiated from the opposite page.
 
@@ -257,7 +257,7 @@ not be a reachable real-world state for this product at all. Left unautomated pe
 
 **Use case:** [use-cases.md#uc-67](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-67) — "'Calendar' nav item disabled for a signed-in user with no linked Person."
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the e2e user (no linked Person).
 
@@ -282,7 +282,7 @@ not be a reachable real-world state for this product at all. Left unautomated pe
 
 **Use case:** mootmaker-webapp#146 — Save returns to the page the form was opened from.
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. A uniquely-named room created over the API.
 
@@ -296,7 +296,7 @@ not be a reachable real-world state for this product at all. Left unautomated pe
 
 **Use case:** mootmaker-webapp#146 — Save returns to the page the form was opened from.
 **Status:** ✅ Automated — [`tests/person-calendar.spec.ts`](../tests/person-calendar.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user, who organises a meeting today created over the API.
 

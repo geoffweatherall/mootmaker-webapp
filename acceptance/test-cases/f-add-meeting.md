@@ -18,7 +18,7 @@ business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 
 **Use case:** [use-cases.md#uc-38](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-38) — "Add a meeting with all required fields filled in correctly → success, navigates to a relevant view with a confirmation toast."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. A uniquely-named room created as this test's own precondition (no seeding bypass exists — see README.md).
 
@@ -48,7 +48,7 @@ business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 
 **Use case:** [use-cases.md#uc-39](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-39) — "Organiser defaults to the signed-in user's own Person (when resolved and not already changed)."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user (linked Person "E2E Standard").
 
@@ -75,7 +75,7 @@ business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 
 **Use case:** [use-cases.md#uc-40](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-40) — "Start time defaults to the next 15-minute boundary; end time defaults to an hour later, same calendar day." *(wording fixed 2026-08-22 — previously said 5-minute; see README.md's "Resolved" section)*
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. Clock pinned to a known, non-boundary time.
 
@@ -103,7 +103,7 @@ business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 
 **Use case:** [use-cases.md#uc-41](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-41) — "Time pickers only offer 15-minute-boundary minutes." *(wording fixed 2026-08-22 — previously said 5-minute; the rule itself changed from 5 to 15 minutes system-wide, see README.md's "Resolved" section)*
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user.
 
@@ -131,7 +131,7 @@ business hours (08:00–17:00), same reasoning as `add-meeting.spec.ts`.
 
 **Use case:** [use-cases.md#uc-42](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-42) — "Picking an end time before the start time / equal to it."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts) (two tests: end-before-start, end-equals-start)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. A room.
 
@@ -168,7 +168,7 @@ now automated and pass against the real, deployed, fixed API.
 
 **Use case:** [use-cases.md#uc-43](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-43) — "Picking a start/end time pair that would span midnight."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts) (direct GraphQL call — see Notes)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. A room.
 
@@ -217,7 +217,7 @@ values rather than colliding on the same one.
 
 **Use case:** [use-cases.md#uc-44](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-44) — "Selecting someone as an attendee removes them from the Organiser dropdown, and vice versa; deselecting frees them up again."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user (admin). Two other people exist (create via Settings → People — "Alice", "Bob").
 
@@ -250,7 +250,7 @@ values rather than colliding on the same one.
 
 **Use case:** [use-cases.md#uc-45](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-45) — "Attempting to submit with the organiser also picked as attendee (should be prevented by the UI, but confirm server-side rejection message if forced)."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. A room. Ability to call the GraphQL API directly (bypassing the UI) for the "forced" half.
 
@@ -280,7 +280,7 @@ values rather than colliding on the same one.
 
 **Use case:** [use-cases.md#uc-46](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-46) — "Leaving subject blank → validation error."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. A room.
 
@@ -307,7 +307,7 @@ values rather than colliding on the same one.
 
 **Use case:** [use-cases.md#uc-47](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-47) — "Leaving room unselected → validation error."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user.
 
@@ -332,7 +332,7 @@ values rather than colliding on the same one.
 
 **Use case:** [use-cases.md#uc-48](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-48) — "Leaving organiser unselected (e.g. no linked Person and not manually chosen) → validation error."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the **e2e user** (no linked Person, so Organiser starts genuinely blank — see D.24). A room (create it as the standard user first, since the e2e user is a standard, non-admin account).
 
@@ -359,7 +359,7 @@ values rather than colliding on the same one.
 
 **Use case:** [use-cases.md#uc-49](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-49) — "Selecting a room with capacity less than organiser+attendee count → `InsufficientCapacity` error."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. A room with capacity 2. Two other people (attendees).
 
@@ -386,7 +386,7 @@ values rather than colliding on the same one.
 
 **Use case:** [use-cases.md#uc-50](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-50) — "Selecting a room/time slot that overlaps an existing meeting in that room → `TimeRangeUnavailable` error."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. A room with an existing meeting 10:00–11:00.
 
@@ -413,7 +413,7 @@ values rather than colliding on the same one.
 
 **Use case:** [use-cases.md#uc-51](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-51) — "Multiple validation failures at once → all errors listed together in one banner."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the **e2e user** (so Organiser starts blank without extra setup).
 
@@ -439,7 +439,7 @@ values rather than colliding on the same one.
 
 **Use case:** [use-cases.md#uc-52](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-52) — "'Suggest a room' with no rooms free → inline 'no room available' message, selection unchanged."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. One room, capacity 2, already fully booked for the exact time window this test will request (an existing meeting covering that whole window).
 
@@ -467,7 +467,7 @@ values rather than colliding on the same one.
 
 **Use case:** [use-cases.md#uc-53](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-53) — "'Suggest a room' first press fetches and fills the best-fit (smallest surplus capacity) room; repeated presses cycle through the ranked list and wrap around without repeating early."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts) — now passing live (fixed 2026-08-27, see Notes)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. Three free rooms with distinct capacities (5, 7, 9; e.g. "Suggest Room 5", "Suggest Room 7", "Suggest Room 9"), none booked at the test's chosen time. Four attendees created, so the meeting's required capacity (organiser + 4 attendees = 5) sits above every capacity any earlier test in this file creates (observed max 4) and at or below the smallest of this test's own three rooms.
 
@@ -500,7 +500,7 @@ values rather than colliding on the same one.
 
 **Use case:** [use-cases.md#uc-54](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-54) — "Changing date/time/attendee count after suggesting a room invalidates the cached suggestion (next press re-fetches)."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts) — now passing live (fixed 2026-08-27, see Notes)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. Two free rooms of capacities 11 and 13 ("Cache Room Small"/"Cache Room Large"). Eleven attendees created: the first press selects 9 of them (required capacity 10 — clears F.53's own leftover rooms, capacity ≤ 9, and this file's cross-test baseline, capacity ≤ 4), the remaining 2 are added before the second press (required capacity 12 — clears the capacity-11 small room).
 
@@ -531,7 +531,7 @@ values rather than colliding on the same one.
 
 **Use case:** [use-cases.md#uc-55](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-55) — "Cancel button discards the form and returns to the previous page."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user.
 
@@ -560,7 +560,7 @@ values rather than colliding on the same one.
 
 **Use case:** [use-cases.md#uc-56](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-56) — "Submit button is disabled and shows a spinner while the mutation is in flight; double-click doesn't double-submit."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. A room.
 
@@ -589,7 +589,7 @@ values rather than colliding on the same one.
 
 **Use case:** [use-cases.md#uc-57](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-57) — "On mobile width, the form's action buttons stack vertically instead of a cramped row."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts) — fix applied 2026-08-27, pending live re-verification (see Notes)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user.
 
@@ -634,7 +634,7 @@ values rather than colliding on the same one.
 
 **Use case:** [use-cases.md#uc-58](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-58) — "Error banner and submit-button red flash both appear on a rejected submission, especially noticeable when the banner is scrolled out of view on a long form."
 **Status:** ✅ Automated — [`tests/add-meeting.spec.ts`](../tests/add-meeting.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user.
 

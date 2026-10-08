@@ -65,11 +65,10 @@ so far.
   changing, or removing a use case, the linked test case(s) are one click away, in both directions,
   without grepping. Renumbering an item in `use-cases.md` breaks this and should be avoided; adding
   new items at the end of a section (or the end of the whole list) doesn't.
-- **Android**: `mootmaker-android` has no `acceptance/` suite yet (the app itself isn't written).
-  Every test case here carries an **Android:** line reading "not yet automated" as a placeholder —
-  once that suite exists, its own test cases should link back to `use-cases.md` the same way this
-  one does, and `use-cases.md`'s per-item link line gets a real `android: ...` entry instead of the
-  placeholder.
+- **Android**: `mootmaker-android`'s acceptance suite is organised by the same use-case IDs, and
+  `use-cases.md`'s per-item link line carries its `android: ...` entry (the test that covers the case
+  on Android, or why there is none). That line is the one place Android coverage is recorded; each
+  test case here only points to it, rather than keeping a second copy that drifts.
 
 ## Entry format
 
@@ -82,7 +81,7 @@ Every test case follows the same shape:
   (so a later edit to that wording is visible as a diff against what this test case was actually
   designed for).
 - **Status** — ✅ Automated (with a link to the spec file) or ⬜ Planned (not yet automated).
-- **Android** — placeholder, see above.
+- **Android** — a pointer to the use case's `android:` link in `use-cases.md`, see above.
 - **Preconditions** — signed-in state, account type/class, and any data that must exist before the
   test's own steps begin.
 - **Given / When / Then** — the business-readable version, for a reviewer who wants the intent

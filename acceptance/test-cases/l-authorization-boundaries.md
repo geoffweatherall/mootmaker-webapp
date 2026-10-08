@@ -13,7 +13,7 @@ specific P/Q/I mechanics, not because they need wholly separate test code.
 
 **Use case:** [use-cases.md#uc-89](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-89) — "Standard user cannot reach admin-only UI (Rooms/Persons pages) — a presentation-only check."
 **Status:** ✅ Automated — [`tests/authorization-boundaries.spec.ts`](../tests/authorization-boundaries.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions/Steps/Assertions:** Identical to [P.124](p-rooms.md#tc-p124) + [Q.132](q-persons.md#tc-q132) combined — no "Rooms"/"Persons" nav link, and `/rooms`/`/persons` each redirect to `/`, checked in one standard-user session.
 
@@ -28,7 +28,7 @@ specific P/Q/I mechanics, not because they need wholly separate test code.
 
 **Use case:** [use-cases.md#uc-90](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-90) — "Standard user directly invoking an admin mutation is rejected (belongs more in API-level testing, but worth a UI-adjacent smoke test)."
 **Status:** ✅ Automated — [`tests/authorization-boundaries.spec.ts`](../tests/authorization-boundaries.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** A confirmed standard test account, signed in (for its auth token). A real room and person fixture, created via the M2M admin-equivalent token.
 
@@ -54,7 +54,7 @@ specific P/Q/I mechanics, not because they need wholly separate test code.
 
 **Use case:** [use-cases.md#uc-91](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-91) — "Self-rename works for a standard user; renaming someone else does not (UI shouldn't offer it, and server should reject if forced)."
 **Status:** ✅ Automated — [`tests/authorization-boundaries.spec.ts`](../tests/authorization-boundaries.spec.ts) (parts (b)/(c); part (a) intentionally references [I.74](i-settings-your-name.md#tc-i74) rather than re-implementing it)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Two confirmed standard test accounts (`accountA`, `accountB`), each with its own linked Person.
 

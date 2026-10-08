@@ -10,7 +10,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Use case:** [use-cases.md#uc-16](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-16) — "Request a reset code for a valid account → enter code + new password → signed in automatically with the new password."
 **Status:** ✅ Automated — [`tests/forgot-password.spec.ts`](../tests/forgot-password.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** A confirmed account exists (`createConfirmedTestAccount`, which also sets `email_verified: true` — required, since the pool's `account_recovery_setting` is `verified_email`).
 
@@ -42,7 +42,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Use case:** [use-cases.md#uc-17](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-17) — "Request a reset code for an email with no account behaves identically (no information leak about account existence)."
 **Status:** ✅ Automated — [`tests/forgot-password.spec.ts`](../tests/forgot-password.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** None beyond a known-existing account (the standard user, or a freshly created one) to compare against, and a fresh never-registered email.
 
@@ -71,7 +71,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Use case:** [use-cases.md#uc-18](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-18) — "Wrong reset code is rejected."
 **Status:** ✅ Automated — [`tests/forgot-password.spec.ts`](../tests/forgot-password.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** A confirmed account exists (`createConfirmedTestAccount`).
 
@@ -101,7 +101,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Use case:** [use-cases.md#uc-19](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-19) — "New password failing the strength rule is rejected."
 **Status:** ✅ Automated — [`tests/forgot-password.spec.ts`](../tests/forgot-password.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** A confirmed account exists (`createConfirmedTestAccount`).
 
@@ -130,7 +130,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Use case:** [use-cases.md#uc-20](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-20) — "Sign-in form links to Forgot Password; Forgot Password flow links back to sign-in."
 **Status:** ✅ Automated — [`tests/forgot-password.spec.ts`](../tests/forgot-password.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed out.
 

@@ -12,7 +12,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **Use case:** [use-cases.md#uc-26](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-26) — "View room availability for today."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. At least one room exists (create one if needed).
 
@@ -44,7 +44,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **Use case:** [use-cases.md#uc-27](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-27) — "Navigate to a future date and view that day's schedule."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. Clock pinned. A meeting exists 3 days in the future (created via Add Meeting, date field set explicitly).
 
@@ -73,7 +73,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **Use case:** [use-cases.md#uc-28](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-28) — "Navigate to a past date and view that day's schedule."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. Clock pinned.
 
@@ -100,7 +100,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **Use case:** [use-cases.md#uc-29](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-29) — "Date picker jump to an arbitrary date (not just next/prev day)."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. Clock pinned.
 
@@ -129,7 +129,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **Use case:** [use-cases.md#uc-30](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-30) — "No rooms exist yet → empty state."
 **Status:** ✅ Automated — [`tests/room-availability-empty.spec.ts`](../tests/room-availability-empty.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** A **genuinely fresh environment with zero rooms** — this is the one precondition in this whole catalog that can't be created by the test itself (rooms can only be added, never removed, through this app's own UI/API).
 
@@ -155,7 +155,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **Use case:** [use-cases.md#uc-31](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-31) — "Rooms exist but none has meetings that day → cards show a 'Free all day'/zero-meetings status, not the no-rooms empty state."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. At least one room exists. Clock pinned to a date guaranteed to have no meetings (e.g. a date several months in the future, never touched by any other fixture).
 
@@ -185,7 +185,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **Use case:** [use-cases.md#uc-32](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-32) — "A room card's expanded meeting list shows subject + time range; clicking a meeting navigates to Meeting Details."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. A room and a meeting on it exist (create via Add Meeting), clock pinned to that meeting's date.
 
@@ -217,7 +217,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **Use case:** [use-cases.md#uc-33](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-33) — "Multiple overlapping-in-time meetings across different rooms each show only on their own room's card, without leaking into another room's."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. Two rooms ("Room A", "Room B"). Two meetings on the same date: Room A 10:00–11:00, Room B 10:30–11:30 (time-overlapping, different rooms — legal, since `TimeRangeUnavailable` is scoped per room). Clock pinned to that date.
 
@@ -249,7 +249,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **Use case:** [use-cases.md#uc-34](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-34) — "Same room, back-to-back meetings (one ending exactly when another starts) both succeed and render as distinct, chronologically-ordered rows in the card's expanded meeting list."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. One room. Two meetings in it on the same date: 09:00–10:00 and 10:00–11:00 (touching end-to-start — explicitly allowed by the API's `[startTime, endTime)` half-open-interval rule, per `mootmaker-api/README.md`'s Validation table). Clock pinned.
 
@@ -279,7 +279,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **Use case:** [use-cases.md#uc-35](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-35) — "Room identity colour is consistent for the same room across this page and Person Calendar."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user (organiser, so the meeting shows on their own Person Calendar too). One room, one meeting on a date within the visible week, clock pinned accordingly.
 
@@ -308,7 +308,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **Use case:** [use-cases.md#uc-36](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-36) — "On a narrow/mobile viewport: room-status cards stack in a single column, with no horizontal scrolling needed."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. At least one room.
 
@@ -339,7 +339,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **Use case:** [use-cases.md#uc-37](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-37) — "'Add Meeting' button from this page pre-fills the currently viewed date."
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. Clock pinned.
 
@@ -365,7 +365,7 @@ business-hours weekday, for the same flakiness reason `add-meeting.spec.ts` alre
 
 **Use case:** mootmaker-webapp#60 — Room Availability's day navigation is bounded like Person Calendar's week navigation.
 **Status:** ✅ Automated — [`tests/room-availability.spec.ts`](../tests/room-availability.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. The window (`workspace.boundaries`) is read over the API, not recomputed.
 

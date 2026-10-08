@@ -10,7 +10,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Use case:** [use-cases.md#uc-21](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-21) — "Signed out: shows sign-in form + demo credentials + sign-up steps."
 **Status:** ✅ Automated — [`tests/home-page.spec.ts`](../tests/home-page.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed out.
 
@@ -38,7 +38,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Use case:** [use-cases.md#uc-22](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-22) — "Signed in with a linked Person: shows Calendar/Room availability/Add Meeting entry points plus 'Today' and 'Tomorrow' agenda lists, sorted by start time, each linking to its meeting's details."
 **Status:** ✅ Automated — [`tests/home-page.spec.ts`](../tests/home-page.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. Two meetings created for today (different start times, deliberately out of chronological order when created) and one for tomorrow, all organised by or attending the standard user, via the real Add Meeting form. A room must exist first.
 
@@ -73,7 +73,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Use case:** [use-cases.md#uc-23](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-23) — "Signed in with a linked Person but no meetings today/tomorrow: empty state shown instead of an empty list."
 **Status:** ✅ Automated — [`tests/home-page.spec.ts`](../tests/home-page.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** A freshly signed-up account (`createConfirmedTestAccount`) — guaranteed to have zero meetings, unlike the standard user whose meeting history depends on what else has run against the environment.
 
@@ -100,7 +100,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Use case:** [use-cases.md#uc-24](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-24) — "Signed in with **no** linked Person (e.g. demo/e2e-style account): 'account hasn't been set up' message replaces Calendar/agenda; 'Room availability today' and 'Add Meeting' still work but Add Meeting has no organiser pre-filled."
 **Status:** ✅ Automated — [`tests/home-page.spec.ts`](../tests/home-page.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the e2e user (`E2E_USER_EMAIL`/`E2E_USER_PASSWORD` — standard, no linked Person; see [README.md](README.md)'s account matrix).
 
@@ -132,7 +132,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Use case:** [use-cases.md#uc-25](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-25) — "'Add Meeting' and 'Room availability today' both correctly navigate/deep-link (today's date)."
 **Status:** ✅ Automated — [`tests/home-page.spec.ts`](../tests/home-page.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. Clock pinned to a known date.
 
@@ -163,7 +163,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Use case:** [use-cases.md#uc-107](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-107) — "A 'Needs your response' section, naming the time range it covers, lists soonest-first every upcoming meeting in that range where the signed-in person is an attendee (not organiser) with status still No response... responding clears it from the list live. The Today/Tomorrow agenda is one continuous, day-sectioned list showing the viewer's own response status on each row, unbounded..."
 **Status:** ✅ Automated — [`tests/attendee-response-status.spec.ts`](../tests/attendee-response-status.spec.ts), new 2026-09-21 — see `../../designs/attendee-response-status.md` in the hub repo.
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user, with a room and a second Person (created via Settings, as organiser) already present. A meeting created via the real `createMeeting` API with the standard user as an attendee (not organiser), on the pinned "today".
 

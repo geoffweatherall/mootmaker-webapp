@@ -15,7 +15,7 @@ for `respondToMeeting` - not duplicated here.
 
 **Use case:** [use-cases.md#uc-112](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-112) — "The organiser edits their own meeting (subject, time, room, organiser, or attendees) → the change is saved and reflected wherever the meeting is shown."
 **Status:** ✅ Automated — [`tests/edit-and-cancel-meetings.spec.ts`](../tests/edit-and-cancel-meetings.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. A room and a meeting organised by the standard user.
 
@@ -46,7 +46,7 @@ genuinely works end to end, not a re-run of every UI case against real infrastru
 
 **Use case:** [use-cases.md#uc-113](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-113) — "Editing a meeting's time within its own current room, to a new range that overlaps its own prior slot, succeeds — and 'Suggest a room' for that same new time offers the meeting's own current room, not a different one."
 **Status:** ⬜ Planned
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. A room and a meeting organised by the standard user.
 
@@ -71,7 +71,7 @@ not because there's any remaining doubt about the logic itself.
 
 **Use case:** [use-cases.md#uc-114](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-114) — "An admin edits a meeting they don't organise."
 **Status:** ⬜ Planned
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** A confirmed admin test account. A meeting organised by someone else.
 
@@ -91,7 +91,7 @@ that `Identity.isAdmin` genuinely grants this against the real API, not just the
 
 **Use case:** [use-cases.md#uc-115](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-115) — "A signed-in user who is neither the organiser nor an admin does not see Edit/Cancel controls on that meeting's detail view."
 **Status:** ⬜ Planned
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Notes:** Covered at the Integration layer already (`canEdit` gating, all three cases: organiser,
 admin, neither). Planned here as the acceptance-layer confirmation against the real API's actual
@@ -104,7 +104,7 @@ admin, neither). Planned here as the acceptance-layer confirmation against the r
 
 **Use case:** [use-cases.md#uc-116](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-116) — "A user who is neither organiser nor admin calling `updateMeeting`/`cancelMeeting` directly (bypassing the UI) is rejected server-side regardless of what the UI would show."
 **Status:** ✅ Automated — [`tests/edit-and-cancel-meetings.spec.ts`](../tests/edit-and-cancel-meetings.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** A confirmed standard test account (organiser), a second fresh confirmed account
 (the caller under test), a room.
@@ -138,7 +138,7 @@ genuine third party (neither the organiser nor admin), not just any non-admin ac
 
 **Use case:** [use-cases.md#uc-117](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-117) — "The organiser cancels their own meeting: the confirmation step shows which meeting is about to be permanently deleted (not just that *a* meeting will be), and confirming removes it from every view."
 **Status:** ⬜ Planned
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Notes:** Covered thoroughly at the Integration layer (`webapp/tests/meeting-edit-and-cancel.spec.ts`),
 including the specific "meeting's own details stay visible behind the dialog" assertion (Decision
@@ -152,7 +152,7 @@ the meeting from the real deployed API, not just the mock.
 
 **Use case:** [use-cases.md#uc-118](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-118) — "An admin cancels a meeting they don't organise."
 **Status:** ⬜ Planned
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Notes:** Same reasoning as O.114 — covered at the Integration layer, planned here as the
 real-API confirmation.
@@ -164,7 +164,7 @@ real-API confirmation.
 
 **Use case:** [use-cases.md#uc-119](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-119) — "Two admins both try to cancel the same meeting at once — the second gets a graceful 'no longer exists' error, not a crash or a silent no-op."
 **Status:** ✅ Automated — [`tests/edit-and-cancel-meetings.spec.ts`](../tests/edit-and-cancel-meetings.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** A confirmed admin test account, a room, a meeting.
 
@@ -195,7 +195,7 @@ mechanics of a true simultaneous write.
 
 **Use case:** [use-cases.md#uc-120](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-120) — "A past (already-ended) meeting and a currently-in-progress meeting can both still be edited and cancelled by their organiser or an admin, the same as an upcoming one — no restriction based on timing."
 **Status:** ⬜ Planned
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Notes:** Covered at the `mootmaker-api` unit layer (`MeetingValidatorTest`'s day-state cases
 apply regardless of the requested time's relationship to "now" — there is no such check anywhere
@@ -209,7 +209,7 @@ real meeting whose time has already passed.
 
 **Use case:** [use-cases.md#uc-121](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-121) — "Editing a meeting's date to a different day moves it there (it disappears from the original date's view and appears on the new one) without changing its identity."
 **Status:** ✅ Automated — [`tests/edit-and-cancel-meetings.spec.ts`](../tests/edit-and-cancel-meetings.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. A room and a meeting organised by the standard user, on
 a known bookable date.

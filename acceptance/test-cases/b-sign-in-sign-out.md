@@ -10,7 +10,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Use case:** [use-cases.md#uc-7](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-7) — "Sign in with correct credentials from `/signin`."
 **Status:** ✅ Automated — [`tests/sign-in-sign-out.spec.ts`](../tests/sign-in-sign-out.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed out. The standard user's credentials.
 
@@ -38,7 +38,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Use case:** [use-cases.md#uc-8](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-8) — "Sign in with correct credentials via the embedded form on the signed-out home page."
 **Status:** ✅ Automated — [`tests/sign-in-sign-out.spec.ts`](../tests/sign-in-sign-out.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed out. The standard user's credentials.
 
@@ -66,7 +66,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Use case:** [use-cases.md#uc-9](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-9) — "Wrong password shows an error, doesn't sign in."
 **Status:** ✅ Automated — [`tests/sign-in-sign-out.spec.ts`](../tests/sign-in-sign-out.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed out. The standard user's email (a known-valid account), an intentionally wrong password.
 
@@ -95,7 +95,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Use case:** [use-cases.md#uc-10](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-10) — "Unknown email shows an error (check whether it distinguishes 'no such user' — API's Cognito settings should behave consistently)."
 **Status:** ✅ Automated — [`tests/sign-in-sign-out.spec.ts`](../tests/sign-in-sign-out.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed out. An email address guaranteed to have no account (a fresh `uniqueTestEmail()`, unused).
 
@@ -125,7 +125,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Use case:** [use-cases.md#uc-11](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-11) — "Sign in via the demo user's pre-filled credentials shown on the home page."
 **Status:** ✅ Automated — [`tests/sign-in-sign-out.spec.ts`](../tests/sign-in-sign-out.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed out.
 
@@ -154,7 +154,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Use case:** [use-cases.md#uc-12](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-12) — "Session persists across a page reload (token cached/refreshed from `localStorage`)."
 **Status:** ✅ Automated — [`tests/sign-in-sign-out.spec.ts`](../tests/sign-in-sign-out.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user.
 
@@ -182,7 +182,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Use case:** [use-cases.md#uc-13](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-13) — "Sign out clears the session and returns the user to a locked-down state (protected pages redirect to sign-in again)."
 **Status:** ✅ Automated — [`tests/sign-in-sign-out.spec.ts`](../tests/sign-in-sign-out.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user.
 
@@ -211,7 +211,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Use case:** [use-cases.md#uc-14](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-14) — "Visiting a protected route while signed out redirects to `/signin`, and signing in returns you to that original destination."
 **Status:** ✅ Automated — [`tests/sign-in-sign-out.spec.ts`](../tests/sign-in-sign-out.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed out.
 
@@ -239,7 +239,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Use case:** [use-cases.md#uc-15](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-15) — "Visiting the public pages (`/`, `/signin`, `/signup`, `/forgot-password`, `/about`) while signed out works without redirect."
 **Status:** ✅ Automated — [`tests/sign-in-sign-out.spec.ts`](../tests/sign-in-sign-out.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed out.
 

@@ -15,7 +15,7 @@ whole point is proving the real sign-up + email + PostConfirmation-trigger chain
 
 **Use case:** [use-cases.md#uc-1](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-1) — "Sign up with a valid name, email, and password → verification code step → correct code confirms and signs the user in automatically."
 **Status:** ✅ Automated — [`tests/sign-up.spec.ts`](../tests/sign-up.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed out. A fresh, never-used email address (`uniqueTestEmail` from `mootmaker-email-testing`).
 
@@ -47,7 +47,7 @@ whole point is proving the real sign-up + email + PostConfirmation-trigger chain
 
 **Use case:** [use-cases.md#uc-2](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-2) — "Password below the minimum (10 chars, needs a lowercase letter + a number) is rejected before submission."
 **Status:** ✅ Automated — [`tests/sign-up.spec.ts`](../tests/sign-up.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed out. A fresh email address.
 
@@ -76,7 +76,7 @@ whole point is proving the real sign-up + email + PostConfirmation-trigger chain
 
 **Use case:** [use-cases.md#uc-3](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-3) — "Signing up with an email that already has an account."
 **Status:** ✅ Automated — [`tests/sign-up.spec.ts`](../tests/sign-up.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** A confirmed account already exists (create via `createConfirmedTestAccount` — no need for the real code path, since this test isn't the thing proving sign-up-with-a-code works).
 
@@ -105,7 +105,7 @@ whole point is proving the real sign-up + email + PostConfirmation-trigger chain
 
 **Use case:** [use-cases.md#uc-4](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-4) — "Wrong verification code is rejected; correct code after a wrong attempt still succeeds."
 **Status:** ✅ Automated — [`tests/sign-up.spec.ts`](../tests/sign-up.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed out. A fresh email address.
 
@@ -135,7 +135,7 @@ whole point is proving the real sign-up + email + PostConfirmation-trigger chain
 
 **Use case:** [use-cases.md#uc-5](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-5) — "Newly confirmed account has a linked Person auto-created with the entered name (visible in sidebar/Settings), and is `standard` class (no admin sections in Settings)."
 **Status:** ✅ Automated (partial — the linked-Person name check only) — [`tests/sign-up.spec.ts`](../tests/sign-up.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed out. A fresh email address.
 
@@ -166,7 +166,7 @@ whole point is proving the real sign-up + email + PostConfirmation-trigger chain
 
 **Use case:** [use-cases.md#uc-6](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-6) — "Can immediately schedule a meeting as themselves right after signing up (organiser defaults to them)."
 **Status:** ✅ Automated — [`tests/sign-up.spec.ts`](../tests/sign-up.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** A room must already exist (created by the standard user first, since a freshly signed-up standard user can't create one). A fresh email address for the sign-up itself.
 

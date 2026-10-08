@@ -18,7 +18,7 @@ into [L.90](l-authorization-boundaries.md#tc-l90), which now covers every admin 
 
 **Use case:** [use-cases.md#uc-124](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-124)
 **Status:** ✅ Automated — [`tests/p-rooms.spec.ts`](../tests/p-rooms.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Given** a signed-in standard user
 **When** they look at the sidebar, or navigate directly to `/rooms`
@@ -44,7 +44,7 @@ into [L.90](l-authorization-boundaries.md#tc-l90), which now covers every admin 
 
 **Use case:** [use-cases.md#uc-125](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-125)
 **Status:** ✅ Automated — [`tests/p-rooms.spec.ts`](../tests/p-rooms.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 Same mechanic as J.78, against `/rooms` instead of `/settings`: admin adds a room via the FAB, it
 appears on the Rooms card grid, and is immediately selectable in Add Meeting and Room Availability
@@ -59,7 +59,7 @@ with no reload in between.
 
 **Use case:** [use-cases.md#uc-126](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-126)
 **Status:** ✅ Automated — [`tests/p-rooms.spec.ts`](../tests/p-rooms.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 Same as J.79: `NameRequired` → "Name must not be blank.", dialog stays open.
 
@@ -72,7 +72,7 @@ Same as J.79: `NameRequired` → "Name must not be blank.", dialog stays open.
 
 **Use case:** [use-cases.md#uc-127](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-127)
 **Status:** ✅ Automated — [`tests/p-rooms.spec.ts`](../tests/p-rooms.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 Same as J.80: `CapacityTooLow` → "Room capacity must be at least 2."
 
@@ -85,7 +85,7 @@ Same as J.80: `CapacityTooLow` → "Room capacity must be at least 2."
 
 **Use case:** [use-cases.md#uc-128](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-128)
 **Status:** ✅ Automated — [`tests/p-rooms.spec.ts`](../tests/p-rooms.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 Same as J.81: a room's new name shows on an existing meeting's Details page and on Room
 Availability, without reloading either.
@@ -99,7 +99,7 @@ Availability, without reloading either.
 
 **Use case:** [use-cases.md#uc-129](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-129)
 **Status:** ✅ Automated — [`tests/p-rooms.spec.ts`](../tests/p-rooms.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 Same as J.82: capacity can be edited below an already-booked meeting's size — not retroactively
 validated.
@@ -113,7 +113,7 @@ validated.
 
 **Use case:** [use-cases.md#uc-130](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-130) — "Admin deletes a room that has no meeting from today onward → removed from the Rooms list and no longer offered anywhere." **New in this design** — `deleteRoom` didn't exist before it.
 **Status:** ✅ Automated — [`tests/p-rooms.spec.ts`](../tests/p-rooms.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Given** a room with no upcoming meetings
 **When** an admin confirms its removal
@@ -141,7 +141,7 @@ fallback for any past meeting referencing a since-deleted room).
 
 **Use case:** [use-cases.md#uc-131](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-131) — "Admin attempts to delete a room with a meeting from today onward → rejected with a clear explanation, room not deleted." **New in this design.**
 **Status:** ✅ Automated — [`tests/p-rooms.spec.ts`](../tests/p-rooms.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Given** a room with a meeting booked from today onward
 **When** an admin attempts to remove it

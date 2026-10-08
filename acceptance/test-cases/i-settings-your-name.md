@@ -10,7 +10,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Use case:** [use-cases.md#uc-74](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-74) — "Update your own display name → saved, reflected immediately in the sidebar without a page refresh."
 **Status:** ✅ Automated — [`tests/settings-your-name.spec.ts`](../tests/settings-your-name.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** A freshly signed-up account (`createConfirmedTestAccount`) — avoids permanently renaming the shared standard user's Person, which every other test in this catalog relies on reading as "E2E Standard."
 
@@ -40,7 +40,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Use case:** [use-cases.md#uc-75](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-75) — "Submit a blank name → validation error."
 **Status:** ✅ Automated — [`tests/settings-your-name.spec.ts`](../tests/settings-your-name.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** A freshly signed-up account.
 
@@ -67,7 +67,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Use case:** [use-cases.md#uc-76](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-76) — "Section disabled with an explanatory note for an account with no linked Person."
 **Status:** ✅ Automated — [`tests/settings-your-name.spec.ts`](../tests/settings-your-name.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the e2e user (no linked Person).
 

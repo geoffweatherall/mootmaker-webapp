@@ -18,7 +18,7 @@ OS share sheet can't be driven by Playwright) rather than a navigated-to URL. Se
 
 **Use case:** [use-cases.md#uc-68](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-68) — "View details of a meeting you organise."
 **Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. A room and a meeting organised by the standard user, with one attendee.
 
@@ -52,7 +52,7 @@ OS share sheet can't be driven by Playwright) rather than a navigated-to URL. Se
 
 **Use case:** [use-cases.md#uc-69](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-69) — "View details of a meeting you attend but didn't organise."
 **Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user, but as the **attendee** this time. A room, another Person as organiser (created via Settings), the standard user added as an attendee.
 
@@ -80,7 +80,7 @@ OS share sheet can't be driven by Playwright) rather than a navigated-to URL. Se
 
 **Use case:** [use-cases.md#uc-70](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-70) — "View details of a meeting where you're neither organiser nor attendee (if reachable via a direct link/other calendar)."
 **Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. A meeting organised by and attended only by *other* people (two Persons created via Settings, neither the standard user).
 
@@ -106,7 +106,7 @@ OS share sheet can't be driven by Playwright) rather than a navigated-to URL. Se
 
 **Use case:** [use-cases.md#uc-71](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-71) — "Date shown once, time shown as a start–end range (not two full date-times)."
 **Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user. A room and a meeting with a known date/start/end (e.g. `2026-08-24`, `10:00`–`11:00`).
 
@@ -162,7 +162,7 @@ H.72 would need to return.
 
 **Use case:** [use-cases.md#uc-73](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-73) — "Navigating directly to a nonexistent/invalid meeting id."
 **Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user.
 
@@ -219,7 +219,7 @@ a mocked test cannot stand in for. See H.72's removal note above for the full pi
 
 **Use case:** [use-cases.md#uc-108](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-108) — "Every non-organiser attendee shows their own Going/Not going/Maybe/No response status; the signed-in caller's own row shows 'You' instead, next to a self-only three-way control that sets their response and persists across a close/reopen. The organiser has no status control."
 **Status:** ✅ Automated — [`tests/attendee-response-status.spec.ts`](../tests/attendee-response-status.spec.ts), new 2026-09-21 — see `../../designs/attendee-response-status.md` in the hub repo.
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Same setup as D.107 - a meeting with the standard user as an attendee, created via the API.
 

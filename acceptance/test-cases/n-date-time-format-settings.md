@@ -20,7 +20,7 @@ renames, but far wider, since almost every spec asserts on a date or a time some
 
 **Use case:** [use-cases.md#uc-100](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-100) — "Change your date format → every date shown to you switches to it, and the change persists across a reload."
 **Status:** ✅ Automated — [`tests/settings-date-time-format.spec.ts`](../tests/settings-date-time-format.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** A freshly signed-up account, which starts at the defaults (`Iso` + `TwentyFourHour`).
 
@@ -48,7 +48,7 @@ renames, but far wider, since almost every spec asserts on a date or a time some
 
 **Use case:** [use-cases.md#uc-101](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-101) — "Change your time format → every time shown to you switches to it, and the change persists across a reload."
 **Status:** ✅ Automated — [`tests/settings-date-time-format.spec.ts`](../tests/settings-date-time-format.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** A freshly signed-up account, at the defaults.
 
@@ -75,7 +75,7 @@ renames, but far wider, since almost every spec asserts on a date or a time some
 
 **Use case:** [use-cases.md#uc-102](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-102) — "Both formats are saved together in one action, and a success message confirms it."
 **Status:** ✅ Automated — [`tests/settings-date-time-format.spec.ts`](../tests/settings-date-time-format.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** A freshly signed-up account, at the defaults.
 
@@ -102,7 +102,7 @@ renames, but far wider, since almost every spec asserts on a date or a time some
 
 **Use case:** [use-cases.md#uc-103](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-103) — "The Add Meeting date/time fields accept input in your own chosen format, and a meeting created that way stores the same instant a default-format account would have stored."
 **Status:** ✅ Automated — [`tests/settings-date-time-format.spec.ts`](../tests/settings-date-time-format.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** A freshly signed-up account, switched to `Usa` + `AmPm`.
 
@@ -130,7 +130,7 @@ renames, but far wider, since almost every spec asserts on a date or a time some
 
 **Use case:** [use-cases.md#uc-104](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-104) — "A shared view renders in the *viewer's* own format, not the format chosen by whoever created the data."
 **Status:** ✅ Automated — [`tests/settings-date-time-format.spec.ts`](../tests/settings-date-time-format.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Two fresh accounts on deliberately different formats.
 
@@ -151,7 +151,7 @@ renames, but far wider, since almost every spec asserts on a date or a time some
 
 **Use case:** [use-cases.md#uc-105](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-105) — "An account with no linked Person sees the section disabled with an explanation, rather than a save that fails."
 **Status:** ✅ Automated — [`tests/settings-date-time-format.spec.ts`](../tests/settings-date-time-format.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** The e2e user, which deliberately has no linked Person (the same account I.76 uses for the equivalent "Your name" case).
 
@@ -173,7 +173,7 @@ renames, but far wider, since almost every spec asserts on a date or a time some
 
 **Use case:** [use-cases.md#uc-106](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-106) — "Meeting times in Room Availability's expanded per-room list follow the format too."
 **Status:** ✅ Automated — [`tests/settings-date-time-format.spec.ts`](../tests/settings-date-time-format.spec.ts)
-**Android:** not yet automated
+**Android:** see the `android:` link on its use case, above
 
 **Preconditions:** A freshly signed-up account, at the defaults, with a meeting at 09:00 on a pinned day.
 

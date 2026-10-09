@@ -10,8 +10,9 @@ import type { ApolloClient, TypePolicies } from '@apollo/client'
 export const typePolicies: TypePolicies = {
   /**
    * `Day` has no `id`, so without this it would be stored inline in whatever fetched it and could
-   * never be shared between screens. Keyed by `date`, the cache key is `Day:2026-09-14` — readable,
-   * and constructible by the client without asking the server what it is.
+   * never be shared between screens. Keyed by `date`, the cache key is `Day:{"date":"2026-09-14"}` —
+   * readable, and constructible by the client without asking the server what it is. Build it with
+   * `cache.identify({ __typename: 'Day', date })` rather than by hand: the format is Apollo's.
    *
    * It is also what lets an empty day be told apart from an unfetched one: entity present with an
    * empty `meetings` list means the day is genuinely empty, entity absent means nobody has looked.

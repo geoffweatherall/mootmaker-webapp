@@ -67,6 +67,8 @@ permissions:
   # Mint the OIDC token that configure-aws-credentials exchanges for the deploy role.
   id-token: write
   contents: read
+  # Read this run's other jobs, for fail-fast (below).
+  actions: read
 
 jobs:
   build:
@@ -161,23 +163,33 @@ jobs:
           role-to-assume: arn:aws:iam::431071856068:role/mootmaker-release-github-actions-deploy
           aws-region: us-east-1
 
+      # Stop early once another job in this run has failed: a release that cannot tag is already
+      # lost, and the rest of this build would only spend time and AWS cost. Deploys are gated with
+      # `fail-fast check` and only the test command is wrapped - never terraform, which must not be
+      # interrupted mid-apply. See mootmaker/designs/cost-reduction.md, Measure 3.
+      - uses: geoffweatherall/mootmaker-release/.github/actions/fail-fast@main
+
       # Built fresh from main rather than promoted: mootmaker-api is a dependency of the
       # environment under test here, not the artifact being released by this workflow. It must be
       # deployed first - deploy.sh below reads this environment's API and Cognito details.
       - name: Deploy mootmaker-api into the ephemeral environment
         working-directory: mootmaker-api
-        run: ./deploy.sh "${{ steps.env.outputs.name }}"
+        run: |
+          fail-fast check
+          ./deploy.sh "${{ steps.env.outputs.name }}"
 
       # --skip-build deploys the dist/ built above rather than rebuilding it, so the bundle proven
       # here is byte-identical to the one promoted later. The schema compatibility check and the
       # env-config.js write still run, because those are per-environment.
       - name: Deploy to the ephemeral environment
-        run: ./deploy.sh "${{ steps.env.outputs.name }}" --skip-build
+        run: |
+          fail-fast check
+          ./deploy.sh "${{ steps.env.outputs.name }}" --skip-build
 
       # Explicit environment name - see the header. This runs against the promoted bundle and
       # leaves teardown to this workflow.
       - name: Acceptance tests
-        run: ./acceptance/run.sh "${{ steps.env.outputs.name }}"
+        run: fail-fast run -- ./acceptance/run.sh "${{ steps.env.outputs.name }}"
 
       # Diagnostics BEFORE teardown, and only on failure. Playwright writes an error-context.md
       # page snapshot plus a trace for every failed test (trace: 'retain-on-failure' in CI), and

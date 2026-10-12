@@ -74,7 +74,7 @@ export type PersonError =
   | 'CannotDeleteSelf'
   /** setPersonAdmin only: the caller targeted their own Person with isAdmin: false. No one can remove their own admin access through this mutation. */
   | 'CannotRevokeOwnAdminAccess'
-  /** createPerson only: another person already has this name (compared case- and whitespace-insensitively) - almost always the same person being added twice by mistake rather than two people who happen to share a name. See mootmaker-api#70. */
+  /** createPerson only: another person already has this name (compared case- and whitespace-insensitively) - almost always the same person being added twice by mistake rather than two people who happen to share a name. */
   | 'NameAlreadyExists'
   | 'NameRequired'
   /** setPersonAdmin only: the target has no linked Cognito account, so there is nothing for admin access to actually grant until they sign up. */

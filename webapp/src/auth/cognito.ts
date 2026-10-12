@@ -6,6 +6,7 @@ import {
   type CognitoUserSession,
 } from 'amazon-cognito-identity-js'
 import { runtimeConfig } from '../config'
+import { saysNoVerifiedAddress } from './forgotPasswordErrors'
 import { readableSignUpError } from './signUpErrors'
 
 const userPool = new CognitoUserPool({
@@ -140,7 +141,8 @@ export function forgotPassword(email: string): Promise<void> {
       // Called once the code has been sent; the UI collects it in the next step.
       inputVerificationCode: () => resolve(),
       onSuccess: () => resolve(),
-      onFailure: reject,
+      // An address with no usable account is treated as sent, so the page reveals nothing.
+      onFailure: (error) => (saysNoVerifiedAddress(error) ? resolve() : reject(error)),
     })
   })
 }

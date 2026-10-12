@@ -42,9 +42,8 @@ import { PERSON_ERROR_MESSAGES } from '../graphql/validationMessages'
 import { PersonsIcon } from '../icons'
 
 /**
- * Admin only (RequireAdmin, see App.tsx). Card grid matching RoomsPage's own pattern - replaces
- * the inline "People" section that used to live in Settings (see the design doc, "Impacts on
- * components"). Cards show the admin badge and linked-email chips; the admin switch itself only
+ * Admin only (RequireAdmin, see App.tsx). Card grid matching RoomsPage's own pattern. Cards show
+ * the admin badge and linked-email chips; the admin switch itself only
  * lives inside Edit Person, not Add and not a card action - see PersonDialog.
  */
 export default function PersonsPage() {

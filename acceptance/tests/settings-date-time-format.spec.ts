@@ -78,14 +78,8 @@ async function setFormats(
   await expect(page.getByText('Your date and time formats were updated.')).toBeVisible()
 }
 
-// These tests sign in as fresh standard accounts, which cannot create rooms (that section is
-// admin-only), and a deployed environment's rooms have generated names - so no room name is safe
-// to hardcode. An earlier version used 'Boardroom' from the webapp's MSW mock fixtures, which
-// exists only in the mocked integration layer and never in a real deployment.
-//
-// Business hours (08:00-17:00) are exactly the range sample-data fills, so no time slot is free by
-// construction either. Rather than gamble on one room being idle, book into whichever room accepts:
-// each room gets only 0-2 generated meetings a day, so a free one is found almost immediately.
+// Picks a room by position: the room comes from this file's beforeEach, with a generated name.
+// addMeeting below tries each room in turn and books into whichever accepts.
 // Returns the room's plain name, not the option's full accessible label - AddMeetingPage's Room
 // Autocomplete renders each option as "<name> (capacity <capacity>)" (getOptionLabel), but
 // RoomAvailabilityPage's own card shows just the plain name.
@@ -399,11 +393,8 @@ test('N.105: an account with no linked Person sees the section disabled with an 
 })
 
 test("N.106: a meeting's time in Room Availability's expanded list follows the time format", async ({ page }) => {
-  // Room Availability's redesign (designs/archive/room-availability-and-person-calendar-redesign.md)
-  // replaced the old fixed-hour grid - and with it, the hour axis and "Showing business hours"
-  // caption this case used to check without needing a meeting at all - with room-status cards.
-  // There's no longer a plain, data-independent time rendering to check, so this books a real
-  // meeting and reads its time back out of the card's expanded meeting list instead.
+  // Room Availability has no data-independent time rendering, so this books a real meeting and
+  // reads its time back out of the card's expanded meeting list.
   await signInAsFreshAccount(page)
   const subject = `N106 ${Date.now()}`
   const date = weekdayDaysAhead(76)

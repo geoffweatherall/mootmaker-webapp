@@ -47,8 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * Asks the composite entry point for `me` and nothing else. Selection is what the server charges
    * for, so this costs no rooms, no people and no day reads.
    *
-   * This used to be a `myPerson` query that every page had to wait on before it could ask for
-   * meetings — the startup waterfall. It is gone: the caller's id now arrives on the token, so a
+   * No page waits on this before asking for meetings: the caller's id arrives on the token, so a
    * screen that wants meetings asks for them in the same request rather than after this one.
    */
   function refreshPerson() {

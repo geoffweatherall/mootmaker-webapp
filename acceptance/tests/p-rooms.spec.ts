@@ -10,9 +10,7 @@ const PINNED_NOW = pinnedWeekday('Wednesday')
 
 // mootmaker/docs/reference/use-cases.md, section P (Rooms, admin only), cases 124-131. See
 // acceptance/test-cases/p-rooms.md for the full per-case Given/When/Then/Steps/Assertions this
-// file implements one at a time. Supersedes section J (j-settings-rooms.md / settings-rooms.spec.ts)
-// now that Rooms has moved out of Settings to its own top-level page - see the admin-rooms-and-
-// people design doc. Every case except P.124 (standard user) signs in as the admin fixture user,
+// file implements one at a time. Supersedes section J (j-settings-rooms.md). Every case except P.124 (standard user) signs in as the admin fixture user,
 // since managing rooms is the subject (see ./support/accounts.ts). A
 // standard user forcing createRoom/updateRoom/deleteRoom directly is covered once, comprehensively,
 // by L.90 rather than repeated here - see this catalog's established "don't triplicate" convention.
@@ -228,7 +226,7 @@ test.describe('P. Rooms (admin only)', () => {
     await page.getByRole('button', { name: 'Remove room' }).click()
     await expect(page.getByText(roomName)).toHaveCount(0)
 
-    // No longer offered in Add Meeting either.
+    // Not offered in Add Meeting either.
     await page.goto('/meetings/add')
     await page.getByRole('combobox', { name: 'Room' }).click()
     await expect(page.getByRole('option', { name: roomName, exact: false })).toHaveCount(0)

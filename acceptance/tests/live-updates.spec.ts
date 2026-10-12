@@ -18,10 +18,10 @@ import { gql } from './support/gql'
 /**
  * What a user sees WHILE someone else changes a meeting, not just afterwards (mootmaker-webapp#137).
  *
- * The cross-client tests elsewhere check the end state - "the change appears within 30 s" - and
- * passed straight through every one of #132 (the open meeting flashing "This meeting was
- * cancelled."), #134 (saying so for good after a move), #135 (the pop-out page never updating) and
- * #136 (Home and Calendar blanking a day). Each view here records what it shows on every animation
+ * The cross-client tests elsewhere check the end state - "the change appears within 30 s" - which
+ * cannot catch a transient wrong state: the open meeting flashing "This meeting was cancelled."
+ * (#132), saying so for good after a move (#134), the pop-out page never updating (#135) or Home
+ * and Calendar blanking a day (#136). Each view here records what it shows on every animation
  * frame (./support/liveRecorder.ts), and the assertion is that nothing appeared that was true
  * neither before nor after: no "cancelled", no empty states, and the meeting never vanishing.
  *

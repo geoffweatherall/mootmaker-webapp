@@ -3,8 +3,8 @@ import { graphql } from './generated'
 /**
  * The whole of page load, in one request.
  *
- * Replaces four separate queries — people, rooms, myPerson and meetings — and the waterfall between
- * them, since `me` no longer has to resolve before meetings can be asked for. `dates` is optional:
+ * People, rooms, the caller (`me`) and meetings together, with no waterfall: `me` does not have
+ * to resolve before meetings can be asked for. `dates` is optional:
  * omitting it means no days are wanted, which is how a reference-data refresh asks for just rooms
  * and people.
  *
@@ -197,15 +197,12 @@ export const SESSION = graphql(`
  * PAGE_LOAD/REFERENCE_DATA's own top-level `rooms`/`people` lists) rather than needing the
  * Meeting's own query to have asked for it - every page that can open a meeting detail sheet/panel
  * has already loaded its own rooms/people list before a user could click a row, so those entities
- * are complete in cache well before this fragment is ever read. (Before this widened to every
- * editable field, it covered only `attendees { person { id } status }` - narrow specifically
- * because everything else on a meeting genuinely never changed after creation. That's no longer
- * true.)
+ * are complete in cache well before this fragment is ever read.
  *
- * Originally existed just for attendee status, because the detail sheet/panel's `meeting` prop is
- * a snapshot captured once, not itself reactive - and attendee status changes underneath an
- * already-open sheet whenever anyone (including another client) responds. Now the same reasoning
- * covers every field an edit can change, and the meeting disappearing from the cache: `useFragment`'s
+ * Needed because the detail sheet/panel's `meeting` prop is a snapshot captured once, not itself
+ * reactive, while any field an edit can change - attendee status included - can change underneath
+ * an already-open sheet whenever anyone (including another client) acts. The same goes for the
+ * meeting disappearing from the cache: `useFragment`'s
  * `complete` flag flips to `false` whenever the entity is evicted. That is NOT the same as
  * cancelled - every eviction of its day does it, and so does a move to a day nobody is watching -
  * so `MeetingDetailContent` treats it as "refreshing" and asks the API about the meeting itself,

@@ -21,9 +21,8 @@ function requireEnv(name: string): string {
 
 /**
  * Creates a confirmed, working test account WITHOUT going through the real code-entry UI -
- * `AdminConfirmSignUp` confirms a sign-up with no code at all (see
- * mootmaker/docs/reference/testing-strategy.md#reading-cognitos-emails-in-tests's "Bypassing the code
- * requirement entirely"). Use this for anything that needs a working signed-up account as a
+ * `AdminConfirmSignUp` confirms a sign-up with no code at all. Use this for anything that needs a
+ * working signed-up account as a
  * *precondition* rather than as the thing actually under test - e.g. forgot-password's own test
  * needs an existing account before it can test resetting that account's password; it is not
  * itself testing that sign-up works (sign-up's own test already covers that, through the real UI
@@ -79,10 +78,10 @@ export async function createConfirmedTestAccount(account: TestAccount): Promise<
   // since the queue is a standard (unordered) SQS queue. Consume it now, before the caller does
   // anything that requests a real code.
   //
-  // WAITS for that one email rather than draining whatever happens to be there. A best-effort drain
-  // that stopped at the first empty poll was the cause of mootmaker-webapp#82: when the sign-up
-  // email reached the queue after the drain had given up, a later wait for a password-reset code
-  // took the sign-up code instead, and Cognito rejected it as "Invalid verification code". SignUp
-  // always sends exactly one, so waiting for it is deterministic.
+  // WAITS for that one email rather than draining whatever happens to be there. A drain that stops
+  // at the first empty poll can give up before the sign-up email arrives, and a later wait for a
+  // password-reset code then takes the sign-up code instead, which Cognito rejects as "Invalid
+  // verification code" (mootmaker-webapp#82). SignUp always sends exactly one, so waiting for it is
+  // deterministic.
   await waitForVerificationCode(account.email)
 }

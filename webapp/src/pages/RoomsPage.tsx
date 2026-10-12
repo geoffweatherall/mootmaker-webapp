@@ -42,8 +42,7 @@ import { ROOM_COLOR_SLOTS, roomColorAt, roomColorFor } from '../theme/roomColor'
 
 /**
  * Admin only (RequireAdmin, see App.tsx). Card grid matching RoomAvailabilityPage's own card
- * pattern - replaces the inline "Rooms" section that used to live in Settings (see the design doc,
- * "Impacts on components").
+ * pattern.
  */
 export default function RoomsPage() {
   const [dialogRoom, setDialogRoom] = useState<Room | 'new' | null>(null)

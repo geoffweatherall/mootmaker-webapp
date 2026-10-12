@@ -34,9 +34,8 @@ export default function SettingsPage() {
 }
 
 /**
- * Admin only. Room and Person management used to live inline in this page (AdminSections) -
- * they're now their own top-level pages, reachable from the sidebar's Admin section. This is
- * purely a pointer for anyone who still expects to find them here.
+ * Admin only. Points an admin who looks for room and person management here to the Rooms and
+ * Persons pages.
  */
 function MovedToAdminPagesBanner() {
   return (

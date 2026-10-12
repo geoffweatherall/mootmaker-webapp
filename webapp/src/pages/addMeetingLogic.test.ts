@@ -137,11 +137,8 @@ describe('advanceSuggestion', () => {
     expect(step.cache.candidates).toEqual([roomA, roomB])
   })
 
-  // Regression test for a real race: the cache used to be invalidated by a separate effect
-  // watching time/attendee-count and clearing it asynchronously, which could still be "not yet
-  // run" by the time a fast next press read it - a press right after the key changed could
-  // silently reuse an already-stale candidate list instead of re-fetching. Comparing `key` inline
-  // removes that: a mismatched key is always treated as stale, however the cache got here.
+  // A press right after the key changed must never reuse a stale candidate list: a mismatched
+  // key is always treated as stale, however the cache got here.
   it('treats a cache for a different key as stale even when candidates are non-null, and requires a fresh fetched list', () => {
     const staleCache: SuggestionCache = { candidates: [roomA, roomB, roomC], index: 1, key: keyA }
     const step = advanceSuggestion(staleCache, keyB, [roomC])
@@ -170,8 +167,8 @@ describe('defaultMeetingTimes', () => {
     expect(defaultMeetingTimes(at(10, 30, 42)).start.format('HH:mm:ss')).toBe('10:30:00')
   })
 
-  // mootmaker-webapp#48: the midnight guard used to fall back to 23:55, which is not on the
-  // 15-minute grid the API requires, so the form pre-filled an end time that was always rejected.
+  // Late in the evening the default must still sit on the 15-minute grid the API requires and end
+  // before midnight (mootmaker-webapp#48).
   it.each([
     ['22:46', 22, 46, '23:00', '23:45'],
     ['23:00', 23, 0, '23:00', '23:45'],
@@ -184,7 +181,7 @@ describe('defaultMeetingTimes', () => {
   })
 
   // The exhaustive form of the above. Every minute of the day, checked against every rule the API
-  // enforces - which is the check that would have caught #48 the day it was written.
+  // enforces.
   it('produces a valid meeting at every single minute of the day', () => {
     for (let hour = 0; hour < 24; hour++) {
       for (let minute = 0; minute < 60; minute++) {

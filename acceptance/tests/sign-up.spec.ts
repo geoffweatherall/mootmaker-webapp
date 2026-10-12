@@ -186,10 +186,9 @@ test('can immediately schedule a meeting as themselves right after signing up', 
   await expect(organiserRow.getByText(account.name, { exact: true })).toBeVisible()
 })
 
-// mootmaker-api#70: production once ended up with two "Willy Wombat" Persons - one created
-// directly, the other by signing up with the same name - because nothing checked for a collision at
-// either entry point. The decided fix (see PreSignUpNameCollisionHandler) is outright rejection at
-// sign-up, not silent reuse or a merge step: this is the real-Cognito half of that coverage, in the
+// mootmaker-api#70: a sign-up whose name matches an existing Person is rejected outright (see
+// PreSignUpNameCollisionHandler), not silently reused or merged: this is the real-Cognito half of
+// that coverage, in the
 // same spirit as case 3's already-registered-email rejection above. The mocked-layer equivalent
 // (webapp/tests/persons-page.spec.ts and its q-persons.spec.ts sibling in this same directory) cover
 // the person-create-page half and the case/whitespace-matching rule itself; this only needs to prove

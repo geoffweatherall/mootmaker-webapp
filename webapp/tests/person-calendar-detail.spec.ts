@@ -1,10 +1,9 @@
 import { test, expect } from '@playwright/test'
 import { people } from '../src/testSupport/mocks/fixtures'
 
-// Covers the new tap-to-detail behaviour on Person Calendar (see designs/room-availability-and-
-// person-calendar-redesign.md): the FAB hiding while a meeting's detail is open, and the same tap
-// opening a different surface depending on viewport width (a modal bottom sheet under md, a
-// non-modal side panel at/above it) - both explicitly called out in that design's Testing impacts.
+// Covers tap-to-detail on Person Calendar: the FAB hiding while a meeting's detail is open, and the
+// same tap opening a different surface depending on viewport width (a modal bottom sheet under md,
+// a non-modal side panel at/above it).
 
 test.describe('Person Calendar - meeting detail', () => {
   test('the Add Meeting FAB hides while a meeting detail is open and reappears once closed', async ({ page }) => {

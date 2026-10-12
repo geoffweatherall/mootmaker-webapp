@@ -13,8 +13,7 @@ describe('roomColorAt', () => {
     const paletteLength = roomPaletteLight.length
     expect(roomColorAt(paletteLength, 'light')).toBe(roomPaletteLight[0])
     expect(roomColorAt(paletteLength + 2, 'light')).toBe(roomPaletteLight[2])
-    // A concrete case beyond the documented 8-room wraparound (see README.md's "Room-identity
-    // colour coding" section).
+    // A concrete case beyond the 8-room wraparound (see docs/architecture.md, "Look and feel").
     expect(roomColorAt(9, 'light')).toBe(roomColorAt(1, 'light'))
   })
 })

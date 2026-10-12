@@ -104,8 +104,7 @@ export default function PersonCalendarPage() {
   }, [people, personId, ownPersonId, ownDisplayName])
 
   // The visible week's start - navigable via the Previous/Next week controls below. One week at a
-  // time, not the previous design's six stacked weeks: an agenda list of 30 day-sections at once
-  // was judged too long a scroll for a mobile-first redesign - see the design doc's prototype.
+  // time: a longer agenda is too long a scroll on a phone.
   const [firstMonday, setFirstMonday] = useState(() => startOfWorkWeek(dayjs()))
   const thisWeek = useMemo(() => startOfWorkWeek(dayjs()), [])
   const isShowingThisWeek = firstMonday.isSame(thisWeek, 'day')

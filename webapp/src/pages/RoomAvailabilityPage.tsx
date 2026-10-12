@@ -112,8 +112,7 @@ export default function RoomAvailabilityPage() {
   // Only the selected day's meetings, across every room - the API filters server-side so this
   // page never fetches more than one day's worth of meetings. One day, read by its own key -
   // day-keyed reads are consistent, so a query issued immediately after a write returns the
-  // meeting just created. See mootmaker-webapp#12 for the bug that made a workaround necessary
-  // before this page moved onto DAYS.
+  // meeting just created.
   const {
     data: meetingsData,
     loading: meetingsLoading,

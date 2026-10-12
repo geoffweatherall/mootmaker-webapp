@@ -174,11 +174,9 @@ export default function HomePage() {
   const theme = useTheme()
   const { email, personId, personLoading, initialising, timeFormat } = useAuth()
 
-  // Today through the end of tomorrow, for the signed-in person - the API filters server-side so
   // The landing route, so it loads through the composite entry point: rooms, people and the three
-  // days the agenda shows, in one request. That is the whole startup path now - there is no longer a
-  // myPerson call to wait on before meetings can be asked for, because the caller's id arrives on
-  // the token.
+  // days the agenda shows, in one request. That is the whole startup path - there is no myPerson
+  // call to wait on before meetings can be asked for, because the caller's id arrives on the token.
   const agendaDates = useMemo(() => {
     const todayStart = dayjs().startOf('day')
     return [0, 1, 2].map((offset) => todayStart.add(offset, 'day').format(DATE_KEY_FORMAT))
@@ -204,20 +202,16 @@ export default function HomePage() {
   // extraDates is plain accumulated state (which dates have been searched so far), but the
   // MEETINGS themselves are never snapshotted into local state - extraNeedsResponse below reads
   // this query's own `data` fresh on every render, the same way initialNeedsResponse reads
-  // PAGE_LOAD's. mootmaker-webapp#122: an earlier version stored the matching entries themselves
-  // in a `useState<NeedsResponseEntry[]>`, populated once via `useLazyQuery`'s one-shot result -
-  // once a card landed there, nothing ever re-filtered it against a later status change, so
-  // responding to a card found this way had no visible effect even though the mutation itself
-  // succeeded. skip avoids ever sending `dates: []` before the first click.
+  // PAGE_LOAD's. Entries copied into state would never be re-filtered against a later status
+  // change, so responding to a card found this way would have no visible effect
+  // (mootmaker-webapp#122). skip avoids ever sending `dates: []` before the first click.
   //
   // cache-and-network, not the default cache-first, for the same reason RoomAvailabilityPage and
   // PersonCalendarPage's own DAYS queries already need it: Query.workspace's field policy in
   // cachePolicies.ts is `keyArgs: false` with a `read` that reconstructs `days` from whatever
   // Day entities are already normalized. Once extraDates grows to include even one date already
   // cached from an earlier click, that read looks "complete enough" under cache-first and the
-  // genuinely new dates in the same request never get fetched at all - caught while writing this
-  // fix's own regression test, which is exactly the growing-window shape this field policy's own
-  // comment warns matters.
+  // genuinely new dates in the same request never get fetched at all.
   const [searchLevel, setSearchLevel] = useState(0)
   const [extraDates, setExtraDates] = useState<string[]>([])
   const { data: extraData, loading: searching } = useQuery(DAYS, {
@@ -252,9 +246,9 @@ export default function HomePage() {
   const today = todayDayjs.format(DATE_KEY_FORMAT)
   const tomorrow = todayDayjs.add(1, 'day').format(DATE_KEY_FORMAT)
 
-  // The server no longer filters by person - a date range is a list of day keys, and there is no
+  // The server does not filter by person - a date range is a list of day keys, and there is no
   // personId argument. Three days of meetings is small enough that filtering here costs nothing,
-  // and it removed a whole join table from the backend.
+  // and it keeps a join table out of the backend.
   function agendaFor(dateKey: string) {
     const day = (data?.workspace.days ?? []).find((candidate) => candidate.date === dateKey)
     return (day?.meetings ?? [])
@@ -486,7 +480,7 @@ export default function HomePage() {
       </Stack>
 
       {/* One shared indicator for the whole dashboard below, matching PersonCalendarPage/
-          RoomAvailabilityPage's convention (README.md's "Progress indicators") rather than a bar
+          RoomAvailabilityPage's (docs/architecture.md, "Rules every page follows") rather than a bar
           per section - Needs-response and the merged agenda both come from the one PAGE_LOAD
           query, so two separate bars would just say the same thing twice. */}
       <Box sx={{ height: 4 }}>{agendaRefreshing && <LinearProgress />}</Box>

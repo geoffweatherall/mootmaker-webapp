@@ -1,6 +1,6 @@
 /**
- * User-facing text for the API's validation-rule error codes, shown in ErrorBanner (see README.md's
- * "Error handling" section).
+ * User-facing text for the API's validation-rule error codes, shown in ErrorBanner (see
+ * docs/architecture.md, "Rules every page follows").
  *
  * Hand-written on purpose: this is UI copy, not part of the contract, so it is not generated. What
  * *is* generated is the error unions these maps are keyed by — so adding a code to the schema

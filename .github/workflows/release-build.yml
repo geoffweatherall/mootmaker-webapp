@@ -1,5 +1,5 @@
 # Reusable release build for mootmaker-webapp. See mootmaker/designs/archive/ci-cd-pipeline.md
-# Decision 7 and Rollout step 6.
+# Decision 7.
 #
 # Builds webapp/dist/ ONCE, proves it against a fresh ephemeral AWS environment, and uploads it as
 # an artifact. release.yml in mootmaker-release then promotes those exact files to test and then
@@ -14,8 +14,7 @@
 #   mootmaker-ephemeral-envs  acceptance/run.sh resolves it even when it is not going to create an
 #                             environment itself
 # Everything else - the API's endpoint and clients, the shared email queue - is looked up in SSM
-# (deploy/ssm-config.sh, mootmaker-api#94), so mootmaker-email-testing is no longer checked out.
-#                             (persistent shared infrastructure, never created per environment)
+# (deploy/ssm-config.sh, mootmaker-api#94).
 #
 # acceptance/run.sh is deliberately given an EXPLICIT environment name. Called with no argument it
 # creates its own via create-ephemeral-env.sh, which builds the webapp from source - that would
@@ -91,8 +90,7 @@ jobs:
       # mootmaker-release/release.yml, the github context belongs to the CALLER - GitHub's
       # reusable-workflow reference: "the github context is always associated with the caller
       # workflow" - so a bare checkout would clone mootmaker-release, which has no webapp/ at all.
-      # See mootmaker#40. `ref` falls back to github.ref so standalone dispatch at a tag still
-      # works unchanged.
+      # See mootmaker#40. `ref` falls back to github.ref so standalone dispatch at a tag works.
       - uses: actions/checkout@v5
         with:
           repository: geoffweatherall/mootmaker-webapp
@@ -194,8 +192,7 @@ jobs:
       # Diagnostics BEFORE teardown, and only on failure. Playwright writes an error-context.md
       # page snapshot plus a trace for every failed test (trace: 'retain-on-failure' in CI), and
       # without them a flake in this suite can only be guessed at from a log line saying an element
-      # was not found. That is not hypothetical: the business-hours/timezone bug in F.38 was
-      # diagnosed only once this capture existed, after two wrong guesses without it.
+      # was not found.
       #
       # Placed before the teardown steps so it still runs if teardown itself fails, and named per
       # attempt so re-runs do not collide.

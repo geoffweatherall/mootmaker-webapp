@@ -95,8 +95,7 @@ describe('apolloClient cache: workspace.days honours the requested dates (mootma
 
     const returned = readDates(cache, windowB)
 
-    // The bug: this used to return windowA's 30 dates unchanged (the previous, now-stale window),
-    // rather than being read fresh for windowB.
+    // Read fresh for windowB, not windowA's 30 dates returned unchanged (mootmaker-webapp#66).
     expect(returned).toEqual(overlap) // exactly the days already fetched, nothing stale, nothing invented
     expect(returned).not.toContain(windowA[0]) // the week that scrolled out is gone, not stale
     windowB

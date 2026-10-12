@@ -1,11 +1,8 @@
 /**
  * The shapes this app actually works with, derived from the generated schema types.
  *
- * This file used to be a hand-maintained mirror of `mootmaker-api/api/mootmaker.graphql`, kept in
- * sync by whoever remembered to edit both — with nothing enforcing that they agreed. It is now
- * derived: every type below resolves through `./generated`, which is generated from the schema
- * itself (see `codegen.ts`). Adding a field to the schema and forgetting this file is no longer
- * possible, because there is nothing here to forget.
+ * Every type below resolves through `./generated`, which is generated from the schema itself (see
+ * `codegen.ts`), so nothing here can drift from the schema.
  *
  * These are deliberately *selection* types rather than the schema's own object types: `Person` is
  * what `ListPeople` selects, not every field a Person has. That is what the components consume,

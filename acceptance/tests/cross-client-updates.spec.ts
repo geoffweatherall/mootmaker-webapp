@@ -130,9 +130,8 @@ test('a booking made by another client appears without a refresh', async ({ brow
       .locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " MuiPaper-root ")][1]')
     // Status Chip before the booking - a future day (bookableDate) with no meetings yet reads
     // "Free all day" (statusForRoom's future-day branch). Asserted here, before expanding, so the
-    // later post-broadcast assertion is a genuine before/after comparison of the same element
-    // (mootmaker-webapp#92 - previously only the meeting row's own appearance was checked, not
-    // whether the Chip driven by the same data actually updates too).
+    // later post-broadcast assertion is a genuine before/after comparison of the same element:
+    // the Chip must update from the same data as the meeting row (mootmaker-webapp#92).
     await expect(roomCard.getByText('Free all day', { exact: true })).toBeVisible()
     await roomCard.getByRole('button', { name: /'s meetings/ }).click()
     await expect(page.getByText(subject)).toHaveCount(0)
@@ -340,12 +339,9 @@ test('the tab that made the booking does not lose it to its own broadcast', asyn
 })
 
 test('a booking made by another client appears on Person Calendar without a refresh', async ({ browser, api }) => {
-  // mootmaker-webapp#96: every test above only ever exercised Room Availability.
-  // /persons/:id/calendar uses the same subscription/cache-eviction mechanism, but had no
-  // dedicated proof of its own - this project has a real history of shared plumbing quietly
-  // diverging per page (see MeetingDetailContent's own "PARITY INVARIANT" comment: field order,
-  // room colour, and avatar alignment had each independently drifted between two call sites
-  // before that was consolidated).
+  // mootmaker-webapp#96: the tests above exercise Room Availability. /persons/:id/calendar uses
+  // the same subscription/cache-eviction mechanism, but shared plumbing can quietly diverge per
+  // page, so it gets its own proof.
   const id = uniqueId()
   const room = `Cross Client Calendar Room ${id}`
   const subject = `Cross client calendar booking ${id}`

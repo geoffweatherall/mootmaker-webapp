@@ -14,12 +14,9 @@ set -euo pipefail
 
 # Deliberately no `cd "$(dirname "$0")"` here - script_dir below already resolves an absolute
 # path from BASH_SOURCE via a subshell cd (which doesn't affect this script's own cwd), and every
-# path used after this is built from it. A prior version of this script did also `cd
-# "$(dirname "$0")"` first, which broke when invoked as `./acceptance/run.sh` from the repo root
-# (the documented usage - see this file's own header comment): $0 is then "./acceptance/run.sh",
-# so that cd moved into acceptance/ - and BASH_SOURCE[0] below is the *same* unchanged relative
-# string, so the subshell then tried to cd into "./acceptance" a second time, now relative to a
-# cwd already inside acceptance/, which fails with "No such file or directory".
+# path used after this is built from it. A `cd "$(dirname "$0")"` first would break the
+# documented `./acceptance/run.sh` from the repo root: BASH_SOURCE[0] is the same relative string,
+# so the subshell would then try to cd into "./acceptance" from inside acceptance/.
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="${script_dir}/.."
 # Only for creating and tearing down an environment when none is given. Everything else this

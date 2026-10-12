@@ -43,10 +43,8 @@ test.describe('Person avatars', () => {
     await expect(personCard(page, 'Bob Brown').getByText('BB', { exact: true })).toBeVisible()
   })
 
-  // An avatar is an absolute URL, so where it is rendered from cannot matter - which is the point.
-  // This used to be a regression test for a path resolved against the current document, which
-  // only worked on routes one segment deep; that rule is gone, and with it the failure. What is
-  // left is the plain check that an avatar appears somewhere other than the Persons page.
+  // An avatar is an absolute URL, so it must render on a route more than one segment deep, not
+  // only on the Persons page.
   test('shows avatars in the person picker too', async ({ page }) => {
     await signIn(page, ADMIN_USER)
     await page.goto('/persons/person-carol/calendar')

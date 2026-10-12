@@ -28,8 +28,6 @@ export default function MeetingDetailsPage() {
   const [dismissedError, setDismissedError] = useState(false)
 
   // One meeting, by id, in two point reads on the server - an id-to-date pointer and then that day.
-  // This used to fetch EVERY meeting ever stored and find() the right one client-side, which the
-  // schema's own documentation warned against and which got slower with every meeting booked.
   //
   // Names are selected here, unlike the day-embedded meetings elsewhere: a details page reached cold
   // from a shared or bookmarked link has no cached rooms or people to resolve ids against.

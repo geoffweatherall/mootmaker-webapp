@@ -4,7 +4,7 @@ import { pinnedFutureWeekday, pinnedWeekday } from './support/pinnedDates'
 // The helper every other spec in this directory pins its clock with. No browser, no environment -
 // these are assertions about the dates themselves, which is what the rest of the suite depends on
 // and what nothing else would state. See support/pinnedDates.ts and mootmaker-webapp#58 for why
-// hardcoded dates were removed in the first place.
+// no spec hardcodes a date.
 
 // Kept in step with mootmaker-api's Limits: retention floors bookings at previousOrSame(MONDAY) of
 // today - 30, and the horizon caps them at today + 180.

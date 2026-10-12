@@ -239,12 +239,15 @@ export default function PersonCalendarPage() {
         value={selectedPerson ?? null}
         onChange={(_event, selected) => handlePersonChange(selected)}
         autoHighlight
-        renderOption={(props, option) => (
-          <Box component="li" {...props} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <PersonAvatar name={option.name} avatarUrl={option.avatarUrl} size={24} />
-            {option.name}
-          </Box>
-        )}
+        renderOption={(props, option) => {
+          const { key, ...optionProps } = props
+          return (
+            <Box component="li" key={key} {...optionProps} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <PersonAvatar name={option.name} avatarUrl={option.avatarUrl} size={24} />
+              {option.name}
+            </Box>
+          )
+        }}
         renderInput={(params) => <TextField {...params} label="Person" />}
       />
 

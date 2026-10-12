@@ -327,9 +327,11 @@ export default function HomePage() {
     const hasDemoUser = Boolean(demoEmail && demoPassword)
 
     return (
-      <Stack spacing={3}>
+      // useFlexGap, because on a phone the sign-in card moves above the feature strip (order) so
+      // it is near the top of the screen; margin-based spacing would follow the DOM order instead.
+      <Stack spacing={3} useFlexGap>
         <Box>
-          <Typography variant="h3" component="h1">
+          <Typography variant="h3" component="h1" sx={{ fontSize: { xs: '2.25rem', sm: undefined } }}>
             Welcome to Mootmaker
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mt: 0.5, maxWidth: 520 }}>
@@ -339,7 +341,7 @@ export default function HomePage() {
 
         {/* A feature strip replaces the old hero image - see designs/home-and-misc-pages-redesign.md's
             "No imagery anywhere" decision. */}
-        <Stack direction="row" spacing={4} sx={{ flexWrap: 'wrap', px: 0.25 }}>
+        <Stack direction="row" spacing={4} sx={{ flexWrap: 'wrap', px: 0.25, order: { xs: 1, sm: 0 } }}>
           {[
             { icon: <CalendarIcon fontSize="small" />, label: 'Schedule meetings' },
             { icon: <AvailabilityIcon fontSize="small" />, label: 'Room availability' },

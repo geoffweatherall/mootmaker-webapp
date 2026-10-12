@@ -1,7 +1,7 @@
 import { useMutation } from '@apollo/client/react'
-import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material'
+import { Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material'
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/authContext'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { SubmitButton } from '../components/SubmitButton'
@@ -18,31 +18,15 @@ import {
 import { PERSON_ERROR_MESSAGES, PREFERENCES_ERROR_MESSAGES } from '../graphql/validationMessages'
 
 export default function SettingsPage() {
-  const { isAdmin } = useAuth()
-
   return (
     <Stack spacing={3}>
       <Typography variant="h4" component="h1">
         Settings
       </Typography>
-      {isAdmin && <MovedToAdminPagesBanner />}
       <NameSection />
       <DateTimeFormatSection />
       <DeleteAccountSection />
     </Stack>
-  )
-}
-
-/**
- * Admin only. Points an admin who looks for room and person management here to the Rooms and
- * Persons pages.
- */
-function MovedToAdminPagesBanner() {
-  return (
-    <Alert severity="info">
-      Room and person management has moved. You&apos;ll find them under{' '}
-      <Link to="/rooms">Rooms</Link> and <Link to="/persons">Persons</Link> in the menu.
-    </Alert>
   )
 }
 

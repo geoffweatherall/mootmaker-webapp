@@ -1,5 +1,5 @@
 import { pinnedWeekday } from './support/pinnedDates'
-import { signInAsStandardUser } from './support/accounts'
+import { standardUser } from './support/accounts'
 import { uniqueId } from './support/env'
 import { expect, test } from './support/test'
 
@@ -14,7 +14,13 @@ test('on a phone: book a meeting, open it, and edit it', async ({ page, api }) =
   const room = `Phone Room ${id}`
   await api.createRoom(room, 6)
   await page.clock.setFixedTime(pinnedWeekday('Wednesday', { hour: 10 }))
-  await signInAsStandardUser(page)
+  // Not signInAsStandardUser: it waits for "Sign out", which on a phone is inside the closed menu.
+  const account = standardUser()
+  await page.goto('/signin')
+  await page.getByLabel('Email').fill(account.email)
+  await page.getByLabel('Password').fill(account.password)
+  await page.getByRole('button', { name: 'Sign in' }).tap()
+  await expect(page.getByRole('heading', { name: 'Home', level: 1 })).toBeVisible()
 
   await page.goto('/meetings/add')
   await page.getByLabel('Subject').fill(`Phone meeting ${id}`)

@@ -27,7 +27,9 @@ export function useDaysInvalidated(signedIn: boolean): void {
   useEffect(() => {
     if (!signedIn) return
 
-    const close = openAppSyncSubscription({
+    // The mocked dev server (`vite --mode mock`) has no AppSync to connect to: its API address is a
+    // relative path MSW intercepts. Everything below the socket still runs there.
+    const close = import.meta.env.MODE === 'mock' ? () => {} : openAppSyncSubscription({
       httpEndpoint: runtimeConfig.GRAPHQL_API_URL,
       token: currentIdToken,
       query: SUBSCRIPTION,

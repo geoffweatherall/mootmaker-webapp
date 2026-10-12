@@ -1,7 +1,7 @@
 import MenuIcon from '@mui/icons-material/Menu'
 import { AppBar, Box, Container, Drawer, IconButton, Toolbar, Typography } from '@mui/material'
-import { useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Outlet, useLocation, useNavigationType } from 'react-router-dom'
 import logo from '../assets/logo.svg'
 import { useLocationToast } from '../hooks/useLocationToast'
 import { AccountBox } from './AccountBox'
@@ -17,6 +17,15 @@ const DRAWER_WIDTH = 260
 export function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const { message: toastMessage, clear: clearToast } = useLocationToast()
+
+  // A new page starts at its top. Without this, the window keeps the previous page's scroll
+  // position: saving a meeting from the bottom of the form on a phone lands halfway down Room
+  // Availability. Back and Forward (POP) are left alone, so returning to a page keeps your place.
+  const { pathname } = useLocation()
+  const navigationType = useNavigationType()
+  useEffect(() => {
+    if (navigationType !== 'POP') window.scrollTo(0, 0)
+  }, [pathname, navigationType])
 
   function closeMobileMenu() {
     setMobileOpen(false)

@@ -88,6 +88,15 @@ export default function RoomAvailabilityPage() {
     navigate(`/rooms/${next.format(DATE_PARAM_FORMAT)}/availability`)
   }
 
+  // A date being typed into the picker's field, not yet committed. Every keystroke produces a new
+  // value ("1" then "17" is the 1st, then the 17th), so navigating on each would jump through
+  // intermediate days (mootmaker-webapp#85). It is committed on Enter or leaving the field; a date
+  // chosen from the calendar commits through onAccept straight away. Remembered against the date it was typed
+  // over, so navigating by any other means discards it.
+  const selectedKey = selectedDate.format(DATE_PARAM_FORMAT)
+  const [typed, setTyped] = useState<{ over: string; value: Dayjs | null } | null>(null)
+  const typedValue = typed?.over === selectedKey ? typed.value : undefined
+
   // Bounded like PersonCalendarPage's week navigation (mootmaker-webapp#60): not before the oldest
   // day the server still keeps, nor after the last day it takes bookings for. Unbounded until the
   // boundaries arrive, rather than briefly disabling everything.
@@ -95,6 +104,14 @@ export default function RoomAvailabilityPage() {
   const boundaries = boundariesData?.workspace.boundaries
   const earliestDate = boundaries ? dayjs(boundaries.earliestRetainedDate) : undefined
   const latestDate = boundaries ? dayjs(boundaries.latestBookableDate) : undefined
+  function commitTyped() {
+    setTyped(null)
+    if (!typedValue || !typedValue.isValid() || typedValue.format(DATE_PARAM_FORMAT) === selectedKey) return
+    if (earliestDate && typedValue.isBefore(earliestDate, 'day')) return
+    if (latestDate && typedValue.isAfter(latestDate, 'day')) return
+    goToDate(typedValue)
+  }
+
   const canGoBack =
     !boundaries || selectedDate.subtract(1, 'day').format(DATE_PARAM_FORMAT) >= boundaries.earliestRetainedDate
   const canGoForward =
@@ -192,12 +209,27 @@ export default function RoomAvailabilityPage() {
             <ChevronLeftIcon />
           </IconButton>
           <DatePicker
-            value={selectedDate}
-            onChange={(value) => value && goToDate(value)}
+            value={typedValue === undefined ? selectedDate : typedValue}
+            onChange={(value) => setTyped({ over: selectedKey, value })}
+            onAccept={(value, { source }) => {
+              // Only a pick from the calendar commits here. Typing in the field is also "accepted",
+              // on every keystroke (with source 'unknown'), so it commits on Enter or blur instead.
+              if (source !== 'view') return
+              setTyped(null)
+              if (value?.isValid()) goToDate(value)
+            }}
             minDate={earliestDate}
             maxDate={latestDate}
             format="dddd D MMM YYYY"
-            slotProps={{ textField: { size: 'small' } }}
+            slotProps={{
+              textField: {
+                size: 'small',
+                onBlur: commitTyped,
+                onKeyDown: (event) => {
+                  if (event.key === 'Enter') commitTyped()
+                },
+              },
+            }}
           />
           <IconButton
             onClick={() => goToDate(selectedDate.add(1, 'day'))}

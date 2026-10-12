@@ -192,11 +192,13 @@ describe('refetches of one workspace query', () => {
   })
 
   it("would wipe them under Apollo's default overwrite-on-refetch, which is why it is overridden", async () => {
-    // Pins the Apollo behaviour defaultOptions exists for. If this starts failing, a future Apollo
-    // merges on refetch by default and the override in cachePolicies.ts can go.
-    const { requests, workspace } = await pageWith(undefined)
+    // Pins the Apollo behaviour defaultOptions exists for: the refetch overwrites the shared
+    // workspace object, so the unrelated rooms query goes back to the network to fill it again.
+    // (Whether rooms are back in the cache by the time this reads it depends on Apollo's timing,
+    // so the request is what is asserted.) If this starts failing, a future Apollo merges on
+    // refetch by default and the override in cachePolicies.ts can go.
+    const { requests } = await pageWith(undefined)
 
-    expect(workspace).not.toHaveProperty('rooms')
     expect(requests).toEqual(['DaysOnly', 'RoomsOnly'])
   })
 })

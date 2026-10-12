@@ -38,7 +38,7 @@ otherwise-fast, hard-to-catch transient state reliably observable — each says 
 
 **Notes:** The artificial network delay (step 2) is what makes this deterministic — without it, a fast real response could resolve before Playwright's assertion even runs, making the "spinner was visible" half flaky or outright unobservable. Scope the route interception narrowly (only this test's own page, only for the duration needed) so it doesn't leak into other tests if run in the same worker.
 
-Step 3 deliberately checks the day *before* a meeting is created on it, not the redirect straight after creating one (that used to be the same thing; it no longer is). mootmaker-webapp#66 fixed `Query.workspace`'s cache read to reconstruct `days` from the requested dates via the already-normalized `Day` entities, rather than trusting whatever `days` list a previous, differently-dated response happened to leave behind. One side effect: `createMeeting`'s own response returns the affected `day`, entity-normalized like any other write, so it now warms that day's cache immediately — the redirect straight after creating a meeting is a revisit to a day the mutation itself just populated, not a genuinely cold visit. That's a real improvement (no unnecessary spinner for data already in hand, asserted in step 4), but it means (a)'s "nothing cached yet" precondition needs a visit that precedes any write to the day being checked.
+Step 3 deliberately checks the day *before* a meeting is created on it, not the redirect straight after creating one. `createMeeting`'s response returns the affected `day`, which warms that day's cache, so the redirect after creating a meeting is a revisit to a day the mutation just populated, not a cold visit (no spinner for data already in hand, asserted in step 4). (a)'s "nothing cached yet" precondition therefore needs a visit that precedes any write to the day being checked.
 
 ---
 
@@ -96,7 +96,7 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 
 **Notes:** This is the one case in the catalog that most depends on `amazon-cognito-identity-js` internals not asserted anywhere else in this document — treat the first implementation attempt as partly exploratory (confirm the library's actual `localStorage` key shape against a real signed-in session before finalising the corruption step).
 
-**2026-08-27 root cause: test bug, fixed.** The app's actual behaviour here is exactly the "ideal" outcome (redirects to `/signin`), confirmed against a real run's network trace: `getSession()` finds the corrupted-but-present refresh token and calls `refreshSession()`, which blindly retries via `amazon-cognito-identity-js`'s own `jitteredExponentialRetry` (`Client.js`) even though the error is a definitive 400 `NotAuthorizedException`, not anything transient — 6 attempts backing off up to 5s each, ~7.5s of wall-clock time, before finally giving up and resolving the session as null, at which point `RequireAuth` redirects. The original test asserted the Settings/Your name headings were visible *before* checking for a redirect, which contradicts that outcome: if the app redirects, `SettingsPage` never mounts, so those headings correctly never appear, and the original assertion just timed out first. Fixed by waiting (with 15s headroom, to cover the ~7.5s retry storm) for the redirect before deciding which of the two acceptable branches applies. Re-verified live and passing twice in a row. Worth noting for a future product-side look, though not treated as a bug fixed here: the ~7.5s delay before the app decides anything is entirely `amazon-cognito-identity-js`'s own built-in retry policy retrying a non-transient auth failure — the use case's own "ideally" bar is still met, just slower than a user might expect.
+**Timing.** With a corrupted refresh token, `getSession()` calls `refreshSession()`, which `amazon-cognito-identity-js` retries with backoff even though the 400 `NotAuthorizedException` is not transient: about 6 attempts and 7.5 seconds before the session resolves as null and `RequireAuth` redirects to `/signin`. So the test waits (with 15s headroom) for the redirect before deciding which acceptable branch applies, and asserts nothing about Settings until then. The delay is the library's retry policy, not the app's.
 
 ---
 
@@ -185,7 +185,7 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 
 **Notes:** The use case's explicit "(Settings included)" parenthetical exists because `AccountBox`'s Settings shortcut is a structurally separate component from `MenuContent`'s own items, each independently wired to call `onNavigate` — worth checking both rather than assuming one implies the other.
 
-**2026-08-27 root cause: two stacked test bugs, both fixed.** (1) The test set the mobile viewport *before* signing in; `signInAsDemo`'s own "Sign out" check targets the sidebar `Drawer`, which `Layout.tsx` hides via CSS (not unmounts) at narrow widths, so at that viewport "Sign out" resolved to a real but permanently-hidden element (confirmed against a real run: "unexpected value 'hidden'") - fixed by signing in at the default desktop viewport first, then resizing, matching the pattern `room-availability.spec.ts`'s E.36 already established for the identical issue. (2) Once past that, `getByLabel('Settings')` hit "strict mode violation ... resolved to 2 elements": `Layout.tsx` renders its `drawerContent` (`MenuContent` + `AccountBox`) once per `Drawer` - the permanent one (always in the DOM, just CSS-hidden here) and the temporary one (mounted only while open) - and CSS `display:none` does **not** stop Playwright's `getByRole`/`getByLabel` from resolving the hidden copy too (only `.toBeVisible()`'s own check treats it as invisible, evaluated *after* strict-mode uniqueness already failed). Fixed by scoping both the "Room Availability" and "Settings" locators to `page.getByRole('dialog')` (the temporary Drawer's own Modal, confirmed via a real page snapshot to render with that role), which also naturally resolves to 0 once the drawer closes/unmounts, preserving the original "0 matches means closed" reasoning without relying on the incorrect hidden-element-exclusion assumption. Re-verified live and passing twice in a row.
+**Locator notes.** Sign in at the default desktop viewport, then resize: at narrow widths the permanent sidebar `Drawer` is hidden with CSS (not unmounted), so its "Sign out" resolves to a hidden element. And `Layout.tsx` renders the menu once in the permanent drawer and once in the temporary one; CSS-hidden elements still count for Playwright's strict-mode uniqueness, so "Room Availability" and "Settings" are located within `page.getByRole('dialog')` (the temporary drawer), which also resolves to nothing once it closes.
 
 ---
 
@@ -232,15 +232,13 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 
 **Notes:** This is the one case in the catalog that specifically needs **two independent browser contexts**, not just one page navigating around — the whole point is proving cache behaviour *across* sessions, which a single context's own always-fresh state can't demonstrate on its own.
 
-**2026-08-27 update:** re-verified live and passing in every run today (3 for 3), including before M.94/M.97's own test fixes landed - confirming this case's earlier failure in the full-suite run was unrelated flakiness, not a real regression from the SES/Cognito change or the room-availability fixes. No test or product change was needed.
-
 ---
 
 <a id="tc-m109"></a>
 ### M.109 — Two attendees of the same meeting responding at once both land
 
 **Use case:** [use-cases.md#uc-109](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-109) — "Two different attendees of the same meeting responding to it at the same moment both land - neither overwrites the other, even under a real DynamoDB optimistic-lock conflict."
-**Status:** ✅ Automated — [`tests/attendee-response-status.spec.ts`](../tests/attendee-response-status.spec.ts), new 2026-09-21 — see `../../designs/attendee-response-status.md` in the hub repo.
+**Status:** ✅ Automated — [`tests/attendee-response-status.spec.ts`](../tests/attendee-response-status.spec.ts)
 **Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Three real identities in three separate browser contexts: the standard user and two freshly-created, admin-confirmed accounts (`support/cognitoAdmin.ts`'s `createConfirmedTestAccount`, bypassing the email-code UI). One organises; the standard user and the other fresh account are both attendees of one meeting, created via the API.
@@ -267,7 +265,7 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 ### M.110 — One person responding to two different meetings sharing a day both land
 
 **Use case:** [use-cases.md#uc-110](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-110) — "One person responding to two different meetings that happen to fall on the same calendar day - and so share the same DynamoDB day item - at the same moment: both responses land."
-**Status:** ✅ Automated — [`tests/attendee-response-status.spec.ts`](../tests/attendee-response-status.spec.ts), new 2026-09-21 — see `../../designs/attendee-response-status.md` in the hub repo.
+**Status:** ✅ Automated — [`tests/attendee-response-status.spec.ts`](../tests/attendee-response-status.spec.ts)
 **Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user, with two rooms and one other Person (organiser) already present. Two meetings on the same pinned day (different rooms/times), both via the API, with the standard user as the sole attendee of each.
@@ -294,7 +292,7 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 ### M.111 — A response made by another client is reflected live
 
 **Use case:** [use-cases.md#uc-111](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-111) — "A response made by another client (e.g. a different attendee, or the same person in another tab) is reflected on an already-open meeting detail sheet without a refresh."
-**Status:** ✅ Automated — [`tests/attendee-response-status.spec.ts`](../tests/attendee-response-status.spec.ts), new 2026-09-21 — see `../../designs/attendee-response-status.md` in the hub repo.
+**Status:** ✅ Automated — [`tests/attendee-response-status.spec.ts`](../tests/attendee-response-status.spec.ts)
 **Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Two browser contexts: the standard user (observer, organiser) and one fresh account (the meeting's sole attendee). A meeting created via the API, on the pinned "today".
@@ -320,7 +318,7 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 <a id="tc-m112"></a>
 ### M.112 — An edit made by another client is reflected live
 
-**Use case:** [use-cases.md#uc-122](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-122) — "An edit made by another client (e.g. the organiser, in another tab or by another admin) is reflected on an already-open meeting detail sheet without a refresh." (Cross-references [M.112](#tc-m112)/[M.113](#tc-m113) - see `../../designs/edit-and-cancel-meetings.md`.)
+**Use case:** [use-cases.md#uc-122](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-122) — "An edit made by another client (e.g. the organiser, in another tab or by another admin) is reflected on an already-open meeting detail sheet without a refresh." (Cross-references [M.112](#tc-m112)/[M.113](#tc-m113) - see `designs/archive/edit-and-cancel-meetings.md`.)
 **Status:** ✅ Automated — [`tests/edit-and-cancel-meetings.spec.ts`](../tests/edit-and-cancel-meetings.spec.ts)
 **Android:** see the `android:` link on its use case, above
 
@@ -347,7 +345,7 @@ Step 3 deliberately checks the day *before* a meeting is created on it, not the 
 <a id="tc-m113"></a>
 ### M.113 — A cancellation made by another client is reflected live
 
-**Use case:** [use-cases.md#uc-123](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-123) — "A cancellation made by another client is reflected on an already-open meeting detail sheet without a refresh - the sheet shows the meeting was cancelled elsewhere, rather than continuing to display stale content or erroring." (Cross-references [M.112](#tc-m112)/[M.113](#tc-m113) - see `../../designs/edit-and-cancel-meetings.md`.)
+**Use case:** [use-cases.md#uc-123](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-123) — "A cancellation made by another client is reflected on an already-open meeting detail sheet without a refresh - the sheet shows the meeting was cancelled elsewhere, rather than continuing to display stale content or erroring." (Cross-references [M.112](#tc-m112)/[M.113](#tc-m113) - see `designs/archive/edit-and-cancel-meetings.md`.)
 **Status:** ✅ Automated — [`tests/edit-and-cancel-meetings.spec.ts`](../tests/edit-and-cancel-meetings.spec.ts)
 **Android:** see the `android:` link on its use case, above
 

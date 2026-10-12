@@ -162,7 +162,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### D.107 — "Needs your response" section, quick-respond, and status badges on Today/Tomorrow
 
 **Use case:** [use-cases.md#uc-107](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-107) — "A 'Needs your response' section, naming the time range it covers, lists soonest-first every upcoming meeting in that range where the signed-in person is an attendee (not organiser) with status still No response... responding clears it from the list live. The Today/Tomorrow agenda is one continuous, day-sectioned list showing the viewer's own response status on each row, unbounded..."
-**Status:** ✅ Automated — [`tests/attendee-response-status.spec.ts`](../tests/attendee-response-status.spec.ts), new 2026-09-21 — see `../../designs/attendee-response-status.md` in the hub repo.
+**Status:** ✅ Automated — [`tests/attendee-response-status.spec.ts`](../tests/attendee-response-status.spec.ts)
 **Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Signed in as the standard user, with a room and a second Person (created via Settings, as organiser) already present. A meeting created via the real `createMeeting` API with the standard user as an attendee (not organiser), on the pinned "today".
@@ -193,7 +193,7 @@ See [README.md](README.md) for the entry format and test-data conventions.
 ### D.112 — "Search further ahead" finds a real meeting booked beyond the initial window
 
 **Use case:** [use-cases.md#uc-112](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-112) — "'Search further ahead' on 'Needs your response' extends the window 3 days per click, merging in whatever it finds, and never collapses back once widened."
-**Status:** ✅ Automated — [`tests/home-page.spec.ts`](../tests/home-page.spec.ts), new 2026-09-22 — see `../../designs/home-and-misc-pages-redesign.md` in the hub repo.
+**Status:** ✅ Automated — [`tests/home-page.spec.ts`](../tests/home-page.spec.ts)
 **Android:** N/A (webapp-specific)
 
 **Preconditions:** Signed in as the standard user, with a room and a second Person (created via Settings, as organiser) already present. A meeting booked via the real Add Meeting form, with the standard user as an attendee (not organiser), 6 days beyond the pinned "today" - past both the initial window and the first "Search further ahead" click's own new window.

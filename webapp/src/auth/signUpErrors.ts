@@ -26,3 +26,11 @@ export function readableSignUpError(error: Error): Error {
   // otherwise reach the person signing up.
   return new Error(match[1].replace(/\.+$/, '.'))
 }
+
+/**
+ * Whether sign-in was refused because the account's sign-up was never confirmed: someone signed up
+ * and left before entering the emailed code. Sign-in then offers the code step again (use case 150).
+ */
+export function saysNotConfirmed(error: { name?: string; code?: string }): boolean {
+  return (error.code ?? error.name) === 'UserNotConfirmedException'
+}

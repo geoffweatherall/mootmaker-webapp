@@ -214,3 +214,34 @@ test('signing up with a name that collides with an existing person is rejected, 
   // fresh attempt with the same email still starts clean rather than hitting UsernameExistsException.
   await expect(page.getByLabel('Verification code')).not.toBeVisible()
 })
+
+// Case 150: someone who left sign-up before entering the code finishes it from sign-in, with a new
+// code. The first code is read off the queue and thrown away, so the code entered can only be the
+// resent one.
+test('an unconfirmed sign-up can be finished from sign-in with a new code', async ({ page }) => {
+  const account = freshTestAccount()
+
+  await page.goto('/signup')
+  await page.getByLabel('Name').fill(account.name)
+  await page.getByLabel('Email').fill(account.email)
+  await page.getByLabel('Password').fill(account.password)
+  await page.getByRole('button', { name: 'Sign up' }).click()
+  await expect(page.getByLabel('Verification code')).toBeVisible()
+  await waitForVerificationCode(account.email)
+
+  // Leave without confirming, then come back through sign-in.
+  await page.goto('/signin')
+  await page.getByLabel('Email').fill(account.email)
+  await page.getByLabel('Password').fill(account.password)
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  await expect(page.getByText("This account hasn't been confirmed yet.")).toBeVisible()
+
+  await page.getByRole('button', { name: 'Send a new code' }).click()
+  await expect(page.getByText("We've sent a new code.")).toBeVisible()
+  const code = await waitForVerificationCode(account.email)
+
+  await page.getByLabel('Verification code').fill(code)
+  await page.getByRole('button', { name: 'Confirm' }).click()
+  await expect(page.getByText('Sign out')).toBeVisible()
+  await expect(page.getByText(account.name, { exact: true })).toBeVisible()
+})

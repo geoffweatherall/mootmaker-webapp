@@ -20,6 +20,8 @@ export interface MockUser {
   password: string
   name: string
   userClass: 'standard' | 'admin'
+  /** Signed up but never entered the emailed code: sign-in is refused until confirmSignUp. */
+  unconfirmed?: boolean
 }
 
 // A small fixed directory of fixture accounts, intentionally not configurable per test, so every
@@ -40,11 +42,15 @@ export const MOCK_USERS: MockUser[] = [
   // above is one, which is why nothing had covered those sections at this layer before. Kept as a
   // third user rather than promoting DEMO_USER, so no existing test changes behaviour.
   { email: 'admin@example.com', password: 'Admin-password-1', name: 'Admin User', userClass: 'admin' },
+  // Left sign-up before entering the code (use case 150). Confirming it lasts until the next full
+  // page load, which resets this module.
+  { email: 'unconfirmed@example.com', password: 'Unconfirmed-password-1', name: 'Unconfirmed User', userClass: 'standard', unconfirmed: true },
 ]
 
 export const NO_PERSON_USER = MOCK_USERS[0]
 export const DEMO_USER = MOCK_USERS[1]
 export const ADMIN_USER = MOCK_USERS[2]
+export const UNCONFIRMED_USER = MOCK_USERS[3]
 
 // The verification code every mock sign-up/reset flow accepts - there's no real inbox to read a
 // code from, so this stands in for "the code Cognito emailed". The acceptance suite reads a
@@ -136,6 +142,9 @@ export function signIn(email: string, password: string): Promise<void> {
     // surfaces this text directly in ErrorBanner, and auth.spec.ts asserts an alert appears.
     return Promise.reject(new Error('Incorrect username or password.'))
   }
+  if (user.unconfirmed) {
+    return Promise.reject(Object.assign(new Error('User is not confirmed.'), { name: 'UserNotConfirmedException', code: 'UserNotConfirmedException' }))
+  }
   writeSession({ email: user.email })
   return Promise.resolve()
 }
@@ -147,8 +156,18 @@ export function signUp(): Promise<void> {
   return Promise.reject(new Error('Sign-up is not supported in this mocked test environment.'))
 }
 
-export function confirmSignUp(): Promise<void> {
-  return Promise.reject(new Error('Sign-up is not supported in this mocked test environment.'))
+/** Confirms an unconfirmed fixture account with MOCK_VERIFICATION_CODE, as Cognito would with the emailed code. */
+export function confirmSignUp(email: string, code: string): Promise<void> {
+  const user = findUser(email)
+  if (!user || code !== MOCK_VERIFICATION_CODE) {
+    return Promise.reject(Object.assign(new Error('Invalid verification code provided, please try again.'), { name: 'CodeMismatchException', code: 'CodeMismatchException' }))
+  }
+  user.unconfirmed = false
+  return Promise.resolve()
+}
+
+export function resendConfirmationCode(): Promise<void> {
+  return Promise.resolve()
 }
 
 /** Starts a mock password reset. Always resolves regardless of whether `email` matches a known

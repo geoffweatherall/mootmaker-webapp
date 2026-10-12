@@ -112,11 +112,8 @@ export function signUp(email: string, password: string, name: string): Promise<v
       // No "email" CognitoUserAttribute: the pool's username_attributes is ["email"], so the
       // `email` parameter above already establishes it - explicitly setting it again is rejected
       // with NotAuthorizedException ("A client attempted to write unauthorized attribute"), since
-      // this app client's write_attributes only grants "name" (see cognito.tf). This broke every
-      // real sign-up silently until mootmaker-e2e's full-stack suite caught it - nothing else in
-      // this project's test suites drives a real sign-up against a real Cognito pool (the mocked
-      // Playwright suite never touches real Cognito; the demo/e2e users are pre-created directly
-      // via Terraform, bypassing this call entirely).
+      // this app client's write_attributes only grants "name" (see cognito.tf). Only the
+      // acceptance suite's real sign-ups exercise this call.
       [new CognitoUserAttribute({ Name: 'name', Value: name })],
       [],
       (error) => (error ? reject(readableSignUpError(error)) : resolve()),
@@ -129,6 +126,14 @@ export function confirmSignUp(email: string, code: string): Promise<void> {
   const user = new CognitoUser({ Username: email, Pool: userPool })
   return new Promise((resolve, reject) => {
     user.confirmRegistration(code, true, (error) => (error ? reject(error) : resolve()))
+  })
+}
+
+/** Emails a new sign-up code to an account that has not been confirmed yet (use case 150). */
+export function resendConfirmationCode(email: string): Promise<void> {
+  const user = new CognitoUser({ Username: email, Pool: userPool })
+  return new Promise((resolve, reject) => {
+    user.resendConfirmationCode((error) => (error ? reject(error) : resolve()))
   })
 }
 

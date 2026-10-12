@@ -58,6 +58,8 @@ stateDiagram-v2
   Initialising --> SignedOut: no session
   Initialising --> SignedIn: tokens in localStorage
   SignedOut --> SignedIn: SRP sign-in
+  SignedOut --> Unconfirmed: sign-up never confirmed
+  Unconfirmed --> SignedIn: emailed code, or a new one
   SignedIn --> SignedOut: sign out
   SignedIn --> SignedIn: ID token refreshed silently
 ```
@@ -68,6 +70,9 @@ stateDiagram-v2
   rather than guessing signed-out, so a signed-in visitor never sees the signed-out home page flash past.
 - `useAuth()` exposes the email, `isAdmin` (from the token's `custom:class`), the caller's Person (read
   live as `workspace { me }`, so a rename shows at once) and their display preferences.
+- **An account whose sign-up was never confirmed is not a dead end.** When Cognito refuses sign-in with
+  `UserNotConfirmedException`, the sign-in form asks for the emailed code, offers **Send a new code**,
+  then signs in with the password already typed. The sign-up page's code step can resend too.
 - An account with no linked Person sees an explanation on Home instead of an agenda, and Calendar is
   disabled.
 

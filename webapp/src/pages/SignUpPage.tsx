@@ -1,8 +1,8 @@
-import { Link as MuiLink, Paper, Stack, TextField, Typography } from '@mui/material'
+import { Button, Link as MuiLink, Paper, Stack, TextField, Typography } from '@mui/material'
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/authContext'
-import { confirmSignUp, signUp } from '../auth/cognito'
+import { confirmSignUp, resendConfirmationCode, signUp } from '../auth/cognito'
 import { ErrorBanner } from '../components/ErrorBanner'
 import { SubmitButton } from '../components/SubmitButton'
 
@@ -23,6 +23,8 @@ export default function SignUpPage() {
   const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [codeSent, setCodeSent] = useState(false)
 
   async function handleDetailsSubmit(event: FormEvent) {
     event.preventDefault()
@@ -49,6 +51,20 @@ export default function SignUpPage() {
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Confirmation failed.')
       setLoading(false)
+    }
+  }
+
+  // For a code that is slow to arrive, or was deleted (use case 150).
+  async function handleResend() {
+    setSending(true)
+    setError(null)
+    try {
+      await resendConfirmationCode(email.trim())
+      setCodeSent(true)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not send a new code.')
+    } finally {
+      setSending(false)
     }
   }
 
@@ -111,6 +127,9 @@ export default function SignUpPage() {
               We sent a verification code to <strong>{email.trim()}</strong>. Enter it below to
               finish creating your account.
             </Typography>
+            {codeSent && (
+              <Typography color="text.secondary">We&apos;ve sent a new code. It can take a minute to arrive.</Typography>
+            )}
             <TextField
               label="Verification code"
               value={code}
@@ -124,6 +143,9 @@ export default function SignUpPage() {
               <SubmitButton loading={loading} hasError={error !== null}>
                 Confirm
               </SubmitButton>
+              <Button onClick={handleResend} disabled={sending}>
+                Send a new code
+              </Button>
             </Stack>
           </Stack>
         </Paper>

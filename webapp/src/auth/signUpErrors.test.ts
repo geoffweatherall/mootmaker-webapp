@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readableSignUpError } from './signUpErrors'
+import { readableSignUpError, saysNotConfirmed } from './signUpErrors'
 
 describe('readableSignUpError', () => {
   it('strips the PreSignUp wrapper text off a name-collision rejection', () => {
@@ -27,5 +27,16 @@ describe('readableSignUpError', () => {
     error.name = 'UserLambdaValidationException'
 
     expect(readableSignUpError(error)).toBe(error)
+  })
+})
+
+describe('saysNotConfirmed', () => {
+  it('recognises an unconfirmed sign-up', () => {
+    expect(saysNotConfirmed({ code: 'UserNotConfirmedException', name: 'UserNotConfirmedException' })).toBe(true)
+  })
+
+  it('leaves every other refusal alone', () => {
+    expect(saysNotConfirmed({ code: 'NotAuthorizedException' })).toBe(false)
+    expect(saysNotConfirmed(new Error('Network error'))).toBe(false)
   })
 })

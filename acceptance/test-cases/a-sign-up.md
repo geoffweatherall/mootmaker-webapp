@@ -188,6 +188,37 @@ whole point is proving the real sign-up + email + PostConfirmation-trigger chain
 - Submission succeeds: URL matches `/rooms/<date>/availability`, the success toast is visible, the meeting's subject is visible on the grid.
 - On `MeetingDetailsPage` (or the grid tooltip), the Organiser is this user, not blank.
 
-**Out of scope:** the documented race between the organiser-defaulting effect and picking yourself as an attendee before your own `personId` resolves — explicitly called out as not automated anywhere yet (see the main webapp README's "Organiser/attendee mutual exclusivity" section); this case only needs the ordinary (non-racing) default to have resolved by the time the form is submitted, which a real navigation after a completed sign-in reliably allows time for.
+**Out of scope:** the documented race between the organiser-defaulting effect and picking yourself as an attendee before your own `personId` resolves — not automated anywhere; this case only needs the ordinary (non-racing) default to have resolved by the time the form is submitted, which a real navigation after a completed sign-in reliably allows time for.
 
 **Notes:** This is the one case in this section that also depends on F.38's/F.39's underlying mechanics (room creation as a precondition, organiser defaulting) — see [f-add-meeting.md](f-add-meeting.md) for those in isolation with the standard user instead.
+
+---
+
+<a id="tc-a150"></a>
+### A.150 — An unconfirmed sign-up can be finished from sign-in with a new code
+
+**Use case:** [use-cases.md#uc-150](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-150) — "Someone who left sign-up before entering the code can finish it from sign-in, with the code they have or a new one."
+**Status:** ✅ Automated — [`tests/sign-up.spec.ts`](../tests/sign-up.spec.ts)
+**Android:** see the `android:` link on its use case, above
+
+**Preconditions:** Signed out. A fresh email address.
+
+**Given** an account that was signed up but never confirmed
+**When** the user signs in with its email and password, asks for a new code, and enters it
+**Then** sign-in explains the account is not confirmed, sends a new code, confirms the account with it, and signs the user in
+
+**Steps:**
+1. Navigate to `/signup`; fill and submit the details step with a fresh `freshTestAccount()`.
+2. `await waitForVerificationCode(account.email)` and discard it, so only a resent code can be read next.
+3. Navigate to `/signin`; sign in with the same email and password.
+4. Assert "This account hasn't been confirmed yet." is visible.
+5. Click **Send a new code**; assert "We've sent a new code." is visible.
+6. `await waitForVerificationCode(account.email)`; fill **Verification code** with it; click **Confirm**.
+
+**Assertions:**
+- After step 3: no sign-in error banner; the code step is shown instead.
+- After step 6: `getByText('Sign out')` is visible, and the account's name is shown (the linked Person was created on confirmation).
+
+**Out of scope:** a wrong code on this step (covered at the integration layer, `webapp/tests/unconfirmed-sign-in.spec.ts`, and for sign-up itself by A.4); Cognito's limit on resend attempts.
+
+**Notes:** Discarding the first code in step 2 is what makes this prove the resend: `waitForVerificationCode` takes the first message addressed to the account, which would otherwise be the original code.

@@ -1,4 +1,4 @@
-# Shared by deploy.sh, acceptance/run.sh and e2e/run.sh: looks up an environment's configuration in
+# Shared by deploy.sh and acceptance/run.sh: looks up an environment's configuration in
 # SSM Parameter Store, where each component publishes what it owns (mootmaker-api#94). Sourced by
 # those scripts only - it defines functions and changes nothing on its own. Needs AWS credentials
 # that can read /mootmaker/<environment>/* and /mootmaker/email-testing/*.
@@ -44,7 +44,7 @@ export_api_deploy_config() {
     COGNITO_TOKEN_URL COGNITO_TEST_CLIENT_ID COGNITO_TEST_CLIENT_SECRET COGNITO_TEST_SCOPE
 }
 
-# Exports everything the e2e and acceptance suites need: the deploy config above, plus the site
+# Exports everything the acceptance suite needs: the deploy config above, plus the site
 # URL, the shared email queue, the database-reset function, and the test fixture users (admin,
 # standard and no-person - see mootmaker-api's README, "Test fixture users"). Fixtures exist in
 # ephemeral environments only, which is the only kind these suites run against.

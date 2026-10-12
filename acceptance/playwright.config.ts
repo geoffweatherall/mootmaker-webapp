@@ -1,7 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
 
-// Same shape as ../e2e/playwright.config.ts and the same reasoning: real browser, real deployed
-// webapp + API + Cognito, no mocking, no hardcoded baseURL. See run.sh.
+// Real browser, real deployed webapp + API + Cognito, no mocking, no hardcoded baseURL. See run.sh.
 if (!process.env.WEBAPP_URL) {
   throw new Error(
     'WEBAPP_URL is not set - this suite runs against a real deployed webapp, not a local dev ' +
@@ -26,9 +25,8 @@ const isCI = !!process.env.CI
 // stays in both contexts, for a live/log view while a run is in progress.
 export default defineConfig({
   testDir: './tests',
-  // Not fullyParallel, same reasoning as e2e/playwright.config.ts - this layer is meant to run
-  // deliberately against real infrastructure, not hammered concurrently. Revisit once this suite
-  // has enough specs that serial execution is the actual bottleneck.
+  // Not fullyParallel: this layer runs deliberately against real infrastructure, not hammered
+  // concurrently. Revisit if serial execution becomes the bottleneck.
   fullyParallel: false,
   workers: 1,
   // One retry in CI, none locally: in an unattended release nobody is watching to re-run the way

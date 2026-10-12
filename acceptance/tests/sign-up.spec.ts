@@ -7,11 +7,10 @@ import { expect, test } from './support/test'
 // expires the moment the server's retention boundary advances past it. See support/pinnedDates.ts.
 const PINNED_NOW = pinnedWeekday('Wednesday')
 
-// mootmaker/docs/reference/use-cases.md, section A (Sign up), case 1 - plus a touch of case 5. Unlike
-// e2e/sign-up.spec.ts (which only proves the real Cognito + SES infrastructure wiring works),
-// this test's job is proving the *use case* is satisfied: not just that the account got
-// confirmed, but that its business-level effects are correct - a linked Person auto-created with
-// the name actually entered at sign-up, visible back on Settings.
+// mootmaker/docs/reference/use-cases.md, section A (Sign up), case 1 - plus a touch of case 5. Proves
+// the real Cognito + SES path works and that the use case is satisfied: not just that the account
+// got confirmed, but that a linked Person was auto-created with the name actually entered at
+// sign-up, visible back on Settings.
 test('sign up with a valid name, email, and password auto-creates a linked Person with that name', async ({
   page,
 }) => {

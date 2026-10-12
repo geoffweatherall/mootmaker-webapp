@@ -14,7 +14,7 @@ const cognitoClient = new CognitoIdentityProviderClient({})
 function requireEnv(name: string): string {
   const value = process.env[name]
   if (!value) {
-    throw new Error(`${name} is not set - see e2e/run.sh or acceptance/run.sh.`)
+    throw new Error(`${name} is not set - see acceptance/run.sh.`)
   }
   return value
 }

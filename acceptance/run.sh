@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Runs this directory's acceptance suite (tests/) against a genuinely deployed webapp + API - see
-# README.md for what belongs here versus ../e2e/. Structurally identical to ../e2e/run.sh (same
-# ephemeral-environment lifecycle, same shared email pipeline); kept as a separate script rather
-# than a shared one so each suite's own run script stays a one-line-obvious entry point.
+# README.md.
 #
 # Usage:
 #   ./run.sh                 create a fresh web-acc-<date>-<rand> environment (named for exactly

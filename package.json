@@ -3,9 +3,8 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "Real-deployed-environment test suites for mootmaker-webapp (e2e/, acceptance/) and their shared support/ helpers. The webapp source itself, its unit tests, and its mocked-API integration tests live under webapp/ with their own separate package.json.",
+  "description": "The real-deployed-environment acceptance suite for mootmaker-webapp (acceptance/) and its shared support/ helpers. The webapp source itself, its unit tests, and its mocked-API integration tests live under webapp/ with their own separate package.json.",
   "scripts": {
-    "test:e2e": "playwright test -c e2e/playwright.config.ts",
     "test:acceptance": "playwright test -c acceptance/playwright.config.ts",
     "typecheck": "tsc -p tsconfig.json"
   },

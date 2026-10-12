@@ -11,5 +11,5 @@
     "types": ["node"],
     "resolveJsonModule": true
   },
-  "include": ["support", "e2e", "acceptance"]
+  "include": ["support", "acceptance"]
 }

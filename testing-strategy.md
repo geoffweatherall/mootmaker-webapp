@@ -1,130 +1,60 @@
 # Testing strategy
 
-The overall cross-repo strategy (environments, the approach to reading Cognito's emails in tests,
-and how "vibe coding" shapes all of this) is recorded in
-[mootmaker/docs/reference/testing-strategy.md](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/testing-strategy.md).
-This document covers what's specific to this repo.
+How mootmaker-webapp is tested. The layers across the whole system, and why they are shaped as they are,
+are in the hub's [testing overview](https://github.com/geoffweatherall/mootmaker/blob/main/docs/overview/testing.md).
 
-## Layers
-
-Four layers, in `webapp/` and at the repo root:
-
-| Layer | Directory | Environment | Speed |
+| Layer | Where | Runs against | When |
 |---|---|---|---|
-| Unit tests | `webapp/src/**/*.test.ts` (Vitest) | none | seconds |
-| Integration tests | `webapp/tests/` (Playwright + MSW) | none (mocked GraphQL, mocked auth) | seconds |
-| e2e | `e2e/` (Playwright) | real deployed AWS, ephemeral | minutes |
-| Acceptance tests | `acceptance/` (Playwright) | real deployed AWS, ephemeral | minutes |
+| Static | lint, typecheck, codegen and GraphQL checks | Nothing | Every pull request (`pr-checks`) |
+| Unit | `webapp/src/**/*.test.ts` (Vitest) | Nothing: pure functions | Every pull request |
+| Integration | `webapp/tests/` (Playwright) | The app in a real browser, with a mocked API and mocked Cognito | Every pull request |
+| Acceptance | `acceptance/tests/` (Playwright) | A deployed environment: real CloudFront, AppSync, Cognito and email | Every release (`rel-web-*`); by hand with `./acceptance/run.sh` |
 
-**2026-08-19**: restructured from two layers to four, once a second frontend
-(`mootmaker-android`) meant this repo needed its own real-deployed-environment suites rather than
-sharing one across frontends via a separate `mootmaker-e2e` repo — see [mootmaker-ephemeral-envs'
-README](https://github.com/geoffweatherall/mootmaker-ephemeral-envs#history) for that history. The two
-local layers didn't change in substance, only the "Integration tests" name (previously described
-in prose as "Integration tests against a mocked API"; the `npm run test:e2e` script that ran them
-is now `npm run test:integration` — the old name collided with what "e2e" now means at the repo
-root).
+## Unit tests
 
-### Unit tests (`webapp/src/**/*.test.ts`, Vitest)
+Pure logic only, extracted from components so it can be tested without rendering anything: date and time
+formatting, error-code wording, room colours, the meeting form's rules (`addMeetingLogic.ts`), search
+further ahead, the realtime eviction and reconcile rules, and the cache helpers. Seconds to run; run them
+constantly.
 
-```bash
-cd webapp
-npm run test:unit
-```
+Some realtime tests drive a real `ApolloClient` with the real type policies and a fake server, because the
+behaviour under test (which queries Apollo refetches after an eviction) is Apollo's, and an Apollo upgrade
+that changes it must fail a test.
 
-Pure-logic tests, no browser and no network — seconds to run. Covers `formatDateTime.ts`'s
-date/time splitting, the `ROOM_ERROR_MESSAGES`/`MEETING_ERROR_MESSAGES`/`PERSON_ERROR_MESSAGES`
-maps and `errorMessages.ts`'s flattening of Apollo errors, `theme/roomColor.ts`'s palette
-assignment/wraparound and contrast-based text colour, and `addMeetingLogic.ts` — the
-organiser/attendee mutual-exclusivity filtering and the suggested-room caching state machine,
-extracted out of `AddMeetingPage.tsx` specifically so they're testable without rendering the
-component or mocking Apollo. See [README.md's Tests section](README.md#tests) for the full list.
+## Integration tests
 
-### Integration tests (`webapp/tests/`, Playwright + MSW)
+`npm run test:integration` starts the app with `vite --mode mock` and drives Chrome against it. Two
+doubles replace the outside world:
 
-```bash
-cd webapp
-npm run test:integration
-```
+- **MSW** intercepts GraphQL at the network layer, so the app's real Apollo links still run. Handlers and
+  a small fixed data set (3 rooms, 5 people) are in `src/testSupport/mocks/`. Meetings created during a
+  test survive a full page load through `sessionStorage`.
+- **`cognito.mock.ts`** replaces `auth/cognito.ts`, the one module that talks to Cognito, through a Vite
+  alias. Cognito's SRP exchange is cryptographic and cannot reasonably be faked on the wire.
+  `AuthProvider` and every page run unchanged.
 
-Drives a real browser against a **locally-run dev server** in a distinct Vite mode (`vite --mode
-mock`) that needs **no live AWS environment at all** — no deploy, no `test`/ephemeral environment,
-no real Cognito. Two test-only doubles, at two different seams:
+A setup project signs in once through the real form and saves the session for the rest. Tests pin the
+browser clock (`page.clock.setFixedTime`) wherever a default depends on "now". This layer is where
+page wiring is proven: the right query fires, errors render, guards redirect, the form's rules hold.
+There is no live subscription in mock mode; tests that need a refetch trigger one by switching tab
+visibility.
 
-- **MSW** intercepts at the real network layer — the app still makes its normal `fetch` calls
-  through Apollo's `HttpLink` and the JWT-attaching `SetContextLink`, exactly as in production;
-  MSW only substitutes what's on the other end of the wire (`webapp/src/testSupport/mocks/`).
-- Auth is mocked separately, at the application boundary: `webapp/src/auth/cognito.mock.ts`
-  replaces only `auth/cognito.ts` — the one module that actually talks to Cognito — via a
-  mode-gated Vite alias. Cognito's SRP sign-in exchange is genuinely cryptographic and isn't
-  reasonably fakeable at the network layer the way a JSON GraphQL API is, so the swap happens one
-  level up instead. `AuthProvider.tsx` itself, and every page, run completely unchanged.
+## Acceptance tests
 
-See [README.md's Tests section](README.md#tests) for the full list of specs and what each covers.
+`acceptance/` proves the [use cases](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md)
+hold against a real deployment. Each use case has a designed test case in
+[acceptance/test-cases/](acceptance/test-cases/), and each spec names the cases it covers. Every test
+resets the environment first and builds its own data through the API. Sign-up and password reset read
+real emailed codes. See [acceptance/README.md](acceptance/README.md).
 
-### e2e (`e2e/`, Playwright)
+## Checking GraphQL without a deployed environment
 
-```bash
-./e2e/run.sh                 # fresh ephemeral environment, torn down after
-./e2e/run.sh <environment>   # against an already-deployed environment
-```
+- **`npm run codegen:check`** regenerates `src/graphql/generated/` from the schema and fails on any
+  difference, so every operation the app sends is validated and typed.
+- **`npm run graphql:check:tests`** validates the acceptance suite's operations, which codegen never sees.
+  They are written as `` gql`...` `` templates (`acceptance/tests/support/gql.ts`); the script also fails
+  on interpolation in a template and on any untagged string that looks like an operation. A query on a
+  field that does not exist would otherwise return null, and a test could pass while asserting nothing.
 
-Testing a genuinely deployed webapp build against a genuinely deployed API — including real
-Cognito sign-up/reset flows with real email delivery — the things neither of the two layers above
-can see. Deliberately the thinnest, least-frequently-run layer: a small, curated set of specs, not
-a re-run of anything the mocked-API integration layer already covers.
-
-- **`sign-up.spec.ts`**: a real sign-up through the real deployed webapp, against the real
-  deployed Cognito pool, receiving a real emailed verification code via
-  [mootmaker-email-testing](https://github.com/geoffweatherall/mootmaker-email-testing)'s SES→SNS→SQS
-  pipeline and completing with it. Proves Cognito + SES + the webapp actually work together end to
-  end.
-- **`forgot-password.spec.ts`**: same proof, for the password-reset code path. Its precondition
-  (an existing confirmed account) is created directly via the Cognito Admin API
-  (`support/cognitoAdmin.ts`) rather than through the sign-up UI.
-- **`smoke.spec.ts`**: the deployed home page actually loads (DNS, TLS certificate, CloudFront/S3
-  serving).
-
-Moved here 2026-08-19 from `mootmaker-e2e` (now `mootmaker-ephemeral-envs`), unchanged in behaviour —
-see that repo's own testing-strategy.md for this suite's original build/verification history
-(built and verified against real AWS 2026-08-15).
-
-### Acceptance tests (`acceptance/`, Playwright)
-
-```bash
-./acceptance/run.sh                 # fresh ephemeral environment, torn down after
-./acceptance/run.sh <environment>   # against an already-deployed environment
-```
-
-New 2026-08-19. Where `e2e/` proves the infrastructure is wired correctly, `acceptance/` proves
-the *use cases* in
-[mootmaker/docs/reference/use-cases.md](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md) are
-actually satisfied — real deployed webapp + API + Cognito, real email where a scenario specifically
-needs it, a pre-verified account (the always-present demo user, or one created via
-`support/cognitoAdmin.ts`) everywhere else. See [acceptance/README.md](acceptance/README.md) for
-current status (a first thin slice — two use cases, not all ~99), which account to sign in as for
-a new case, and known gaps found while writing it.
-
-Both `e2e/` and `acceptance/` share `support/` (the SQS email-reading and Cognito Admin-API
-helpers) and one root `package.json`/`tsconfig.json` — see that directory's own files. Neither
-duplicates the webapp's own `webapp/package.json` (React/MUI/Vite/Apollo), which stays entirely
-separate.
-
-## Checking GraphQL against the schema, without a deployed environment
-
-Two PR checks in `webapp/` compare hand-written GraphQL with `mootmaker-api`'s schema. Both read
-the sibling `../mootmaker-api` checkout when it is present and the published `@mootmaker/schema`
-package otherwise (CI).
-
-- **The app's operations: `npm run codegen:check`.** Regenerates `webapp/src/graphql/generated/`
-  and fails if the result differs from what is committed, so any operation the app sends has been
-  validated and typed against the schema.
-- **The test suites' operations: `npm run graphql:check:tests`**
-  ([check-test-graphql.mjs](webapp/scripts/check-test-graphql.mjs), mootmaker-webapp#62). Codegen
-  never sees `acceptance/`, `e2e/` or `support/`, so every operation there is written as a
-  `` gql`...` `` template ([acceptance/tests/support/gql.ts](acceptance/tests/support/gql.ts)) and
-  the script validates each one. It also fails on a template that uses `${}` (pass values as
-  variables) and on any **untagged** string that looks like an operation, so a new one cannot
-  bypass the check by accident. This matters more than it sounds: in #55, a query on a deleted root
-  field did not fail. It returned null, `?? []` turned that into an empty list, and an
-  authorization test passed while asserting nothing.
+Both read the sibling `../mootmaker-api` checkout when there is one, and the published `@mootmaker/schema`
+package otherwise.

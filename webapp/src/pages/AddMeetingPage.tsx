@@ -204,8 +204,7 @@ export default function AddMeetingPage() {
 
   // Defaults the organiser to the signed-in user's own Person, once it's known - not on every
   // render, and never overriding a choice the user already made (e.g. organising on someone
-  // else's behalf). Demo/e2e sign-ins have no linked Person, so this simply never fires for them,
-  // leaving the field blank exactly like before this page defaulted anything. Also skipped for as
+  // else's behalf). A sign-in with no linked Person leaves the field blank. Also skipped for as
   // long as the signed-in user has already added themselves as an attendee - the organiser and
   // attendee lists are mutually exclusive (see the Attendees/Organiser field filtering below), and
   // an explicit attendee pick like that is exactly the kind of deliberate choice this default must
@@ -376,11 +375,9 @@ export default function AddMeetingPage() {
     if (payload?.meeting) {
       const bookedDate = payload.meeting.startTime.slice(0, 10)
 
-      // Nothing is carried with the navigation any more: createMeeting returns the whole affected
-      // Day, which Apollo has written over that day's cache entity, so the page being navigated to
-      // already holds it. (This used to hand the new meeting over, because the old read went
-      // through a GSI and DynamoDB rejects ConsistentRead on an index - both the GSI and that race
-      // are gone.)
+      // Nothing is carried with the navigation: createMeeting returns the whole affected Day,
+      // which Apollo has written over that day's cache entity, so the page being navigated to
+      // already holds it.
       navigate(pageAfterSave(routerState?.returnTo, bookedDate), {
         state: { toast: 'Meeting was successfully scheduled.' },
       })
@@ -394,10 +391,9 @@ export default function AddMeetingPage() {
   // organiserId: "" and the SERVER rejects it with OrganiserRequired: "Please select an organiser."
   // - while the field visibly fills in with the user's own name a moment later.
   //
-  // Latent until reference data started being served from cache. Previously every visit paid a
-  // round trip for rooms/people, which was reliably slower than the SESSION query and hid this. Now
-  // a second visit renders the form instantly and the two races are the other way round. Caught by
-  // F.50, which creates a room (loading reference data into the cache) and then opens this page.
+  // Reference data served from cache renders the form before the SESSION query lands, so this
+  // race is real on every second visit. F.50 covers it: it creates a room (loading reference data
+  // into the cache) and then opens this page.
   //
   // Not the same thing as having no linked Person: personLoading goes false either way, so an
   // account with no Person still gets the form with a blank Organiser, exactly as before.

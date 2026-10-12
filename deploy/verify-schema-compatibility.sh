@@ -4,11 +4,8 @@
 #
 # Why this exists (mootmaker/designs/archive/graphql-schema-sharing.md, Decision 8): the webapp and the API
 # deploy independently, so building successfully proves only that the webapp COMPILES against a
-# schema - not that the target environment SERVES it. This is not hypothetical. During
-# date-time-format-settings, mootmaker-webapp#10 was merged before mootmaker-api#8, so the webapp's
-# myPerson query selected dateFormat/timeFormat before the deployed schema had them. AuthProvider
-# runs that query on load, so the result would have been a broken sign-in rather than a degraded
-# page.
+# schema - not that the target environment SERVES it. A field selected by the session query that
+# the deployed API lacks breaks sign-in, not just one page.
 #
 # Compares the fields the built webapp's own operations require against the deployed schema, by
 # introspection. Reports every missing field rather than the first, so one run tells you the whole

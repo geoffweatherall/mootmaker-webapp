@@ -7,8 +7,7 @@ import type { Person, Room } from '../graphql/types'
 
 // --- Organiser/attendee mutual exclusivity -------------------------------------------------
 //
-// See README.md's "Organiser/attendee mutual exclusivity" section: the same person can never be
-// picked as both, so each dropdown's options exclude whoever is currently selected on the other.
+// The same person can never be picked as both, so each dropdown's options exclude whoever is currently selected on the other.
 
 export function filterOrganiserOptions(people: Person[], attendeeIds: string[]): Person[] {
   return people.filter((person) => !attendeeIds.includes(person.id))
@@ -20,19 +19,17 @@ export function filterAttendeeOptions(people: Person[], organiserId: string): Pe
 
 // --- Suggested-room caching -----------------------------------------------------------------
 //
-// See README.md's "Suggested-room caching" section. `candidates: null` means "not fetched yet for
+// See docs/architecture.md, "Meetings". `candidates: null` means "not fetched yet for
 // the current time/attendee-count inputs"; `[]` means "fetched, and nothing qualified" - the two
 // are kept distinct so a second press can tell them apart without re-querying either way.
 //
 // `key` identifies which time/attendee-count inputs the cache was built for (see
 // AddMeetingPage.tsx's suggestionKey). Staleness is checked against it directly inside
 // handleSuggestRoom on every press, rather than via a separate effect watching those same inputs
-// and clearing the cache asynchronously - the two-effects-race that shape used to have (the reset
-// effect not yet having run by the time a fast next press reads the cache, so a press right after
-// changing the attendee count could silently reuse an already-stale candidate list instead of
-// re-fetching) is real under genuine network latency even though it never reproduces against a
-// near-instant mock. Comparing the key inline removes the race by construction: there's no second
-// piece of state that can lag behind.
+// and clearing the cache asynchronously. With an effect, a fast press right after changing the
+// attendee count can read the cache before the reset has run and reuse a stale candidate list -
+// real under network latency, though it never reproduces against a near-instant mock. Comparing the
+// key inline removes the race by construction: there's no second piece of state that can lag behind.
 
 export interface SuggestionCache {
   candidates: Room[] | null
@@ -77,15 +74,14 @@ export function advanceSuggestion(cache: SuggestionCache, key: string, fetchedRo
 // --- Default meeting times ------------------------------------------------------------------
 //
 // The API requires both start and end to fall on a 15-minute boundary, and a meeting may not span
-// midnight (see MeetingError.SpansMultipleDays). Those two rules interact awkwardly late in the
-// evening, which is where this used to be wrong: the old midnight guard fell back to 23:55, which
-// is not on the grid, so between 22:45 and 23:45 local time the form pre-filled an end time the
-// API was guaranteed to reject - a field the user never touched. See mootmaker-webapp#48; it broke
-// release v1.0.0 because GitHub runners are UTC and that run happened to start at 23:44:47.
+// midnight (see MeetingError.SpansMultipleDays). Those two rules interact late in the evening: the
+// latest valid default is 23:30-23:45, and any default off the 15-minute grid pre-fills an end
+// time the API is guaranteed to reject, in a field the user never touched (mootmaker-webapp#48).
+// GitHub runners are UTC, so a release run can hit this window at any local hour.
 //
 // Both values are returned together rather than as two functions. Computing them from separate
-// dayjs() calls meant the clock could tick across a boundary between the two, making the end time
-// inconsistent with the start it was supposedly derived from.
+// dayjs() calls lets the clock tick across a boundary between the two, making the end time
+// inconsistent with the start it is derived from.
 
 /** Rounds up to the next 15-minute boundary, leaving an already-aligned time alone. */
 export function nextFifteenMinuteBoundary(from: Dayjs): Dayjs {
@@ -164,11 +160,11 @@ export function referenceDataReady(referenceLoading: boolean, personLoading: boo
 
 // --- Time picker snapping -------------------------------------------------------------------
 //
-// mootmaker-webapp#126: `timeSteps={{ minutes: 15 }}` (see AddMeetingPage.tsx's TimePicker props)
+// `timeSteps={{ minutes: 15 }}` (see AddMeetingPage.tsx's TimePicker props)
 // only constrains the desktop list-style picker and the arrow/scroll increments - the touch
 // analog-clock view MUI switches to on mobile lets a drag/tap land on any exact minute regardless,
-// a real MUI X gap rather than something this app's own props control. Snapping the value on
-// change, after the picker produces it, is what actually closes it everywhere.
+// a real MUI X gap rather than something this app's own props control (mootmaker-webapp#126).
+// Snapping the value on change, after the picker produces it, is what closes it everywhere.
 
 /**
  * Rounds a time to the nearest 15-minute boundary, biasing to the LATER boundary on an exact tie.

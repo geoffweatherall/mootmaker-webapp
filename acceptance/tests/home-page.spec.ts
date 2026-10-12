@@ -66,9 +66,7 @@ async function addMeeting(page: Page, fixture: MeetingFixture): Promise<void> {
 // Tomorrow, as an <h2>) and its rows, as siblings - scoped this way (rather than a page-wide
 // query) so a day's rows can be asserted without ambiguity against the other day. Two levels up
 // from the heading: one to its own header row Stack, one more to the day-section Box that also
-// holds the rows Stack alongside it - see HomePage.tsx's day-section markup. Previously walked up
-// just one level to each day's own Paper, from when Today/Tomorrow were two separate panels
-// rather than sections sharing one merged list - see designs/home-and-misc-pages-redesign.md.
+// holds the rows Stack alongside it - see HomePage.tsx's day-section markup.
 function agendaPanel(page: Page, title: 'Today' | 'Tomorrow') {
   return page.getByRole('heading', { name: title, level: 2 }).locator('xpath=../..')
 }
@@ -151,9 +149,9 @@ test('D.22 - signed in with a linked Person shows Calendar/Room availability/Add
   // below; the reset before every test (./support/test.ts) is what guarantees no other meeting
   // lands on the same date.
   //
-  // DERIVED, not hardcoded. It used to be 2027-04-06, which stopped working the moment the API
-  // gained a 180-day booking horizon: every booking came back OutsideBookableRange and the test
-  // reported a failed navigation, blaming the Home page. A fixed future date expires silently.
+  // DERIVED, not hardcoded: a fixed future date eventually falls outside the 180-day booking
+  // horizon, every booking comes back OutsideBookableRange, and the test reports a failed
+  // navigation, blaming the Home page.
   const pinnedToday = pinnedFutureWeekday('Tuesday', { hour: 9 })
   await page.clock.setFixedTime(pinnedToday)
   await signInAsStandardUser(page)
@@ -164,9 +162,8 @@ test('D.22 - signed in with a linked Person shows Calendar/Room availability/Add
   // preserving creation/insertion order (same reasoning as person-calendar.spec.ts's G.63).
   await addMeeting(page, { subject: subjectToday14, roomName, start: '1400', end: '1430' })
   await addMeeting(page, { subject: subjectToday10, roomName, start: '1000', end: '1030' })
-  // Tomorrow relative to the pinned instant above, DERIVED from it. Hardcoding this was the other
-  // half of the same expiry bug: pinning the clock forward is no use if the date typed into the
-  // form is still a fixed calendar date the horizon has moved past.
+  // Tomorrow relative to the pinned instant above, DERIVED from it: pinning the clock forward is no
+  // use if the date typed into the form is a fixed calendar date the horizon has moved past.
   const pinnedTomorrow = new Date(pinnedToday)
   pinnedTomorrow.setDate(pinnedTomorrow.getDate() + 1)
   await addMeeting(page, {
@@ -225,8 +222,7 @@ test('D.23 - no meetings today or tomorrow shows the empty state, not a bare emp
   await page.goto('/')
 
   // The merged agenda shows ONE whole-agenda empty state when both Today and Tomorrow have
-  // nothing, not a per-day heading/empty-state pair any more (see HomePage.tsx's `bothDaysEmpty`
-  // branch) - so this no longer loops over agendaPanel() the way it did with two separate panels.
+  // nothing, not a per-day heading/empty-state pair (see HomePage.tsx's `bothDaysEmpty` branch).
   await expect(page.getByRole('heading', { name: 'Today', level: 2 })).toHaveCount(0)
   await expect(page.getByRole('img', { name: 'No meetings today or tomorrow.' })).toBeVisible()
   // A plain <p> locator, not getByText: EmptyState's icon carries the same message as its own

@@ -1,372 +1,75 @@
 # mootmaker-webapp
 
-A project that is part of my [Claude Code exploration](https://github.com/geoffweatherall/mootmaker).
+The web app for [Mootmaker](https://github.com/geoffweatherall/mootmaker): a React single-page app that
+signs users in with Cognito and talks to [mootmaker-api](https://github.com/geoffweatherall/mootmaker-api)'s
+GraphQL API straight from the browser. It is served as static files from S3 behind CloudFront, so like
+the rest of the system it costs nothing while idle.
 
-## Details
+It also publishes `mobile-config.json`, which the Android app reads to find an environment's API. How
+the web app fits into the whole system is in the hub's
+[system overview](https://github.com/geoffweatherall/mootmaker/blob/main/docs/overview/system.md).
 
-A single-page web application for the [mootmaker-api](https://github.com/geoffweatherall/mootmaker-api) GraphQL API. It lets users add meetings and browse existing meetings through a daily room-availability view and a per-person calendar view. The app is a static build hosted on AWS (S3 + CloudFront) and talks directly to the AppSync GraphQL endpoint from the browser.
-
-The deploy script looks up the API's URL, Cognito settings and demo credentials in SSM Parameter Store, where `mootmaker-api`'s deploy publishes them (see `deploy/ssm-config.sh`). A sibling `mootmaker-api` checkout is optional: codegen and the pre-deploy schema check use its schema when it's there, and the published `@mootmaker/schema` package otherwise.
-
-Users must **sign in** (or sign up) with an email address and password before they can see any page other than the home page; see [Authentication](#authentication). Signing up also collects the user's name, which the API uses to automatically create a linked Person record once the account is confirmed (see the [mootmaker-api README](https://github.com/geoffweatherall/mootmaker-api#sign-up-creates-a-linked-person)) — so a new user can schedule a meeting as themselves without needing to be added as a person first. Every account is one of two classes, `standard` or `admin` (see [Authentication](#authentication) below): only admins can add, edit, or delete rooms and people, and grant/revoke admin access, from the dedicated [Rooms and Persons pages](#rooms-and-persons-pages-admin-only); a standard user can only rename themselves.
-
-## Directory structure
-
-| Path | Purpose |
+| Read | For |
 |---|---|
-| [webapp/](webapp/) | The React application (Vite + TypeScript). All frontend source, tests, and build config live here. |
-| [webapp/src/pages/](webapp/src/pages/) | One component per route — the calendar-style views (`RoomAvailabilityPage`, `PersonCalendarPage`), meeting details (`MeetingDetailsPage`), the add-meeting form (`AddMeetingPage`), the auth forms (`SignInPage`, `SignUpPage`, `ForgotPasswordPage`), `SettingsPage` (self-service only, see [Settings page](#settings-page)), the admin-only `RoomsPage`/`PersonsPage` (see [Rooms and Persons pages](#rooms-and-persons-pages-admin-only)), and `HomePage`. This is where page-level logic lives. |
-| [webapp/src/auth/](webapp/src/auth/) | Everything Cognito: the promise wrappers around `amazon-cognito-identity-js` ([cognito.ts](webapp/src/auth/cognito.ts)), the React auth context/hook ([authContext.ts](webapp/src/auth/authContext.ts)), and its provider ([AuthProvider.tsx](webapp/src/auth/AuthProvider.tsx)). |
-| [webapp/src/components/](webapp/src/components/) | Shared presentational components used across pages: `Layout` (the responsive nav shell — a permanent left-hand sidebar on wide screens, collapsing to a hamburger-triggered flyout `Drawer` on narrow ones), `MenuContent` (the nav links themselves — Home/Calendar/Availability, then sign-in/out, then About/Feedback), `AccountBox` (the signed-in user's name and a settings shortcut at the foot of the sidebar), `RequireAuth` (route guard), `SignInForm` (the sign-in fields + submit logic shared by SignInPage and the signed-out home page), `ErrorBanner`, `SuccessToast`, `SubmitButton`, `EmptyState` (icon + message for the app's "nothing here" spots — see [Branding & theming](#branding--theming)). |
-| [webapp/src/graphql/](webapp/src/graphql/) | Everything about talking to the API: query/mutation documents, TypeScript types mirroring the schema, error-code → message maps, and date formatting. |
-| [webapp/src/hooks/](webapp/src/hooks/) | Shared hooks; currently `useLocationToast`, which shows a one-shot success toast after navigation. |
-| [webapp/tests/](webapp/tests/) | Playwright end-to-end tests, run against a mocked API (see [Tests](#tests) below) — plus `webapp/src/**/*.test.ts`, Vitest unit tests co-located with the code they cover. |
-| [deploy/terraform/](deploy/terraform/) | Terraform for the hosting infrastructure: S3 bucket ([s3.tf](deploy/terraform/s3.tf)) and CloudFront distribution ([cloudfront.tf](deploy/terraform/cloudfront.tf)). All resource names are prefixed with `<environment>-<project_name>` ([locals.tf](deploy/terraform/locals.tf)) so multiple environments can coexist in one AWS account. State is stored remotely in S3, one state file per environment ([backend.hcl](deploy/terraform/backend.hcl) — see the [mootmaker-bootstrap-terraform](https://github.com/geoffweatherall/mootmaker-bootstrap-terraform) README for how that bucket is set up, and the [mootmaker project README](https://github.com/geoffweatherall/mootmaker#multi-environment-deployments) for the multi-environment design). |
-| [deploy.sh](deploy.sh) / [undeploy.sh](undeploy.sh) | Deploy and tear down (see below). `deploy.sh` takes an optional `--skip-build`, which deploys the existing `webapp/dist/` instead of rebuilding it; the schema check, `env-config.js` and the S3 sync still run, so one build can be promoted across environments. `undeploy.sh` takes an optional `--yes`, which skips the confirmation prompt for automation and refuses `production` and `test` outright rather than asking. Both are used by the release pipeline. |
-| [e2e/](e2e/) | Playwright tests against a genuinely deployed webapp + API + Cognito — a small, curated set proving the real infrastructure is wired correctly. See [Tests](#tests) below. |
-| [acceptance/](acceptance/) | Playwright tests proving the use cases in [mootmaker/use-cases.md](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md) are satisfied, against the same kind of genuinely deployed environment as `e2e/`. See [acceptance/README.md](acceptance/README.md) and [Tests](#tests) below. |
-| [support/](support/) | TypeScript helpers shared by `e2e/` and `acceptance/`: Cognito Admin-API test-account creation. Reading real emailed verification codes (SQS) and generating fresh test accounts come from the `mootmaker-email-testing` package instead, shared with mootmaker-release's smoke suites — see [mootmaker-email-testing](https://github.com/geoffweatherall/mootmaker-email-testing#using-it-from-tests). |
-
-The `src/` layout follows the conventional React "group by file type" pattern (pages / components / hooks / api-layer) described in the [React FAQ on file structure](https://legacy.reactjs.org/docs/faq-structure.html#grouping-by-file-type), on top of a standard [Vite React scaffold](https://vite.dev/guide/).
-
-## Architecture
-
-- **React 19** with **TypeScript**, built by **Vite**. Strict-mode SPA, no server-side rendering — everything runs in the browser.
-- **MUI (Material UI) v9** provides the design language: `CssBaseline` and standard components — a `Drawer`-based sidebar for navigation (with `AppBar` only for the mobile hamburger bar), `Paper`-wrapped forms and tables, `Alert`/`Snackbar` for feedback. **MUI X Date Pickers** (with **dayjs**) provide the meeting time pickers.
-- **Branding**: the theme's palette, typography, shadows, and component styling are all built from the [mootmaker project's brand tokens](https://github.com/geoffweatherall/mootmaker/tree/main/docs/showcase/branding) ([theme/tokens.ts](webapp/src/theme/tokens.ts), [theme/theme.ts](webapp/src/theme/theme.ts)) — see [Branding & theming](#branding--theming) below for the detail. [theme/ThemeModeProvider.tsx](webapp/src/theme/ThemeModeProvider.tsx) picks light or dark purely by following the OS's `prefers-color-scheme` — there's no in-app toggle. The brand mark (`assets/logo.svg`) appears next to the app name in the sidebar (and in the mobile top bar), and its `icon.svg` variant is the favicon.
-- **React Router v7** does client-side routing. Routes are declared in [App.tsx](webapp/src/App.tsx): `/`, `/signin`, `/signup`, `/forgot-password` and `/about` are public; `/persons/:personId/calendar`, `/rooms/:date/availability`, `/meetings/add`, `/meetings/:meetingId` and `/settings` are wrapped in the `RequireAuth` guard; unknown paths redirect to `/`. There are no top-level list pages for people or meetings — the sidebar's "Room Availability" and "Calendar" items go straight to `RoomAvailabilityPage` and `PersonCalendarPage` instead, the latter defaulting to the signed-in user's own linked Person. If there isn't one, "Calendar" is disabled rather than falling back to someone else's calendar (see [Home page](#home-page) below). `RoomAvailabilityPage` is the entry point for adding a meeting (`AddMeetingPage`); `/rooms` and `/persons` are the dedicated admin-only pages for adding or editing rooms and people (see [Rooms and Persons pages](#rooms-and-persons-pages-admin-only) below), also wrapped in `RequireAuth`.
-- **amazon-cognito-identity-js** talks to the Cognito user pool (SRP sign-in, sign-up, token storage/refresh in `localStorage`).
-- **Apollo Client v4** handles all GraphQL communication and caching (`InMemoryCache`).
-- **oxlint** for linting, **Playwright** for end-to-end tests.
-
-### Main classes / where the logic is
-
-There is deliberately little logic in the frontend; the backend owns the rules.
-
-- [apolloClient.ts](webapp/src/apolloClient.ts) — the single Apollo client instance: an `HttpLink` to the endpoint behind a `SetContextLink` that attaches the signed-in user's JWT to every request, and [reconcileLink](webapp/src/realtime/reconcileLink.ts), which re-evicts and refetches a query's days if one of them was invalidated by a live update while that query's response was in flight (#162). The cache's type policies, and the client default that makes a refetch merge into the shared `workspace` rather than overwrite it, are in [cachePolicies.ts](webapp/src/cachePolicies.ts). A live update refetches only the watched queries its eviction changed ([evictAndRefetch](webapp/src/realtime/evictAndRefetch.ts), #164); a reconnect or tab return refetches every active query.
-- Page components in [src/pages/](webapp/src/pages/) hold the form state and submit handlers. [AddMeetingPage.tsx](webapp/src/pages/AddMeetingPage.tsx) is the most involved: a single form with every field (subject, organiser, attendees, date, times, room) on screen at once and no step navigation, it loads rooms and people for its dropdowns, defaults the organiser to the signed-in user, the start time to the next 15-minute boundary and the length to an hour, offers a "Suggest a room" button next to the room field, and maps validation error codes to messages.
-- [graphql/generated/](webapp/src/graphql/generated/) — **generated** from `mootmaker-api`'s schema by `npm run codegen`; never edit by hand. Reads the sibling `mootmaker-api` checkout when present, the published `@mootmaker/schema` package otherwise.
-- [graphql/types.ts](webapp/src/graphql/types.ts) — the shapes this app works with, *derived* from the generated operation types (`Person` is what `ListPeople` selects, not every field a Person has).
-- [graphql/validationMessages.ts](webapp/src/graphql/validationMessages.ts) — the `ROOM_ERROR_MESSAGES` / `MEETING_ERROR_MESSAGES` maps translating backend error codes into user-facing text. Hand-written UI copy, but keyed by the generated error unions — so a new code in the schema stops this file compiling until it has a message.
-- [graphql/errorMessages.ts](webapp/src/graphql/errorMessages.ts) — flattens Apollo transport/GraphQL errors into displayable strings.
-- [graphql/formatDateTime.ts](webapp/src/graphql/formatDateTime.ts) — renders the API's zone-less local date-times without letting the browser reinterpret them in its own time zone; `formatLocalDate`/`formatLocalTime` split a date-time into its date-only/time-only parts (see [Date/time display](#datetime-display) below) rather than always rendering the full thing, each taking the viewer's own chosen format as a second argument.
-
-### Branding & theming
-
-Beyond the four-colour palette in [theme/tokens.ts](webapp/src/theme/tokens.ts) (mirrored from [mootmaker's branding tokens](https://github.com/geoffweatherall/mootmaker/tree/main/docs/showcase/branding)), [theme/theme.ts](webapp/src/theme/theme.ts) customises MUI well past a palette swap:
-
-- **Typography**: **Inter** for body/UI text, **Outfit** for headings (`h1`-`h6`, `subtitle1`/`2`, and button labels) - both self-hosted via `@fontsource` (imported once in [main.tsx](webapp/src/main.tsx), no external font request at runtime, unlike a Google Fonts CDN `<link>`). Outfit's geometric, rounded-terminal letterforms echo the logo mark's own flat rounded shape language (see the [branding README](https://github.com/geoffweatherall/mootmaker/tree/main/docs/showcase/branding#the-mark-meeting-booked)), so headings read as distinctly "Mootmaker" rather than the generic system-font fallback MUI silently used before this (no font was loaded at all previously).
-- **Shadows**: [theme/shadows.ts](webapp/src/theme/shadows.ts)'s `buildShadows()` replaces MUI's default 25-step flat-grey Material elevation scale with the same shape tinted with the current mode's own ink colour at low alpha, so `Paper` cards read as part of this theme rather than default Material Design.
-- **Component styling**: `MuiButton` (flat - no default drop shadow, no uppercase text, a small lift-on-hover instead of MUI's darken-only feedback), `MuiOutlinedInput` (covers `Select` too, since an outlined `Select` renders an `OutlinedInput` internally - a tighter corner radius, primary-coloured border on hover), and `MuiChip`/`MuiCheckbox` all get their own `styleOverrides` in `theme.ts`, rather than relying on MUI's defaults everywhere but the palette.
-- **The "Suggest a room" button** ([AddMeetingPage.tsx](webapp/src/pages/AddMeetingPage.tsx)) is a deliberate one-off exception to that shared button styling: a `primary`→`secondary` gradient fill (via a function `sx` reading `theme.palette` directly, not a theme-wide rule) and a custom [SparkleIcon](webapp/src/icons/index.tsx), so the app's one "smart" feature reads as visually distinct from ordinary actions rather than blending in as another outlined button.
-- **Room-identity colour coding**: [theme/roomColor.ts](webapp/src/theme/roomColor.ts) assigns each room one of 8 validated categorical hues (`roomPaletteLight`/`roomPaletteDark` in `tokens.ts`, mirrored as `--color-room-1..8` in the branding project's `tokens.css`) by its position in the name-sorted room list, so the same room gets the same colour everywhere it appears. `RoomAvailabilityPage`, `PersonCalendarPage`, and the Rooms admin page all use it for a small coloured dot next to the room's name, keyed by a `LIST_ROOMS`/reference-data query sorted the same way - `roomColorFor(room, index, mode)` prefers an admin-chosen `Room.color` when set, falling back to the same by-position computed assignment otherwise. This palette was chosen and validated (CVD-safe adjacent-hue separation, ≥3:1 contrast against this app's own light/dark backgrounds) with a palette validator script rather than eyeballed - see the [branding project's "Room-identity palette" section](https://github.com/geoffweatherall/mootmaker/tree/main/docs/showcase/branding#room-identity-palette) for the full rationale - and is deliberately a separate palette from `primary`/`secondary`/`accent` so a room's colour is never mistaken for a primary-action or warning cue. Colour is always a secondary scan aid here, never a room's only identifier - its name is shown as text everywhere its colour appears, including the 8-room wraparound for the rare case of more than 8 rooms (a documented departure from "never cycle a categorical palette", acceptable specifically because the name text carries identity, not the colour).
-- **Empty states**: [components/EmptyState.tsx](webapp/src/components/EmptyState.tsx) (an icon in a tinted circle, plus a message) replaces what used to be a single line of muted `Typography`, and before that a set of bespoke flat-illustration SVGs, for the handful of "nothing here" spots - no meetings today/tomorrow ([HomePage](webapp/src/pages/HomePage.tsx)), nothing waiting on a response ([HomePage](webapp/src/pages/HomePage.tsx)), no rooms yet ([RoomAvailabilityPage](webapp/src/pages/RoomAvailabilityPage.tsx)), no people yet ([PersonCalendarPage](webapp/src/pages/PersonCalendarPage.tsx)). Its `icon` prop takes one of [icons/index.tsx](webapp/src/icons/index.tsx)'s own glyph set (reusing the matching nav item's glyph where an obvious match exists - `CalendarIcon` for no-meetings, `AvailabilityIcon` for no-rooms - so the empty state echoes where that data would otherwise appear); when omitted it falls back to the generic `EmptyStateIcon` glyph, so a future empty state doesn't need a bespoke icon before it can use this component. Its `tone` prop carries meaning, not just colour: `"success"` (green) is reserved for a state that means something was resolved (Needs-your-response's "you're caught up"); the default `"neutral"` (primary-indigo) is for "nothing exists yet" states. See [designs/home-and-misc-pages-redesign.md](https://github.com/geoffweatherall/mootmaker/blob/main/designs/archive/home-and-misc-pages-redesign.md) in the hub repo.
-
-## Calling the API
-
-The browser calls the AppSync GraphQL endpoint directly via Apollo Client. Every request carries the signed-in user's Cognito **JWT id token** in the `Authorization` header (attached by the `SetContextLink` in [apolloClient.ts](webapp/src/apolloClient.ts)); AppSync rejects requests without a valid token with HTTP 401. The endpoint URL, Cognito ids, and demo user credentials are read at **page load**, not baked into the bundle at build time: `index.html` loads `/env-config.js` (a small `window.__MOOTMAKER_CONFIG__ = {...}` script, see [src/vite-env.d.ts](webapp/src/vite-env.d.ts) and [src/config.ts](webapp/src/config.ts)) before `main.tsx` runs. Locally, `npm run dev`/`dev:mock` generate it from `.env`/`.env.mock` (see [.env.example](webapp/.env.example) and [scripts/generate-env-config.mjs](webapp/scripts/generate-env-config.mjs)); a real deploy has `deploy.sh` write it into `webapp/dist/env-config.js` from the deployed API's configuration in SSM, *after* the build — this is what lets one built bundle be deployed to more than one environment unmodified. None of these are secrets — the Cognito ids are public identifiers (the security lives in Cognito's password authentication and JWT signatures), and the demo credentials are *meant* to be public: this is a demo system, so the home page shows them to every signed-out visitor (see [Home page](#home-page) below).
-
-### Authentication
-
-Authentication is an **Amazon Cognito user pool** owned by the API project (see the [API README](../mootmaker-api/README.md)); this app uses the pool's public `mootmaker-webapp` app client via `amazon-cognito-identity-js`.
-
-- **Sign up** ([SignUpPage](webapp/src/pages/SignUpPage.tsx)) is two steps: register a name, email + password (at least 10 characters with a lowercase letter and a number — deliberately loose, since this is a demo system, see the [API README](../mootmaker-api/README.md#demo-user)), then enter the verification code Cognito emails. The name is sent to Cognito as the standard `name` user attribute. On confirmation the user is signed in automatically, and the API's PostConfirmation trigger creates a Person record for them in the background.
-- **Sign in** ([SignInPage](webapp/src/pages/SignInPage.tsx), and the embedded [SignInForm](webapp/src/components/SignInForm.tsx) on the signed-out home page) authenticates with SRP (the password never leaves the browser in plain form). Tokens are cached in `localStorage` and refreshed transparently, so sessions survive page reloads.
-- **Signed-in display name** ([AuthProvider](webapp/src/auth/AuthProvider.tsx)): the sidebar's [AccountBox](webapp/src/components/AccountBox.tsx) shows the caller's own `Person.name` (selected as `workspace { me { name } }`; the caller's id arrives on the token as `custom:personId`, so this is a primary-key read rather than the old `myPerson` query's index lookup), not the JWT's own `name` claim — the Person record is the single source of truth that the Settings page's "Your name" section updates, so reading it live avoids the two ever drifting apart. Falls back to the Cognito `name`/email attributes (read straight from the ID token, no round trip) until that query resolves, and permanently for accounts with no linked Person. `AuthProvider` exposes a `refreshPerson()` function that re-reads `workspace { me }` on demand; the Settings page calls it after a successful self-rename so the sidebar updates immediately without a page refresh.
-- **User class** ([cognito.ts](webapp/src/auth/cognito.ts)'s `currentUserClass()`, read from the ID token's `custom:class` claim): every account is `standard` or `admin`. `AuthProvider` exposes this as `isAdmin`, which [MenuContent](webapp/src/components/MenuContent.tsx) uses to decide whether to show the sidebar's admin-only Rooms/Persons nav items (see [Rooms and Persons pages](#rooms-and-persons-pages-admin-only) below). **This is presentation only** — the actual authorization boundary is server-side (`Identity.requireAdmin` in the API, see the [API README](../mootmaker-api/README.md)); a standard user calling `updateRoom` directly would be rejected regardless of what the UI shows. The webapp's Cognito app client is deliberately not granted write access to `custom:class`, so a signed-in user can never promote themselves by calling Cognito's own attribute-update API from the browser.
-- **Forgot password** ([ForgotPasswordPage](webapp/src/pages/ForgotPasswordPage.tsx), linked from the sign-in form) is two steps: request a verification code for an email address, then enter the emailed code with a new password. On success the user is signed in with the new password automatically. Cognito's *prevent user existence errors* setting is enabled, so requesting a code for an unknown address behaves exactly like a real one — the form never reveals whether an account exists.
-- **Route guarding**: only the home page, the auth forms, and the About page are public. [RequireAuth](webapp/src/components/RequireAuth.tsx) redirects signed-out visitors of any other route to `/signin`, remembering where they were heading and returning them there after sign-in.
-- **Sidebar**: [MenuContent](webapp/src/components/MenuContent.tsx) shows a Sign in/Sign up pair when signed out, or a Sign out item when signed in; [AccountBox](webapp/src/components/AccountBox.tsx) additionally shows the signed-in user's name and a settings shortcut at the foot of the sidebar. Signing out clears the Cognito session and the Apollo cache.
-- The auth state (current user's email + sign-in/out functions) is provided by [AuthProvider](webapp/src/auth/AuthProvider.tsx) and read with the `useAuth()` hook; the promise-based Cognito wrappers live in [cognito.ts](webapp/src/auth/cognito.ts).
-- **Whether there's a session at all is itself a third state**, distinct from signed-in and signed-out: `AuthProvider` exposes it as `initialising`, true until the first `currentUserClaims()` check resolves. Every component that branches on `email` checks this first and shows a progress indicator rather than guessing — `RequireAuth` (a centred `CircularProgress` in place of its child route), `MenuContent` ("Checking session…" in place of the Sign in/Sign up/Sign out item), `AccountBox` (a small spinner in place of its row), and `HomePage` (see below). Before this, an already-signed-in visitor would briefly see the signed-out page on every load — the guess was always in the same direction because `email` defaults to `null` until it resolves. See mootmaker-webapp#111.
-
-### Home page
-
-[HomePage](webapp/src/pages/HomePage.tsx) shows entirely different content depending on sign-in state:
-
-- **Unknown** (`initialising`): a centred `CircularProgress`, nothing else. Checked before the signed-out branch below, so an already-signed-in visitor never sees the signed-out page flash past on the way to their dashboard. See mootmaker-webapp#111.
-- **Signed out**: since every other page requires sign-in, there's nothing of the user's own to show yet. Instead the page leads with an embedded [SignInForm](webapp/src/components/SignInForm.tsx) pre-filled with the demo user's email and password (both shown as plain text alongside it, from `runtimeConfig.DEMO_USER_EMAIL`/`DEMO_USER_PASSWORD` — see [Calling the API](#calling-the-api) above) so a first-time visitor can sign in with one click, and a second section spelling out the three steps to sign up for a real account before the sign-up button. If those two config values aren't set (e.g. an environment not seeded with the demo user), the credential display and pre-fill are skipped and the form is just left blank.
-- **Signed in, with a linked Person**: a plain "Home" title (the date underneath) and an icon-button toolbar (Add Meeting / Room availability today / Calendar - the signed-in user's own [PersonCalendarPage](webapp/src/pages/PersonCalendarPage.tsx)) in place of the old hero image and three-button row, a **"Needs your response"** section, and a merged Today/Tomorrow agenda. No page on this app carries any hero/illustration imagery any more — see [designs/home-and-misc-pages-redesign.md](https://github.com/geoffweatherall/mootmaker/blob/main/designs/archive/home-and-misc-pages-redesign.md) in the hub repo.
-  - **"Needs your response"** names the date range it's vouching for explicitly (e.g. "Tue 22 – Thu 24 Sep"), both when it has cards and in its empty-state copy ("Nothing waiting on a response between ‹range›.") — the previous unqualified "you're all caught up" was only ever true within whatever window happened to be cached, without saying which window that was. One card per unresponded meeting the signed-in person attends (never organises) in that range, soonest-first, each with one-tap Going/Maybe/Not going buttons calling `respondToMeeting` directly from the card. A **"Search further ahead"** control below always stays available and never collapses: each click extends the range 3 more days (via the `DAYS` query - see [Progress indicators](#progress-indicators) below for why not `PAGE_LOAD`) and merges in whatever that turns up, including nothing. A card found this way gets an indigo left border instead of amber, so it's legible that a widened search - not the initial load - found it. The window/merge logic lives in [searchFurtherAheadLogic.ts](webapp/src/pages/searchFurtherAheadLogic.ts), pulled out the same way `addMeetingLogic.ts`/`roomAvailabilityLogic.ts` are.
-  - The **Today/Tomorrow agenda** is one continuous, day-sectioned list (dot + subject + time rows) matching `PersonCalendarPage`'s own day sections, unbounded (no "Show N more" cap) — replacing the previous two independent card-column panels. Each row shows the viewer's own response status (via [AttendeeStatusBadge](webapp/src/components/AttendeeStatusBadge.tsx)) and opens the shared meeting-detail sheet/panel in place (see [Meeting details: one shared surface](#meeting-details-one-shared-surface)) rather than navigating anywhere. If both days are genuinely empty, one whole-agenda [EmptyState](webapp/src/components/EmptyState.tsx) renders ("No meetings today or tomorrow.") rather than two independent per-day empty states. See [Attendee response status](#attendee-response-status) below.
-  - The agenda data (Needs-your-response plus the merged list) distinguishes **unknown** (no data at all yet - a centred `CircularProgress`, and the whole Needs-your-response section withheld) from **refreshing** (`cache-and-network` has stale-but-complete data on screen while revalidating in the background - the data stays up, plus one shared `LinearProgress` bar above both sections) from **settled**. Empty-state copy only renders once settled - showing it while refreshing would assert a "zero" the in-flight revalidation might still correct. See mootmaker-webapp#111 and [Progress indicators](#progress-indicators) below.
-- **Signed in, with no linked Person** (the `no-person-tests@example.com` account, which exists in every non-production environment precisely to cover this path — the e2e user used to lack a Person by accident and was deliberately given one): an error `Alert` — "Your account hasn't been set up properly" — in place of "Calendar" and the agenda, rather than guessing by falling back to some other person's data. [AuthProvider](webapp/src/auth/AuthProvider.tsx) exposes a `personLoading` flag alongside `personId` so this only renders once that lookup has actually finished, not during the brief window right after sign-in before it resolves. "Room availability today" and "Add Meeting" are unaffected, since neither is tied to a Person - though "Add Meeting" won't have an organiser pre-filled for these accounts (see below).
-
-"Add Meeting" and [RoomAvailabilityPage](webapp/src/pages/RoomAvailabilityPage.tsx)'s own "Add Meeting" button both lead to the same [AddMeetingPage](webapp/src/pages/AddMeetingPage.tsx) (`/meetings/add`), a single-step form with every field on the page at once - no "Next"/"Back" navigation:
-
-- **Details**: subject, organiser, attendees, date, start/end time - the organiser defaults to the signed-in user's own Person (once resolved, and only if they haven't already changed it - never overriding a deliberate choice to organise on someone else's behalf), the start time defaults to the next 15-minute boundary from now, and the end time defaults to an hour after that (clamped to the same calendar day, like the 5-minute-boundary default it replaces - see [AddMeetingPage.tsx](webapp/src/pages/AddMeetingPage.tsx)). The organiser and attendees fields are kept mutually exclusive as the user picks people - see [Organiser/attendee mutual exclusivity](#organiserattendee-mutual-exclusivity) below.
-- **Room**: a room dropdown, plus a **Suggest a room** button, sitting below the detail fields on the same form. The first press for a given time/attendee count calls the API's `suggestRoom` query, which returns every sufficiently-sized free room ranked smallest surplus capacity first (ties broken by name), and caches that whole ranked list in component state; each further press just fills in the next room from the cached list (wrapping back to the first once the list is exhausted) without calling the API again. Changing the date, either time, or the attendee count clears the cached list, so the next press fetches a fresh one. If the list is empty, an inline message says so rather than changing the selection. See [Suggested-room caching](#suggested-room-caching) below for how this is implemented in React.
-
-### Settings page
-
-[SettingsPage](webapp/src/pages/SettingsPage.tsx) (`/settings`, reached via the gear icon at the foot of the sidebar's [AccountBox](webapp/src/components/AccountBox.tsx)) is purely self-service now - Rooms/People maintenance moved out to their own top-level pages (see [Rooms and Persons pages](#rooms-and-persons-pages-admin-only) below), leaving three `Paper`-card sections plus a banner, all on one scrollable page rather than tabs:
-
-- A banner pointing admins at the new Rooms/Persons pages, in place of the sections that used to be here.
-- **Your name** (everyone): a `TextField` pre-filled with the caller's own `Person.name`, saved via `updateMyName` (self-only - see the [API README](../mootmaker-api/README.md)). Disabled, with an explanatory note, for accounts with no linked Person (see [Signed-in display name](#authentication) above).
-- **Date and time format** (everyone): three fields setting the viewer's own `dateFormat` (`2026-08-24` / `24/08/2026` / `08/24/2026`), `timeFormat` (`14:30` / `02:30 PM`), and `weekStart` (`Monday` / `Sunday`, default `Monday` - only affects the generic MUI `DatePicker` calendar grid's first day of the week, not `PersonCalendarPage`'s fixed Mon-Fri weekly agenda), saved together via `updateMyPreferences` - the mutation replaces all three rather than patching one, and all are non-null in the schema. The format fields are labelled with a worked example rather than a name like "ISO", since the example is the thing being chosen. Disabled with the same explanatory note as "Your name" for accounts with no linked Person. See [Date/time display](#datetime-display).
-- **Delete account** (everyone).
-
-### Rooms and Persons pages (admin only)
-
-Two top-level, admin-only pages, reached from a dedicated "Admin" section in the sidebar
-([MenuContent](webapp/src/components/MenuContent.tsx), gated on `isAdmin`) rather than living inside
-Settings - a standard user sees neither the nav items nor the pages if they navigate to `/rooms` or
-`/persons` directly (see [User class](#authentication) above for why that's presentation-only, not
-the real boundary).
-
-- [RoomsPage](webapp/src/pages/RoomsPage.tsx) (`/rooms`): a card grid, each card an edit icon opening
-  a `Dialog` to change the room's name/capacity/colour (`updateRoom`), plus an "Add room" button
-  opening the same dialog in create mode (`createRoom`). Colour is picked from a fixed 8-hue swatch
-  picker (`ROOM_COLOR_SLOTS` in [theme/roomColor.ts](webapp/src/theme/roomColor.ts)) or left unset,
-  not a free colour picker - see [Room-identity colour coding](#room-identity-colour-coding) above
-  for how an unset colour still gets a computed one. Each card's Remove button opens a confirmation
-  dialog; the mutation (`deleteRoom`) is rejected server-side with `RoomHasUpcomingMeetings` if the
-  room has any meeting from today onward, surfaced as an inline error rather than a silent no-op.
-- [PersonsPage](webapp/src/pages/PersonsPage.tsx) (`/persons`): the same create/edit pattern for
-  people (`renamePerson` / `createPerson`) - this is also how a guest person (someone without their
-  own account) gets added; the webapp has no separate page for it. A text filter narrows the list by
-  name or linked email (case-insensitive substring, client-side over the already-fetched list - not
-  a server-side query, matching this app's scale). Each card shows the person's linked email
-  address(es), an "Admin" badge, or "Not signed up yet" for a guest. The Edit dialog's admin switch
-  (`setPersonAdmin`) is disabled with inline explanatory copy in two cases: a guest Person with no
-  linked account (nothing for admin access to actually apply to), and the signed-in admin's own
-  Person (no one can revoke their own admin access through this path - `PersonError.CannotRevokeOwnAdminAccess`).
-  A `cognitoSyncFailed: true` result opens a follow-up dialog (not a rejection - the DynamoDB write
-  already succeeded) offering **Retry** (re-sends `setPersonAdmin` with the same arguments) or
-  **Cancel** (dismiss; the grant/revoke stands as already saved). Delete (`deletePerson`) cascades -
-  cancels every upcoming meeting the target organises, removes them from every upcoming meeting they
-  only attend, leaves the past untouched - and is rejected for the caller's own Person (use
-  "Delete account" in Settings instead) or a reserved system account.
-
-Apollo's `InMemoryCache` normalizes entities by `__typename:id`, so a room or person edited on either
-page patches every place it's already cached (meeting lists, the availability view) without a
-manual refetch. Both pages disable their own Add/Edit/Remove controls until their `cache-and-network`
-reference-data fetch first settles, closing a real race where an action fired before that fetch
-resolved could have its cache write overwritten by the still-in-flight, pre-mutation response.
-
-### Person avatars
-
-Wherever a person appears, [`PersonAvatar`](webapp/src/components/PersonAvatar.tsx) shows their
-avatar if they have one and their initials if they do not.
-
-**This webapp neither stores nor serves avatars, and does not know where they are hosted.**
-`Person.avatarUrl` arrives from the API as an absolute URL, on a host mootmaker-api owns, and is
-used as the image's `src` exactly as given. There is no avatar directory in this repository and no
-path logic in the component. (There used to be both: 24 photos under `public/avatars/` and a rule
-for resolving a stored path against this origin. The two halves of that arrangement lived in
-different repositories and agreed only by convention, which is how avatars once shipped broken on
-every route more than one segment deep.)
-
-There is no upload feature. An avatar is set only through the API, which today means only for
-people mootmaker-demo-data creates.
-
-The initials are also what shows if an image fails to load - MUI's `Avatar` does that on its own.
-So a broken avatar looks exactly like a person who has none, and a test that checks an avatar is
-merely *present* proves nothing. The tests assert the image's `naturalWidth` instead: see
-[`person-avatar.spec.ts`](webapp/tests/person-avatar.spec.ts) against the mocked API and case Q.143
-in [`q-persons.spec.ts`](acceptance/tests/q-persons.spec.ts) against a deployed one.
-
-### Error handling
-
-Two kinds of errors reach the user, both rendered by the dismissible [ErrorBanner](webapp/src/components/ErrorBanner.tsx) (an MUI `Alert`) at the top of the page:
-
-1. **Transport/GraphQL errors** (network failure, missing/expired token, server fault) surface through Apollo's `error` result and are flattened to messages by `errorMessages()`.
-2. **Validation failures** are *not* GraphQL errors — the API returns a structured result (`CreateRoomResult` / `CreateMeetingResult`) whose `errors` field lists broken-rule enum codes. The form pages map each code through `ROOM_ERROR_MESSAGES` / `MEETING_ERROR_MESSAGES` to a human-readable message, so a rejected submission shows the complete list of problems in one banner.
-
-On success, forms navigate to a relevant view (e.g. the day or person the new meeting/room affects) and pass a message via router state; `useLocationToast` shows it as an auto-hiding `Snackbar` and clears the state so it doesn't reappear on refresh.
-
-### Progress indicators
-
-- Views show a centred `CircularProgress` on first load, and a slim `LinearProgress` above the content when refetching with cached data already on screen. Meetings change constantly, so meeting queries use `cache-and-network` and refetch every visit; rooms and people change rarely, so those queries use `cache-first` and are fetched once per session (from the Apollo `InMemoryCache` on every visit after the first) — a full page refresh resets that in-memory cache and picks up any changes.
-- **A view showing an empty state must not render it while a `cache-and-network` refetch is still in flight**, even though `data` is already non-null and technically shows zero results — a stale cached "zero" is not yet known to be correct, and the refetch could still correct it. Confident empty-state copy (e.g. "No meetings today or tomorrow.") only belongs to the settled case; the refreshing case shows the `LinearProgress` bar and nothing more definite than what was already on screen. `HomePage` is the current example (see above) — this distinction cost mootmaker-webapp#111, so it's worth carrying into any future view with its own empty state.
-- `RoomAvailabilityPage`, `PersonCalendarPage` and `HomePage` all read meetings through `workspace(dates: [String!])` (see the [mootmaker-api README](https://github.com/geoffweatherall/mootmaker-api#reading-days)), naming the exact dates they need: the selected day; the visible one-week window; today and tomorrow (`PAGE_LOAD`), or one extra 3-day batch per "Search further ahead" click (`DAYS`, the same day-keyed query `RoomAvailabilityPage` reads a single day through). Each is memoised on what it derives from, so Apollo only issues a request when the set of dates actually changes. **This is the opposite of what this README used to describe, and the inversion is the point.** The old `meetings(filter: MeetingsFilter)` shape forced three deliberately independent queries that could not share a cache entry, because Apollo keys a list field by its exact arguments — a narrower window was never served from a broader cached one, even when it was a strict subset. Days are entities now, keyed by date (`keyFields: ['date']`), so the same `Day:2026-09-14` is shared by every page that asks for it: HomePage's two-day agenda reads days PersonCalendarPage already fetched, and a booking made on one screen updates the others without a refetch. `PersonCalendarPage` and `HomePage` still skip until a person id is available.
-- [SubmitButton](webapp/src/components/SubmitButton.tsx) disables itself and shows an inline spinner while a mutation is in flight (Cancel is disabled too), preventing double submits.
-- The meeting form shows a spinner while loading the room/people reference data its dropdowns need, and the "Suggest a room" button disables itself with its own inline spinner while its `suggestRoom` query is in flight, the same visual language as `SubmitButton`. That spinner only appears on the first press for a given time/attendee count - once the ranked list is cached, later presses update the selection synchronously.
-
-### Suggested-room caching
-
-`AddMeetingPage` caches the ranked list `suggestRoom` returns in a plain `useState` (`SuggestionCache`: `candidates: Room[] | null`, an `index` cursor into it, and a `key` - see below) rather than in Apollo's cache or some app-wide store. `candidates: null` means "not fetched for the current inputs"; `[]` means "fetched, and nothing qualified" - the two are kept distinct so a second press can tell "haven't asked yet" apart from "asked, got nothing" without re-querying either way.
-
-`key` is a string built from the three inputs that determine the list - the combined start/end date-time strings and `attendeeIds.length` (`suggestionKey` in `AddMeetingPage.tsx`). `handleSuggestRoom` (the button's click handler) compares the cache's own `key` against the *current* `suggestionKey` on every press, computed fresh from that render's actual state: a mismatch (or `candidates: null`) means the cached list doesn't apply, so it awaits the `suggestRoom` query and caches the fresh result under the current key; otherwise it advances `index` by one, wrapping via `% candidates.length` back to the start once every room has been offered. Either way it then fills the room field from the resulting room, or shows the "no room available" message if the (possibly just-fetched) list is empty.
-
-This replaced an earlier version that instead used a separate `useEffect` watching those same three inputs and clearing the cache asynchronously whenever they changed. That had a real race under genuine network latency (never reproduced against this suite's near-instant mock, only against a real deployed environment): the effect runs after the state update that changed the inputs commits, and a press arriving before that effect had actually run yet would still see a non-null, `candidates`-populated cache and skip re-fetching, silently reusing an already-stale ranked list for the new inputs instead. Comparing `key` inline removes the race by construction - there's no second, independently-scheduled piece of state that can lag behind the inputs it's supposed to track.
-
-The cache is local to this one component instance: it's read nowhere else, and naturally resets if the user navigates away and back, so there's no reason to hoist it into Apollo's cache or a global store.
-
-### Organiser/attendee mutual exclusivity
-
-The organiser and attendees fields on `AddMeetingPage` are kept mutually exclusive: `organiserOptions` filters the Organiser dropdown to exclude anyone currently in `attendeeIds`, and `attendeeOptions` filters the Attendees dropdown to exclude whoever is currently `organiserId`. Both are plain derived values recomputed from that state on every render (see [AddMeetingPage.tsx](webapp/src/pages/AddMeetingPage.tsx)) - there's no separate synchronization step, so picking someone on one side immediately removes them as an option on the other, and un-picking them makes them selectable there again straight away.
-
-This exists because the same person being both organiser and attendee is a real bug class, authoritatively rejected server-side by `MeetingError.OrganiserIsAttendee` (see the [API README](../mootmaker-api/README.md#rules) for the full rationale, including why it previously crashed `createMeeting` outright rather than failing validation cleanly). The filtering here is a UX nicety on top of that server-side rule, not a substitute for it - see [Validation: client vs server](#validation-client-vs-server) below.
-
-The organiser-defaulting effect (see [Home page](#home-page) above) cooperates with this: it skips defaulting the organiser to the signed-in user for as long as that person has already been picked as an attendee, rather than fighting a deliberate attendee choice - and re-evaluates whenever `attendeeIds` changes, so removing that attendee pick lets the default apply retroactively, the same as any other person becoming selectable as organiser again after being removed as an attendee.
-
-[tests/organiser-attendee-exclusivity.spec.ts](webapp/tests/organiser-attendee-exclusivity.spec.ts) covers every UI path around this rule that's straightforward to automate deterministically:
-
-- Selecting one or more attendees removes each of them from the Organiser options; removing just one of them from the attendee list restores only that one as an organiser option (any other still-selected attendee stays excluded).
-- Selecting an organiser removes them from the Attendees options, while an unpicked person remains available; switching the organiser to someone else immediately frees the old organiser to be picked as an attendee and excludes the new organiser instead.
-
-That race is now closed structurally rather than guarded against. `AddMeetingPage` does not render an interactive form until `referenceDataReady(referenceLoading, personLoading)` — both the reference data the fields draw from **and** the signed-in Person the Organiser defaults to. Since `personLoading` only goes false once the session query has settled (whether or not a Person was found), no user interaction can precede `personId` resolving, so there is no window left for a choice to be made and then overridden.
-
-It was not always so, and the failure was worth the fix: gated on reference data alone, the form was interactive and *submittable* with a blank Organiser, so a fast Save sent `organiserId: ""` and the server answered `OrganiserRequired` while the field visibly filled in with the user's own name a moment later. That was latent for as long as reference data always cost a round trip — reliably slower than the session query, so the Person always won. Serving reference data from cache reversed the order. Caught by acceptance test F.50, not by any unit test.
-
-The plain-language version of this same rule (for a non-technical audience) lives in [mootmaker's business-functionality.md](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/business-functionality.md), under "Meetings".
-
-### Date/time display
-
-Each viewer chooses how dates and times are written for them, in [Settings](#settings-page): `dateFormat` (`Iso`/`British`/`Usa`) and `timeFormat` (`TwentyFourHour`/`AmPm`), stored on their own `Person` and read once into `AuthProvider`, which exposes them through `useAuth()` so every date/time in the app renders from one copy rather than each page re-deriving it.
-
-**These are presentation only.** The API always speaks ISO-8601 in both directions, whatever anyone's preference (see the [API README](../mootmaker-api/README.md#datetime-display-preferences)). Formatting happens on the way out to a human and parsing on the way back in; nothing else in the app branches on a format. A **shared view always renders in the *viewer's* own format, never the data owner's** - viewing a meeting someone else organised shows it the way *you* chose, so the same meeting never looks different depending on whose record it is.
-
-[formatDateTime.ts](webapp/src/graphql/formatDateTime.ts) reads the wall-clock components straight out of the string rather than parsing to a `Date`, in every format - the digits that come out are the digits that went in, only rearranged - so no format can shift a zone-less time into the browser's own zone. `datePickerFormat`/`timePickerUsesAmPm` hand the same setting to MUI's pickers on [AddMeetingPage](webapp/src/pages/AddMeetingPage.tsx), which is the one place a format drives *input parsing* and not just display. Those pickers previously passed no `format`/`ampm` prop at all, so they silently inherited MUI's US-locale defaults (`08/24/2026`, `10:15 AM`) and disagreed with the ISO/24-hour strings the rest of the app rendered; setting them explicitly is what makes input and display agree.
-
-Two things deliberately do **not** follow the setting. The day-navigation `DatePicker` above the room-availability cards keeps its fixed `dddd D MMM YYYY` rendering - it is a navigation aid whose weekday name is the useful part, not a record of when a meeting is - and Person Calendar's week-range and day-heading labels (`D MMM`) stay word-based for the same reason. Neither is a numeric date of the kind this setting governs. Route parameters (e.g. `/rooms/2026-07-01/availability`) are ISO always: they are addresses, not displays.
-
-A third, independent preference, `weekStart` (`Monday`/`Sunday`, default `Monday`, set in the same
-"Date and time format" Settings section), affects something different from the two above: not how a
-date is *written*, but which day starts the generic MUI `DatePicker`'s calendar grid (`AddMeetingPage`'s
-Date field is the concrete example). [theme/weekStartLocale.ts](webapp/src/theme/weekStartLocale.ts)
-registers two custom dayjs locales (`en-week-monday`/`en-week-sunday`, each just `en` with `weekStart`
-overridden) and [theme/LocalizedPickersProvider.tsx](webapp/src/theme/LocalizedPickersProvider.tsx)
-picks between them via `LocalizationProvider`'s `adapterLocale` prop, read from `useAuth().weekStart`
-- applied per-value by `AdapterDayjs`, not a global mutation, so this is safe across concurrent picker
-instances. `PersonCalendarPage`'s own calendar is a fixed Mon-Fri weekly agenda, not a generic
-`DatePicker` grid, so `weekStart` deliberately does not touch it.
-
-A meeting's `startTime`/`endTime` are always full ISO-8601 local date-times (see [Calling the API](#calling-the-api)) - that's the API's representation, not the presentation one. The API also guarantees both fall on the same calendar date (`MeetingError.SpansMultipleDays` rejects a meeting that would span midnight - see the [API README](../mootmaker-api/README.md#rules)), so a meeting's date is never ambiguous even though only one of the two date-times is ever actually shown.
-
-On screen, that date is shown once per meeting, not twice: [formatDateTime.ts](webapp/src/graphql/formatDateTime.ts)'s `formatLocalDate`/`formatLocalTime` split a date-time into its date-only/time-only parts, rather than every place a meeting's time appears rendering two full date-times side by side (which would repeat the same date pointlessly). Every place a meeting's start/end appears follows this:
-
-- [MeetingDetailContent](webapp/src/components/MeetingDetailContent.tsx) - the shared component every meeting-detail surface renders, see [Meeting details: one shared surface](#meeting-details-one-shared-surface) below - shows a plain date line (`formatLocalDate`) and a plain time line (`formatLocalTime` for both start and end, joined as a `–`-separated range), neither labelled. `MeetingDetailsPage` used to show these as labelled "Date"/"Time" rows of its own (and before that, separate "Start"/"End" rows each showing the full date-time, repeating the date) - it now renders the same unlabelled lines as every other surface, rather than its own layout.
-- [RoomAvailabilityPage](webapp/src/pages/RoomAvailabilityPage.tsx)'s expanded per-room meeting rows, [PersonCalendarPage](webapp/src/pages/PersonCalendarPage.tsx)'s per-day meeting rows, and [HomePage](webapp/src/pages/HomePage.tsx)'s "Today"/"Tomorrow" agenda lists all show a time-only `–`-separated range (never the date) next to a date that's already established by the surrounding view - the date picker above the room cards, the calendar's day heading, or the "Today"/"Tomorrow" heading itself.
-
-### Meeting details: one shared surface
-
-Every place a meeting's details can be seen - the mobile bottom sheet, the desktop side panel, and the standalone `/meetings/:id` page - renders the same [MeetingDetailContent](webapp/src/components/MeetingDetailContent.tsx) component, mounted either via [useMeetingDetailOverlay](webapp/src/components/useMeetingDetailOverlay.tsx) (sheet/panel) or directly inside [MeetingDetailsPage](webapp/src/pages/MeetingDetailsPage.tsx)'s own `Paper`. This is deliberate, not incidental reuse: before it, the full page had its own separately-maintained layout that silently drifted from the sheet/panel (field order, room colour, avatar alignment) - see `designs/meeting-detail-consolidation.md`. If you're changing how a meeting's details look, change `MeetingDetailContent` - never add a second, page-specific rendering of the same content.
-
-`/meetings/:id` is a **deep-link-only route**: nothing in the app navigates there any more (clicking a meeting row anywhere opens the shared sheet/panel in place instead), so it exists purely so a shared or bookmarked link keeps working. Its own "Back" button is gated on `location.state?.fromInApp`, not `navigate(-1)`/browser history depth - a signed-out visitor following a real link goes through `RequireAuth`'s `/signin` redirect and back, never through an in-app navigation that would set that flag, so `Back` correctly never renders for that journey (unconditionally navigating back in that case could leave the app entirely, into whatever the tab's prior history happened to be).
-
-`MeetingDetailContent` also has a Share action (`navigator.share()` where available, opening the device's native share sheet; a clipboard copy + confirmation toast otherwise) - the only supported way to hand someone the `/meetings/:id` URL, since nothing in the UI displays or links to it directly any more.
-
-### Editing and cancelling a meeting
-
-The organiser of a meeting, or an admin, can edit or cancel it - see `designs/edit-and-cancel-meetings.md`. `canEdit = isAdmin || organiser.id === personId` gates Edit and Cancel in `MeetingDetailContent`'s own action row: hidden outright for anyone it excludes, with no disabled-and-explained state, matching [AttendeeStatusControl](webapp/src/components/AttendeeStatusControl.tsx)'s existing precedent. **This is presentation only** - the API enforces the same rule server-side (organiser or admin), and the client-side check exists purely to avoid showing controls nobody's allowed to use.
-
-- **Edit** navigates to `/meetings/:meetingId/edit`, served by the same [AddMeetingPage](webapp/src/pages/AddMeetingPage.tsx) component `/meetings/add` uses - one form for both, mirroring `RoomsPage.tsx`/`PersonsPage.tsx`'s own `RoomDialog`/`PersonDialog` precedent for a single component handling create and edit, rather than a second copy of the field set. Edit mode always fetches the meeting fresh by id (`MEETING_BY_ID`, `fetchPolicy: 'network-only'`), never trusting a sheet/panel's own in-memory snapshot, which is what makes a bookmarked or shared edit link work correctly. Submitting calls `updateMeeting` instead of `createMeeting`, full field replacement like `updateRoom`/`renamePerson` - every field in `MeetingInput` is sent, including a reassigned organiser or attendee list. "Suggest a room" passes `excludingMeetingId` so the meeting's own current slot isn't wrongly treated as occupying itself, and additionally prioritizes the meeting's *current* room at the front of the ranked candidates (`addMeetingLogic.ts`'s `prioritizeCurrentRoom`) - a client-side reordering over the server's own unchanged ranking, not new backend logic.
-- **Cancel** opens [CancelMeetingDialog](webapp/src/components/CancelMeetingDialog.tsx), following `DeleteAccountSection`'s confirmation-dialog pattern (real friction, no re-authentication, warning copy naming the consequence before the destructive action fires). It's a **hard delete** - `cancelMeeting` removes the meeting entirely, with no "cancelled" status left behind anywhere. The dialog is a plain MUI `Dialog`, mounted alongside (never in place of) the sheet/panel it was opened from, so the meeting's own details stay visible, dimmed behind the dialog's backdrop, while someone decides - a `Dialog` portals over the page without unmounting what's underneath, which is what makes this true by construction rather than something requiring careful state management.
-
-`MeetingDetailContent`'s live-binding (`useFragment` against `MEETING_LIVE_FIELDS_FRAGMENT`, moved in from `useMeetingDetailOverlay.tsx` and broadened - see git history for `MEETING_ATTENDEES_FRAGMENT`) now covers every field an edit can change, not just attendee status: an edit or cancellation by another client updates or removes an already-open sheet's content, same as attendee responses already did. Detecting a cancellation specifically needed a fix to shared infrastructure: [daysInvalidated.ts](webapp/src/realtime/daysInvalidated.ts)'s `evict()` now explicitly evicts every `Meeting` a day referenced before evicting the day itself, rather than relying on Apollo's automatic `cache.gc()` - which does not reliably collect an entity an active `useFragment` watcher (an open detail sheet) is still reading. **Incomplete does not mean cancelled.** The fragment goes incomplete whenever its day is evicted: any change to any meeting that day by anyone, plus every tab return and reconnect. It also goes incomplete for good when the meeting moves to a day nobody is watching. So when the fragment goes from complete to incomplete, the sheet keeps the last-seen meeting on screen under a `LinearProgress` and asks the API about this one meeting (`meeting(id)`, `network-only`). If a meeting comes back, writing it to the cache makes the fragment complete again, with its new date if it moved. Only a `null` answer shows the "This meeting was cancelled" [EmptyState](webapp/src/components/EmptyState.tsx), and the sheet stays open rather than auto-closing. Treating "incomplete" as "cancelled" is what flashed that message on every edit (#132) and showed it permanently after a move (#134).
-
-### Attendee response status
-
-Every non-organiser attendee has their own `Going`/`NotGoing`/`Maybe`/`NoResponse` status (see the [API README](../mootmaker-api/README.md#data-model)'s `Attendee` type). [AttendeeStatusBadge](webapp/src/components/AttendeeStatusBadge.tsx) renders it everywhere it's shown - a filled circle with a white glyph (check/cross/"?"/a low-opacity dot for `NoResponse`), reusing MUI's `success`/`error`/`warning` palette plus `action.disabledBackground` rather than a bespoke colour scheme, so the state reads from colour *and* shape (accessible to a colourblind viewer, still legible in greyscale) - see `designs/attendee-response-status.md`'s "Choices you had me make".
-
-In `MeetingDetailContent`, every attendee row shows this badge except the signed-in caller's own row, which shows "You" instead and is followed by [AttendeeStatusControl](webapp/src/components/AttendeeStatusControl.tsx) - a three-way toggle (no `NoResponse` option; that's the unset default, not something to switch back to) that calls `respondToMeeting` and reflects the confirmed result via a local override, independent of the `meeting` prop it was opened with. That prop is a snapshot captured once into `useMeetingDetailOverlay`'s own state, decoupled from live Apollo query data by design - `MeetingDetailContent` is `key`ed by meeting id there specifically so switching between two open meetings (or reopening the same one) always starts that override fresh rather than carrying a stale value across meetings. The organiser has no status and no control - see [Home page](#home-page) above and the API README for why.
-
-Both the Home page's quick-respond buttons and this control call the same mutation, which selects the whole updated `meeting` back - Apollo's normalised cache overwrites `Meeting:<id>` from that response wherever it's referenced (this page's own list, a different page's cached `Day`), the same "the response IS the new state" reasoning `createMeeting` already relies on for its own `day` selection. Other open tabs/clients pick up the change via the `daysInvalidated` subscription ([useDaysInvalidated.ts](webapp/src/realtime/useDaysInvalidated.ts)) - `respondToMeeting` publishes it server-side on success, same as `createMeeting`. The responding tab ignores its own copy of that broadcast for a few seconds (`dayInvalidations.noteOwnWrite`), noted *before* the request is sent, because the API publishes inside the request and the broadcast can arrive before the response (#162). Every meeting mutation does the same.
-
-### Validation: client vs server
-
-All rules are **enforced server-side** by the API's Lambda handlers (see the [API README](../mootmaker-api/README.md)); the frontend re-states none of them and simply displays whatever errors come back. Client-side, the UI only *prevents* invalid input where it can do so cheaply: the meeting time pickers offer only 15-minute-boundary minutes, room/organiser/attendees are chosen from dropdowns of existing records (organiser and attendees additionally kept mutually exclusive - see [Organiser/attendee mutual exclusivity](#organiserattendee-mutual-exclusivity) above), and the capacity field is numeric. Anything that slips through (e.g. an overlapping meeting, or a blank room name) is caught by the server and shown in the banner.
-
-## Hosting
-
-The production build is a set of static files served from a **private S3 bucket** behind a **CloudFront distribution**:
-
-- The bucket blocks all public access; CloudFront reads it via an Origin Access Control, so the bucket is only reachable through the CDN.
-- CloudFront redirects HTTP→HTTPS and uses `PriceClass_100` (cheapest edge locations).
-- S3 403/404 responses are rewritten to `/index.html` with a 200 status so deep links to client-side routes (e.g. `/meetings/add`) load the SPA instead of erroring.
-
-Like the API, hosting scales to zero: S3 storage pennies plus per-request CloudFront charges, no fixed-cost resources (Route53/ACM cost is covered under [mootmaker-domain](https://github.com/geoffweatherall/mootmaker-domain)).
-
-### Custom domain
-
-Each environment deploys behind its own hostname under `mootmaker.com`:
-`production` gets `www.mootmaker.com`, every other environment gets
-`www.<environment>.mootmaker.com` (see [domain.tf](deploy/terraform/domain.tf)
-for why each environment provisions its own certificate rather than sharing
-one wildcard). `deploy.sh`/`undeploy.sh` refuse any environment name that
-starts with `prod` but isn't exactly `production`, to avoid a typo silently
-landing on a production-looking-but-not-actually-production subdomain. The
-bare apex `mootmaker.com` redirects to `www.mootmaker.com` -
-see [mootmaker-domain](https://github.com/geoffweatherall/mootmaker-domain),
-which must already be deployed (nameservers configured at the registrar,
-delegation propagated) before this project's certificate can validate.
-
-## Build, run, deploy
-
-Prerequisites: Node.js + npm, Terraform ≥ 1.10, AWS credentials, and `mootmaker-api` already deployed to the same environment.
-
-Like the API, `deploy.sh`/`undeploy.sh` take an **environment** name (e.g.
-`test`, `production`, or your own name) and talk to the `mootmaker-api`
-deployment of that same environment — see the [mootmaker project README](https://github.com/geoffweatherall/mootmaker#multi-environment-deployments)
-for the full multi-environment how-to.
-
-### Local development
+| [docs/architecture.md](docs/architecture.md) | Code layout, routes, auth, the Apollo cache and live updates, UI rules every page follows, hosting |
+| [testing-strategy.md](testing-strategy.md) | Unit, mocked integration and acceptance tests |
+| [acceptance/README.md](acceptance/README.md) | Writing and running acceptance tests against a deployed environment |
+
+## Layout
+
+| Path | What |
+|---|---|
+| `webapp/` | The app: React 19, TypeScript, MUI 9, Apollo Client 4, Vite. Its own `package.json`, with its unit tests (`src/**/*.test.ts`) and mocked integration tests (`tests/`) |
+| `acceptance/` | Playwright tests against a real deployed environment, and `test-cases/`, a designed test case for every use case |
+| `support/` | Helpers for the acceptance suite, such as creating confirmed Cognito accounts |
+| `deploy/terraform/` | The S3 bucket, CloudFront distribution, certificate and DNS record for one environment |
+| `deploy/ssm-config.sh` | Reads an environment's API settings from SSM, for the deploy and the acceptance runner |
+| `deploy/verify-schema-compatibility.sh` | Refuses to deploy against an API that does not serve the fields this build uses |
+| `deploy.sh`, `undeploy.sh` | Deploy and remove one environment |
+
+There are two `package.json` files: the repository root (the acceptance suite) and `webapp/` (the app).
+Run `npm install` in both.
+
+## Running it locally
 
 ```bash
 cd webapp
-cp .env.example .env        # then fill in real values from SSM: the five VITE_ variables are
-                            # /mootmaker/<environment>/api/graphql-url, cognito/user-pool-id,
-                            # cognito/webapp-client-id, demo-user/email and demo-user/password
-                            # (aws ssm get-parameter --name ... --query Parameter.Value).
 npm install
-npm run dev                 # generates public/env-config.js from .env (predev hook), then the
-                            # Vite dev server on http://localhost:5173 - see Calling the API
-npm run lint                # oxlint
-npm run build               # type-check (tsc -b) + production build into dist/ (no env-config.js -
-                            # a release build is environment-agnostic; deploy.sh writes one per target)
+cp .env.example .env     # fill in from SSM: /mootmaker/<env>/api/graphql-url, cognito/user-pool-id,
+                         # cognito/webapp-client-id, demo-user/email, demo-user/password
+npm run dev              # http://localhost:5173 against that environment's API
+npm run dev:mock         # or against the mocked API and mocked Cognito the integration tests use
 ```
 
-### Deploy / undeploy
+| Command (in `webapp/`) | Does |
+|---|---|
+| `npm run build` | Typecheck and build `dist/`. The build holds no configuration; it works for any environment |
+| `npm run lint` | oxlint |
+| `npm run test:unit` | Vitest unit tests |
+| `npm run test:integration` | Playwright against the mocked API |
+| `npm run codegen` | Regenerate `src/graphql/generated/` from the API schema. Run after changing any operation |
 
-`./deploy.sh <environment>` performs, in order:
-
-1. Looks up the API's URL, Cognito ids, demo-user credentials and machine-to-machine client in SSM Parameter Store under `/mootmaker/<environment>/api/` ([deploy/ssm-config.sh](deploy/ssm-config.sh)). It fails fast if they are missing, so this needs that environment's `mootmaker-api` already deployed.
-2. `terraform init` (state key `<environment>/mootmaker-webapp/terraform.tfstate`) + `terraform apply -auto-approve -var="environment=<environment>"` in [deploy/terraform](deploy/terraform) to create/update the S3 bucket and CloudFront distribution, and publish the site URL to SSM as `/mootmaker/<environment>/webapp/site-url`.
-3. `npm install` and `npm run build` to produce `webapp/dist/` — an environment-agnostic build, no config baked in.
-4. Writes `webapp/dist/env-config.js` with the API URL, Cognito user pool id, webapp client id, and demo user email/password from step 1 — see [Calling the API](#calling-the-api).
-5. Writes `webapp/dist/mobile-config.json`, the Android app's equivalent of `env-config.js`: plain JSON with `GRAPHQL_API_URL`, `COGNITO_USER_POOL_ID`, `COGNITO_CLIENT_ID` (the webapp client), `COGNITO_ANDROID_CLIENT_ID` (SSM `cognito/android-client-id`; left out with a warning if the API has not published it) and the demo user's `DEMO_USER_EMAIL`/`DEMO_USER_PASSWORD`. Served at `/mobile-config.json` on the site.
-6. `aws s3 sync webapp/dist s3://<bucket> --delete` to upload the build (including `env-config.js` and `mobile-config.json`) and remove stale files.
-7. Creates a CloudFront invalidation for `/*` so the new version is served immediately, then prints the site URL.
-
-`./undeploy.sh <environment>` runs `terraform destroy` (with interactive confirmation) — it deletes that environment's distribution and bucket including all uploaded assets.
-
-## Tests
-
-See [testing-strategy.md](testing-strategy.md) for the overall testing approach for this repo, and [mootmaker's testing-strategy.md](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/testing-strategy.md) for how it fits the wider project. Four layers in total: the two below are fully local (neither needs a deployed API, a live AWS environment, or real Cognito credentials) and live under `webapp/`; [e2e/](e2e/) and [acceptance/](acceptance/), at the repo root alongside `webapp/`, both run against a genuinely deployed environment instead — see testing-strategy.md for those.
-
-**Unit tests (Vitest):**
+## Deploying
 
 ```bash
-cd webapp
-npm run test:unit
+./deploy.sh <env>                # build, apply Terraform, upload, invalidate CloudFront
+./deploy.sh <env> --skip-build   # deploy the existing webapp/dist (the release does this)
+./undeploy.sh <env>              # remove it; prompts. --yes skips the prompt and refuses test and production
 ```
 
-Pure-logic tests, no browser and no network — seconds to run. Covers [formatDateTime.ts](webapp/src/graphql/formatDateTime.ts)'s date/time splitting, the `ROOM_ERROR_MESSAGES`/`MEETING_ERROR_MESSAGES`/`PERSON_ERROR_MESSAGES` maps and [errorMessages.ts](webapp/src/graphql/errorMessages.ts)'s flattening of Apollo errors, [theme/roomColor.ts](webapp/src/theme/roomColor.ts)'s palette assignment/wraparound and contrast-based text colour, and [addMeetingLogic.ts](webapp/src/pages/addMeetingLogic.ts) — the organiser/attendee mutual-exclusivity filtering and the suggested-room caching state machine described in [Organiser/attendee mutual exclusivity](#organiserattendee-mutual-exclusivity) and [Suggested-room caching](#suggested-room-caching) above, extracted out of `AddMeetingPage.tsx` specifically so they're testable without rendering the component or mocking Apollo.
+The API must already be deployed to the environment: the deploy reads its settings from SSM, refuses
+to deploy if the API does not serve the schema this build was compiled against, and writes
+`env-config.js` and `mobile-config.json` next to the site. Hostnames are `www.<env>.mootmaker.com`, or
+`www.mootmaker.com` for `production`, which changes only through a
+[release](https://github.com/geoffweatherall/mootmaker/blob/main/docs/overview/delivery.md).
 
-**Integration tests (Playwright), against a mocked API:**
+## Testing
 
 ```bash
-cd webapp
-npm run test:integration
+cd webapp && npm run test:unit && npm run test:integration
+./acceptance/run.sh          # from the repository root: a fresh environment, the suite, teardown
+./acceptance/run.sh <env>    # or against an environment you already have
 ```
 
-Playwright starts a dev server on port 5173 running in a distinct Vite mode (`npm run dev:mock`, i.e. `vite --mode mock` — see [playwright.config.ts](webapp/playwright.config.ts)) and drives Chrome against it. This mode swaps in two test-only doubles, at the two seams testing-strategy.md's "Integration tests" section describes:
-
-- **MSW** ([mockServiceWorker.js](webapp/public/mockServiceWorker.js), handlers in [src/testSupport/mocks/](webapp/src/testSupport/mocks/)) intercepts the app's GraphQL calls at the real network layer — a genuine Service Worker in the browser — rather than replacing Apollo Client's internals. The app still builds its requests through the real `HttpLink`/`SetContextLink` pipeline in [apolloClient.ts](webapp/src/apolloClient.ts); only what's on the other end of the wire is fake. [src/testSupport/mocks/fixtures.ts](webapp/src/testSupport/mocks/fixtures.ts) holds the small fixed data set (3 rooms, 5 people) the suite runs against; meetings created during a test are persisted to `sessionStorage` so they survive a real browser navigation (a full page load re-evaluates every JS module, including the in-memory parts of the mock), not just SPA client-side routing.
-- **A mocked Cognito module** ([src/auth/cognito.mock.ts](webapp/src/auth/cognito.mock.ts), swapped in for `./cognito`/`../auth/cognito`/`./auth/cognito` by [vite.config.ts](webapp/vite.config.ts)'s mode-gated `resolve.alias`) stands in for [auth/cognito.ts](webapp/src/auth/cognito.ts) — the one module that actually talks to Cognito. Cognito's SRP sign-in exchange is genuinely cryptographic and isn't reasonably fakeable at the network layer the way a JSON GraphQL API is (see testing-strategy.md), so the swap happens one level up, at the same seam [AuthProvider.tsx](webapp/src/auth/AuthProvider.tsx) already funnels every Cognito interaction through — `AuthProvider` itself, and every page, are completely unchanged in this mode. A small fixed pair of fixture accounts (an e2e user with no linked Person, and a demo user with one — see the doc comment on `MOCK_USERS`) covers everything the suite needs; a mock session is persisted to `localStorage` so it survives Playwright's `storageState` snapshot/restore between the `setup` project and the tests that reuse its session, the same way a real Cognito session would via its own cached tokens.
-
-Because most pages require sign-in, the suite has a **setup project** ([tests/auth.setup.ts](webapp/tests/auth.setup.ts)) that signs in through the real form as the fixture e2e user and saves the browser session; the main test project starts from that session.
-
-- [tests/auth.spec.ts](webapp/tests/auth.spec.ts) runs signed-out (it discards the saved session) and covers the auth rules: the home page is public, every other route redirects to `/signin`, sign-in returns you to the page you were heading to, sign-out locks the app again, and a wrong password or unknown email shows an error.
-- [tests/forgot-password.spec.ts](webapp/tests/forgot-password.spec.ts) also runs signed-out and covers the reset flow: the sign-in form links to it, requesting a code advances to the code + new-password step, a wrong code is rejected, and — now that the "emailed" code is a fixed, known mock value rather than something only a real inbox can read — the full success path (correct code resets the password and signs the user in automatically) too.
-- [tests/calendar-menu.spec.ts](webapp/tests/calendar-menu.spec.ts) covers the sidebar's "Calendar" nav item while the signed-in user's `personId` is still resolving (stays enabled, shows a spinner instead of navigating early if clicked mid-flight) for both an account with no linked Person and one with — deterministically, by gating the mocked `MyPerson` operation open on demand rather than racing the (near-instant, mocked) network.
-- [tests/meeting-form.spec.ts](webapp/tests/meeting-form.spec.ts) covers the Add Meeting form's time pickers — asserting that only 15-minute-boundary minutes are offered, matching the API's meeting rule — and that every field, including the room, is present on the single form with no step navigation.
-- [tests/suggest-room.spec.ts](webapp/tests/suggest-room.spec.ts) covers the home page's "Add Meeting" entry point, and the "Suggest a room" button: that repeated clicks step through the cached ranked list without repeating a room until it wraps around, and that requiring more capacity than any fixture room has shows the inline "no room available" message instead of changing the selection.
-- [tests/organiser-attendee-exclusivity.spec.ts](webapp/tests/organiser-attendee-exclusivity.spec.ts) covers the Organiser/Attendees dropdown filtering described in [Organiser/attendee mutual exclusivity](#organiserattendee-mutual-exclusivity) above — see that section for the one related case it deliberately doesn't cover, and why.
-- [tests/meeting-details.spec.ts](webapp/tests/meeting-details.spec.ts) covers the date/time lines described in [Date/time display](#datetime-display) above, by creating a meeting, opening it from Room Availability, and reading the real `/meetings/:id` URL off the Share button (`navigator.share` forced onto its clipboard-fallback branch deterministically - see [Meeting details: one shared surface](#meeting-details-one-shared-surface)) before visiting it directly. Pins the browser's clock to a known weekday (`page.clock.setFixedTime` — real timers still run, only `Date.now()`/`new Date()` are fixed), matching this suite's usual convention.
-- [tests/meeting-detail-share-and-back.spec.ts](webapp/tests/meeting-detail-share-and-back.spec.ts) covers the Share button's two branches (`navigator.share` mocked present vs. absent) and `MeetingDetailsPage`'s "Back" safety - a signed-out visitor with real prior tab history who follows a real Share-produced link, through `RequireAuth`'s redirect and a sign-in, must never see a "Back" button that could navigate them out of the app.
-- [tests/meeting-edit-and-cancel.spec.ts](webapp/tests/meeting-edit-and-cancel.spec.ts) covers [Editing and cancelling a meeting](#editing-and-cancelling-a-meeting) above: `canEdit` gating the Edit/Cancel buttons for the organiser, an admin, and neither; the edit form prefilling from a fetched meeting and saving via `updateMeeting`; the self-overlap edit case (re-saving a meeting's own unchanged time in its own room must not spuriously reject); the cancel confirmation dialog leaving the meeting's own details visible behind it; and, mirroring `meeting-detail-survives-refetch.spec.ts`'s visibility-triggered-refetch technique (no real AppSync subscription under `vite --mode mock`), an already-open sheet reflecting a same-session edit or cancellation made directly against the mocked API.
-
-`.env.mock` (committed — no secrets, no real infrastructure) configures this mode: a same-origin `VITE_GRAPHQL_API_URL` MSW intercepts, and `VITE_DEMO_USER_EMAIL`/`PASSWORD` matching `cognito.mock.ts`'s demo fixture account so the home page's pre-filled sign-in form works the same way it does against a real deployment.
+See [testing-strategy.md](testing-strategy.md). When something is wrong in a deployed environment,
+start from the hub's [runbooks](https://github.com/geoffweatherall/mootmaker/blob/main/docs/runbooks/README.md).

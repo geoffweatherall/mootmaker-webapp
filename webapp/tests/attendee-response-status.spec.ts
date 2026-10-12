@@ -73,15 +73,9 @@ test.describe('Attendee response status', () => {
     await expect(todayCard.getByRole('img', { name: 'Going', exact: true })).toBeVisible()
   })
 
-  // mootmaker-webapp#122: the sibling test above only ever exercises `initialNeedsResponse`
-  // (HomePage.tsx's default 3-day window, reactively derived from the PAGE_LOAD query's own
-  // cache-backed data) - it passed while this exact scenario was broken in production, because
-  // nothing exercised "Search further ahead"'s own `extraEntries` state at all. That state is a
-  // plain useState snapshot taken once per click and never re-filtered afterward, unlike
-  // initialNeedsResponse, so a card found this way stays stuck showing as pending even after a
-  // successful response. This is the Integration-layer test that would have caught it: no real
-  // AWS needed, since the bug is pure client-side state staleness, not a server or wiring problem
-  // between real services - see the issue for the layer analysis.
+  // mootmaker-webapp#122: the sibling test above only exercises `initialNeedsResponse` (Home's
+  // default 3-day window). Cards found by "Search further ahead" come from a separate query, and
+  // must clear just the same once answered - pure client-side state, so this layer covers it.
   test('a card found via "Search further ahead" also clears live after responding', async ({ page }) => {
     const subject = `Search further ahead response test ${Date.now()}`
     // 6 days out: past the initial window (offsets 0-2) and past the first "Search further

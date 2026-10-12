@@ -191,10 +191,9 @@ interface MeetingInput {
   expectedVersion?: string | null
 }
 
-// Mirrors the subset of mootmaker-api's createMeeting validation rules (see the API README's
-// "Rules" section) that webapp/tests/*.spec.ts actually exercises - not a full reimplementation
-// of the server's own acceptance-tested rule set, which stays covered by mootmaker-api's own
-// tests instead (see mootmaker/docs/reference/testing-strategy.md's layering table).
+// Mirrors the subset of mootmaker-api's createMeeting validation rules (see "Validation rules" in
+// mootmaker-api's docs/api-reference.md) that webapp/tests/*.spec.ts actually exercises - not a
+// full reimplementation of the server's rule set, which mootmaker-api's own tests cover.
 // excludingMeetingId is only ever passed from UpdateMeeting - it excludes that one meeting's own
 // prior slot from the clash check below, mirroring mootmaker-api's RoomAvailability.isFreeIgnoring
 // (see MeetingValidator), so editing a meeting's time within its own room - even to a range that
@@ -295,8 +294,9 @@ export const handlers: HttpHandler[] = [
     const variables = body.variables ?? {}
 
     switch (body.operationName) {
-      // One entry point now serves what four operations used to. The mock answers only what each
-      // query selected, the way the real resolver does - a query that omits `dates` gets no days.
+      // Session, ReferenceData, PageLoad and Days all query the one `workspace` entry point. The
+      // mock answers only what each selected, the way the real resolver does - a query that omits
+      // `dates` gets no days.
       case 'Session': {
         if (window.__mockControls?.myPersonGate) {
           await window.__mockControls.myPersonGate
@@ -367,8 +367,8 @@ export const handlers: HttpHandler[] = [
           excludingMeetingId?: string
         }
         // Ranked smallest surplus capacity first (equivalent to smallest capacity first, since
-        // every candidate already meets requiredCapacity), ties broken by name - see README.md's
-        // "Room" bullet under Add Meeting. excludingMeetingId (only ever sent while editing)
+        // every candidate already meets requiredCapacity), ties broken by name, as the real
+        // suggestRooms does. excludingMeetingId (only ever sent while editing)
         // excludes that one meeting's own prior slot, mirroring validateMeetingInput's own
         // exclusion above and the real API's SuggestRoomHandler.
         const suggestions: Room[] = rooms
@@ -483,7 +483,7 @@ export const handlers: HttpHandler[] = [
         const date = existing.startTime.slice(0, 10)
         cancelMeetingFixture(id)
         // A hard delete, matching the real API - daysFor recomputes from the fixture array, which
-        // no longer includes this meeting, so the returned day is simply the day without it.
+        // has lost this meeting, so the returned day is simply the day without it.
         const result: CancelMeetingResult = { day: daysFor([date])[0], errors: [] }
         return HttpResponse.json({ data: { cancelMeeting: { __typename: 'CancelMeetingResult', ...result } } })
       }

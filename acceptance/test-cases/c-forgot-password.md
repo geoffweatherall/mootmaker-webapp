@@ -152,4 +152,4 @@ See [README.md](README.md) for the entry format and test-data conventions.
 
 **Notes:** Purely a navigation/routing check — no real Cognito interaction needed, cheapest test in this section.
 
-**2026-08-27 root cause: test bug, fixed.** Step 4's `getByRole('link', { name: 'Sign in' })` was unscoped - confirmed against a real run: "strict mode violation ... resolved to 2 elements" - because while signed out, `Layout.tsx`'s own sidebar (`MenuContent`) always renders its own "Sign in" nav link too (at this desktop viewport it's visible, not just present-but-hidden), alongside `ForgotPasswordPage`'s "Remembered it? Sign in" link the test actually means to click. Fixed by scoping to `page.getByRole('main')` first (`Layout.tsx`'s `<Box component="main">` gives the page's own content a `main` landmark distinct from the sidebar). Re-verified live and passing.
+**Locator note.** While signed out, the sidebar has its own "Sign in" link, visible at desktop width, so step 4 scopes to `page.getByRole('main')` (the page content's landmark) to reach the form's "Remembered it? Sign in" link.

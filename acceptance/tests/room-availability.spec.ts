@@ -15,9 +15,8 @@ import { expect, test } from './support/test'
 // rejected by the API as SpansMultipleDays). The environment is reset before every test
 // (./support/test.ts), so each case starts with no rooms and no meetings but its own.
 //
-// E.37 note: RoomAvailabilityPage's "Add Meeting" links now pass the currently-viewed date via
-// router state, and AddMeetingPage's defaultDate() reads it - this used to be a documented gap in
-// e-room-availability.md, now fixed, so E.37 below asserts the corrected (passing) behaviour.
+// E.37: RoomAvailabilityPage's "Add Meeting" links pass the currently-viewed date via router
+// state, and AddMeetingPage's defaultDate() reads it.
 
 async function goToAddMeeting(page: Page): Promise<void> {
   await page.goto('/meetings/add')
@@ -38,10 +37,9 @@ async function setTime(page: Page, groupName: 'Start time' | 'End time', hour24:
   await page.keyboard.type(`${String(hour24).padStart(2, '0')}${String(minute).padStart(2, '0')}`)
 }
 
-// AddMeetingPage's Date field now takes an explicit `format` from the signed-in viewer's own
+// AddMeetingPage's Date field takes an explicit `format` from the signed-in viewer's own
 // date-format setting. The default is Iso, so the sections run Year, Month, Day - not the
-// Month/Day/Year of MUI's US-locale default, which is what this used to type into. Typing starts
-// at Year accordingly.
+// Month/Day/Year of MUI's US-locale default. Typing starts at Year accordingly.
 async function setDate(page: Page, month: number, day: number, year: number): Promise<void> {
   const group = page.getByRole('group', { name: 'Date' })
   await group.getByRole('spinbutton', { name: 'Year' }).click()
@@ -421,7 +419,7 @@ test('E.34 - back-to-back meetings in the same room both succeed and render as d
 
   // 10:00-11:00, same room, touching the first meeting's end exactly - the actual boundary
   // condition under test is that this creation succeeds at all, per the API's [startTime, endTime)
-  // half-open interval rule (mootmaker-api/README.md's Validation table), not just how it renders.
+  // half-open interval rule (mootmaker-api's docs/api-reference.md), not just how it renders.
   await goToAddMeeting(page)
   await page.getByLabel('Subject').fill(subject2)
   await selectRoom(page, roomName)
@@ -506,11 +504,9 @@ test('E.36 - mobile viewport: room cards stack in a single column, no horizontal
   await page.goto(`/rooms/${today}/availability`)
   await expect(page.getByText(roomName, { exact: true })).toBeVisible()
 
-  // This redesign's whole point (mootmaker-webapp#11) was replacing the old fixed-column timeline
-  // grid - which forced horizontal scrolling on narrow screens and had a real rendering defect
-  // where scrolled content bled under its sticky room-name column - with cards that stack in a
-  // single column instead (RoomAvailabilityPage.tsx's grid: `{ xs: '1fr', md: 'repeat(2, 1fr)' }`).
-  // No horizontal scroll should be needed at this mobile width any more.
+  // Room cards stack in a single column on narrow screens (RoomAvailabilityPage.tsx's grid:
+  // `{ xs: '1fr', md: 'repeat(2, 1fr)' }`), so no horizontal scroll is needed at this mobile width
+  // (mootmaker-webapp#11).
   const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth)
   const clientWidth = await page.evaluate(() => document.documentElement.clientWidth)
   expect(scrollWidth).toBeLessThanOrEqual(clientWidth)

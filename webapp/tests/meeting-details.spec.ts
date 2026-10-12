@@ -11,8 +11,8 @@ import { people } from '../src/testSupport/mocks/fixtures'
 test.describe('Meeting details - date shown once, not per start/end', () => {
   test('shows a single date and a start-end time, with no duplicated date', async ({ page, context }) => {
     // AddMeetingPage defaults the date to "today" and the start time to the next 15-minute
-    // boundary - fine most of the time, but PersonCalendarPage only ever shows Monday-Friday (see
-    // README.md's Person Calendar section), so this test would flake whenever it happened to run
+    // boundary - fine most of the time, but PersonCalendarPage only ever shows Monday-Friday,
+    // so this test would flake whenever it happened to run
     // on a weekend. Pinning just Date.now()/new Date() (not the timers - setFixedTime keeps those
     // running normally, unlike clock.install()) to a known weekday, safely inside business hours,
     // makes that deterministic instead of leaving it to whatever day this suite happens to run on.
@@ -55,8 +55,7 @@ test.describe('Meeting details - date shown once, not per start/end', () => {
     await page.waitForURL(/\/rooms\/.+\/availability/)
 
     // Reached via Room Availability, not Person Calendar - a room's meetings sit inside a
-    // Collapse'd "See <day>'s meetings" panel by default (see the redesign's room-status-card
-    // decision), so the room's own card needs expanding before its meeting row is clickable.
+    // Collapse'd "See <day>'s meetings" panel by default, so the room's own card needs expanding before its meeting row is clickable.
     // getByText(subject) alone would match twice while the room is busy right now (the status
     // pill's own caption also shows the subject, e.g. "Busy until 11:00") - going via the card's
     // "See ... meetings" button keeps this unambiguous.

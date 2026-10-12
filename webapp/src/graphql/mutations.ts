@@ -1,7 +1,7 @@
 import { graphql } from './generated'
 
 /**
- * Selects `rooms` as well as `room`, and that is what removes the update function this used to need.
+ * Selects `rooms` as well as `room`, so no cache update function is needed.
  *
  * Apollo normalises entities by id, so returning one Room updates it everywhere it is referenced —
  * but it does NOT add it to a cached `rooms` list, which is a separate cache field entirely. The

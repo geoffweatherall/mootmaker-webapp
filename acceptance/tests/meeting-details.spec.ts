@@ -8,18 +8,14 @@ import { expect, test } from './support/test'
 // other Persons, created over the API, standing in for the organiser/attendee roles where a case
 // is about a meeting the user did not organise.
 //
-// H.72 ("Back returns to whichever page the user actually came from") is GONE, not renumbered
-// around - see designs/meeting-detail-consolidation.md. It reached the full page by clicking
-// through Room Availability's and Home's meeting rows, but neither navigates to /meetings/:id any
-// more - both open the shared sheet/panel in place instead (useMeetingDetailOverlay.tsx). There is
-// no longer an in-app-originated navigation into this route for it to exercise. Back's actual
-// safety property - it must never navigate somewhere outside the app for a user who arrived via a
+// There is no H.72: nothing in the app navigates to /meetings/:id (meeting rows open the shared
+// sheet/panel in place, useMeetingDetailOverlay.tsx), so there is no in-app route into this page
+// to test Back from. Back's actual safety property - it must never navigate somewhere outside the app for a user who arrived via a
 // cold link - is covered by H.74 below (real, end-to-end) and by a mocked-integration test in
 // webapp/tests/ (client-routing logic, including a tab with unrelated prior history, which isn't
 // practical to simulate against a real deployed environment).
 // A fixed Monday, safely inside business hours (08:00-17:00) and clear of any weekend-sensitive
-// UI quirks - see acceptance/README.md's "Known gaps" note on clock pinning and
-// webapp/tests/meeting-details.spec.ts's own equivalent fix for the same class of problem.
+// UI quirks - see webapp/tests/meeting-details.spec.ts's equivalent for the same class of problem.
 // Pinning exactly to the meeting's intended start time means AddMeetingPage's own defaults
 // (next-15-minute-boundary start, start+1h end) land exactly on 10:00-11:00 with no need to touch
 // either time picker.
@@ -85,9 +81,8 @@ async function createMeetingViaForm(page: Page, options: MeetingFormOptions): Pr
   await expect(page).toHaveURL(/\/rooms\/.+\/availability/)
   await expect(page.getByText('Meeting was successfully scheduled.')).toBeVisible()
 
-  // Open the meeting's own row - it now opens the shared sheet/panel in place rather than
-  // navigating (RoomAvailabilityPage.tsx no longer links to /meetings/:id - see
-  // designs/meeting-detail-consolidation.md), so its role is 'button', not 'link'. The meeting only
+  // Open the meeting's own row - it opens the shared sheet/panel in place rather than navigating
+  // to /meetings/:id, so its role is 'button', not 'link'. The meeting only
   // renders once its room's card is expanded (RoomAvailabilityPage.tsx's "See <day>'s meetings"
   // Collapse toggle) - confirmed against a real run that a collapsed card's meeting row is absent
   // from role queries entirely, not just visually hidden. Not getByText for the row itself: the
@@ -99,8 +94,8 @@ async function createMeetingViaForm(page: Page, options: MeetingFormOptions): Pr
   await roomCard.getByRole('button', { name: /'s meetings/ }).click()
   await roomCard.getByRole('button', { name: new RegExp(options.subject) }).click()
 
-  // Reads the real id/URL off the real Share button (MeetingDetailContent.tsx), rather than a
-  // navigated-to URL that no longer happens - see this file's beforeEach for why this lands on the
+  // Reads the real id/URL off the real Share button (MeetingDetailContent.tsx), since nothing
+  // navigates to the meeting's own URL - see this file's beforeEach for why this lands on the
   // clipboard-fallback branch deterministically.
   await page.getByRole('button', { name: 'Share meeting' }).click()
   const url = await page.evaluate(() => navigator.clipboard.readText())
@@ -265,8 +260,7 @@ test.describe('H. Meeting Details', () => {
     await expect(page.getByText(MEETING_DATE, { exact: true })).toBeVisible()
     await expect(page.getByText('10:00–11:00', { exact: true })).toBeVisible()
 
-    // Regression check: no full ISO date-time string (e.g. containing "T") appears anywhere
-    // *visible* on the page - the old two-full-date-times layout this replaced would fail this.
+    // No full ISO date-time string (e.g. containing "T") appears anywhere *visible* on the page.
     // Uses innerText() rather than toContainText's default textContent()-based matching: the
     // latter also picks up hidden nodes (e.g. Apollo's cache state embedded in a <script> tag),
     // which aren't a UI regression even though they do legitimately contain the raw ISO string.
@@ -323,7 +317,7 @@ test.describe('H. Meeting Details', () => {
 
     // "Back" must not appear - this page was reached via a real cold link (RequireAuth's redirect,
     // not an in-app navigation carrying fromInApp router state), so an unconditional navigate(-1)
-    // here would be exactly the unsafe-Back scenario this design fixed. See
+    // here could take the user out of the app. See
     // MeetingDetailsPage.tsx's own comment on the mechanism.
     await expect(page.getByRole('button', { name: 'Back' })).toHaveCount(0)
   })

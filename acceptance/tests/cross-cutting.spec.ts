@@ -65,16 +65,10 @@ test('M.92 - a first cold visit shows a full spinner; a same-session revisit sho
   // showSpinner's "meetingsLoading && !meetingsData" half is true, so the full-page CircularProgress
   // shows.
   //
-  // Deliberately NOT the day-of-creation redirect below: mootmaker-webapp#66 fixed
-  // Query.workspace's cache read to reconstruct `days` from the requested dates via the
-  // already-normalized `Day` entities, rather than trusting whatever `days` list a previous,
-  // differently-dated response happened to leave behind. One side effect is that createMeeting's
-  // own response (which returns the affected `day`, entity-normalized like any other) now warms
-  // that day's cache immediately - so the redirect straight after creating a meeting is no longer
-  // a genuinely cold visit to this specific day, it is a revisit to a day the mutation itself just
-  // populated. That is a real improvement (no more unnecessary spinner for data already in hand),
-  // but it means this use case's "genuinely cold, nothing cached yet" half needs a visit that
-  // precedes any write to the day it is checking - hence checking the plain sidebar-link visit
+  // Deliberately NOT the day-of-creation redirect below: createMeeting's response returns the
+  // affected `day`, which warms that day's cache, so the redirect straight after creating a
+  // meeting is not a cold visit. This use case's "genuinely cold, nothing cached yet" half needs a
+  // visit that precedes any write to the day it is checking - hence the plain sidebar-link visit
   // here, first.
   await page.getByRole('link', { name: 'Room Availability' }).click()
   await page.waitForURL(availabilityUrl)

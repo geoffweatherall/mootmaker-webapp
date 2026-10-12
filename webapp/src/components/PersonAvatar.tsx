@@ -38,10 +38,8 @@ export function PersonAvatar({ name, avatarUrl, size = 32 }: PersonAvatarProps) 
     // rendered" proves nothing in a test: only the image's naturalWidth does. See
     // person-avatar.spec.ts.
     //
-    // `src` is the API's URL untouched. It used to be a path this webapp resolved against its own
-    // origin, to a file this webapp bundled - two assumptions shared with another repository by
-    // convention, which is how avatars once shipped broken on every route deeper than one segment.
-    // An absolute URL cannot resolve against the document at all, so that failure is unreachable.
+    // `src` is the API's absolute URL, untouched. Never resolve it against this app's own origin:
+    // a relative path breaks on every route deeper than one segment.
     <Avatar
       aria-hidden="true"
       src={avatarUrl ?? undefined}

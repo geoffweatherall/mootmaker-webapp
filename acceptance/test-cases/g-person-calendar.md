@@ -2,7 +2,7 @@
 
 Use cases [mootmaker/use-cases.md § G](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#g-person-calendar).
 See [README.md](README.md) for the entry format and test-data conventions. This page shows one
-Monday–Friday work week at a time (not the six-week grid these cases originally described) — see
+Monday–Friday work week at a time — see
 `designs/archive/room-availability-and-person-calendar-redesign.md` and G.61/G.62's own Notes.
 
 ---
@@ -88,7 +88,7 @@ Monday–Friday work week at a time (not the six-week grid these cases originall
 
 **Notes:** None.
 
-**2026-09-19: redesigned along with the whole page.** `PersonCalendarPage` replaced its six-stacked-weeks grid (30 day cells) with a single scrollable week (5 day sections) - see `designs/archive/room-availability-and-person-calendar-redesign.md`. The "work days only" claim carries over unchanged; only the count (5, not 30) and the day-section markup (a plain `Box`, not an outlined `Paper`) changed.
+The calendar shows one working week: five day sections, each a plain `Box`.
 
 ---
 
@@ -120,8 +120,6 @@ Monday–Friday work week at a time (not the six-week grid these cases originall
 
 **Notes:** None.
 
-**2026-09-19: this case is now automatable - it previously named a real product gap.** `PersonCalendarPage.tsx` used to compute its 6-week window as a fixed `useMemo(() => startOfWorkWeek(dayjs()), [])`, with no control anywhere on the page to view any other week - a confirmed gap this catalog left on record rather than silently dropping. The redesign added `Previous week`/`Next week`/`This week` controls alongside the new one-week agenda, closing that gap as part of the same change. See `designs/archive/room-availability-and-person-calendar-redesign.md`.
-
 ---
 
 <a id="tc-g63"></a>
@@ -151,7 +149,7 @@ Monday–Friday work week at a time (not the six-week grid these cases originall
 
 **Notes:** None.
 
-**2026-09-19: redesigned along with the whole page.** Day sections are no longer an outlined `Paper` (`.MuiPaper-outlined`), and a meeting row is a `ButtonBase` (role `button`) rather than an `<a>`, since clicking one now opens a detail panel first - see G.65 and `designs/archive/room-availability-and-person-calendar-redesign.md`.
+Day sections are plain `Box` elements, and a meeting row is a `ButtonBase` (role `button`), because clicking one opens a detail panel (G.65).
 
 ---
 
@@ -223,9 +221,9 @@ not be a reachable real-world state for this product at all. Left unautomated pe
 
 **Notes:** None.
 
-**2026-09-19: redesigned along with the whole page.** Clicking a meeting row used to navigate straight to Meeting Details. The redesign inserted a detail panel first (organiser, attendees, room, time).
+Clicking a meeting row opens a detail panel (organiser, attendees, room, time), rendered by the shared `MeetingDetailContent`.
 
-**2026-09-20: the panel's own "View full details" link removed; Share added instead.** `/meetings/:id` is now a deep-link-only route - nothing in the app navigates there directly any more, and the panel's Share action (Web Share API, clipboard-copy fallback) is the only way to reach it from here. The panel itself was also brought into structural parity with the full page (same shared `MeetingDetailContent` component now renders both) - see `../../designs/meeting-detail-consolidation.md` in the hub repo.
+The panel's Share action (Web Share API, with a clipboard fallback) is the only in-app route to `/meetings/:id`, which is a deep link only - see `designs/archive/meeting-detail-consolidation.md` in the hub repo.
 
 ---
 

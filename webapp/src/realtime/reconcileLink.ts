@@ -20,9 +20,6 @@ import { OperationTypeNode } from 'graphql'
  * evictAndRefetch: eviction alone does not refill a multi-day query, which reads back complete
  * minus the evicted day (see the pinned test in daysInvalidated.test.ts), and evictAndRefetch
  * refetches exactly the queries the re-eviction changed (#164). apolloClient.ts wires it.
- *
- * Unwired for its first month - `reconcileAfterFetch` existed and was unit-tested, but nothing
- * called it (mootmaker-webapp#162).
  */
 export function reconcileLink(
   reconcile: (dates: string[], issuedAt: number) => void,

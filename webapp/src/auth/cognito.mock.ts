@@ -28,8 +28,7 @@ export interface MockUser {
 // confirmForgotPassword, matching a real account's password actually changing.
 //
 // NO_PERSON_USER has no linked Person (see fixtures.ts's `linkedPersonByEmail`) - mirroring the real
-// no-person fixture user (mootmaker-api#95), which webapp/tests/*.spec.ts and
-// README.md's "Organiser/attendee mutual exclusivity" section rely on to keep the
+// no-person fixture user (mootmaker-api#95), which webapp/tests/*.spec.ts rely on to keep the
 // organiser-defaulting effect from firing. DEMO_USER *does* have a linked Person - it's the
 // account calendar-menu.spec.ts's "once personId resolves" tests need, and whose credentials are
 // shown/pre-filled on the signed-out home page (see .env.mock's VITE_DEMO_USER_EMAIL/PASSWORD,
@@ -48,10 +47,8 @@ export const DEMO_USER = MOCK_USERS[1]
 export const ADMIN_USER = MOCK_USERS[2]
 
 // The verification code every mock sign-up/reset flow accepts - there's no real inbox to read a
-// code from, so this stands in for "the code Cognito emailed". The real API's own
-// ephemeral-environment tests instead read a genuinely emailed code (see
-// mootmaker/docs/reference/testing-strategy.md's "Reading Cognito's emails in tests") - this mock never needed
-// that at all, since it never talks to real Cognito in the first place.
+// code from, so this stands in for "the code Cognito emailed". The acceptance suite reads a
+// genuinely emailed code instead, through mootmaker-email-testing.
 export const MOCK_VERIFICATION_CODE = '111111'
 
 interface StoredSession {
@@ -109,8 +106,8 @@ export async function currentUserClass(): Promise<string | null> {
  *
  * Unlike the mocked GraphQL operations (src/testSupport/mocks/handlers.ts), this resolves near-
  * instantly with no gate of its own by default - a real getSession() call is genuinely
- * network-bound (mootmaker-webapp#111's "not signed in" flash is exactly that window), but nothing
- * here was, until layout-stability.spec.ts needed to hold it open deterministically. Gated through
+ * network-bound (mootmaker-webapp#111's "not signed in" flash is exactly that window), so
+ * layout-stability.spec.ts can hold this one open deterministically. Gated through
  * the same window.__mockControls convention as the MSW gates, via tests/support/mockControls.ts's
  * gateSessionQuery - checked here rather than in a GraphQL handler because this call never goes
  * through MSW at all.
@@ -144,9 +141,9 @@ export function signIn(email: string, password: string): Promise<void> {
 }
 
 export function signUp(): Promise<void> {
-  // Not needed by any test in webapp/tests/ today (see README.md's Tests section) - rejecting
-  // explicitly rather than silently pretending to succeed keeps that gap honest instead of
-  // masking it as working. Extend this (and MOCK_USERS) if a sign-up flow test is added later.
+  // Not needed by any test in webapp/tests/: sign-up is covered by the acceptance suite against
+  // real Cognito. Rejecting explicitly rather than silently pretending to succeed keeps that gap
+  // honest instead of masking it as working. Extend this (and MOCK_USERS) if a sign-up flow test is added later.
   return Promise.reject(new Error('Sign-up is not supported in this mocked test environment.'))
 }
 
@@ -155,8 +152,8 @@ export function confirmSignUp(): Promise<void> {
 }
 
 /** Starts a mock password reset. Always resolves regardless of whether `email` matches a known
- * account, mirroring Cognito's own *prevent user existence errors* setting (see README.md's
- * Authentication section) - the real behaviour this stands in for reveals nothing either. */
+ * account, mirroring Cognito's own *prevent user existence errors* setting - the real behaviour
+ * this stands in for reveals nothing either. */
 export function forgotPassword(): Promise<void> {
   return Promise.resolve()
 }

@@ -10,9 +10,7 @@ const PINNED_NOW = pinnedWeekday('Wednesday')
 
 // mootmaker/docs/reference/use-cases.md, section Q (Persons, admin only), cases 132-143. See
 // acceptance/test-cases/q-persons.md for the full per-case Given/When/Then/Steps/Assertions this
-// file implements one at a time. Supersedes section K (k-settings-people.md /
-// settings-people.spec.ts) now that People has moved out of Settings to its own top-level Persons
-// page - see the admin-rooms-and-people design doc. Every case except Q.132 (standard user) signs
+// file implements one at a time. Supersedes section K (k-settings-people.md). Every case except Q.132 (standard user) signs
 // in as the admin fixture user, since managing people is the subject (./support/accounts.ts). A standard user forcing renamePerson/setPersonAdmin/deletePerson directly
 // is covered once, comprehensively, by L.90 rather than repeated here.
 
@@ -313,9 +311,8 @@ test.describe('Q. Persons (admin only)', () => {
     await expect(dialog).toBeVisible()
   })
 
-  // The case that would have caught avatars shipping broken (mootmaker-webapp#131). Everything else
-  // in this suite stayed green throughout that bug, because nothing looked at an avatar at all -
-  // and "an avatar is rendered" would not have caught it either. MUI's Avatar swaps in the
+  // Proves avatars actually load (mootmaker-webapp#131). "An avatar is rendered" is not enough:
+  // MUI's Avatar swaps in the
   // person's initials when its image fails to load, so a broken avatar looks exactly like a
   // deliberate initials one. Only naturalWidth proves real image bytes arrived and decoded.
   test('Q.143 - a person with an avatar is shown with it, and a person without gets initials', async ({ page, api }) => {
@@ -344,8 +341,8 @@ test.describe('Q. Persons (admin only)', () => {
     await expect(personCard(page, without).locator('img')).toHaveCount(0)
     await expect(personCard(page, without).getByText('ZQ', { exact: true })).toBeVisible()
 
-    // And somewhere other than the Persons page, from a route several segments deep - the routes
-    // where the original bug showed, when an avatar was a path resolved against the document.
+    // And somewhere other than the Persons page, from a route several segments deep, where a
+    // relative avatar URL would break.
     await page.goto(`/persons/${personId}/calendar`)
     await page.getByRole('combobox', { name: 'Person' }).click()
     const optionImage = page.getByRole('option', { name: withAvatar, exact: true }).locator('img')

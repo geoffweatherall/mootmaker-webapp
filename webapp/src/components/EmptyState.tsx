@@ -16,10 +16,9 @@ interface EmptyStateProps {
 }
 
 // A small brand moment for the handful of "there's nothing here" spots (no meetings today, no
-// rooms yet, no people yet, nothing awaiting a response) that used to be a single line of muted
-// `Typography`, then bespoke full-colour SVG illustrations - now one shared icon-in-a-tinted-
-// circle pattern (matching PersonAvatar's own tonal-wash treatment), so every empty state reads
-// as part of the same family.
+// rooms yet, no people yet, nothing awaiting a response): one shared icon-in-a-tinted-circle
+// pattern (matching PersonAvatar's own tonal-wash treatment), so every empty state reads as part
+// of the same family.
 export function EmptyState({ message, icon: Icon = EmptyStateIcon, tone = 'neutral' }: EmptyStateProps) {
   const theme = useTheme()
   const hue = tone === 'success' ? theme.palette.success.main : theme.palette.primary.main

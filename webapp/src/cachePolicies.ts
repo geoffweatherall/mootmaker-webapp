@@ -35,12 +35,12 @@ export const typePolicies: TypePolicies = {
        * no `args` at all. (It could read `variables.dates` instead, but that silently couples the
        * cache to one variable name and breaks for any query that inlines its dates.) That's why the
        * args-aware reconstruction lives on `Query.workspace.read` instead, where `dates` actually
-       * is the field's own argument - see there for the fix to mootmaker-webapp#66 (a stale window
-       * of days rendering on scroll because this field alone never reflected the current `dates`).
+       * is the field's own argument. Left to this field alone, scrolling would render the previous
+       * window's days (mootmaker-webapp#66).
        *
        * `merge: false` just keeps *this* field's write-time behaviour simple - each response
        * replaces whatever list was here rather than attempting a positional array merge. What's
-       * stored here barely matters now: any query with a `dates` argument gets its `days` rebuilt
+       * stored here barely matters: any query with a `dates` argument gets its `days` rebuilt
        * fresh by the `read` policy above regardless of what was last written. The individual `Day`
        * entities persist independently either way, which is what actually matters.
        */
@@ -64,8 +64,8 @@ export const typePolicies: TypePolicies = {
        * `days` list the single slot above last had written into it (see `Workspace.days` below -
        * that field's own key is not args-aware, so left alone it just returns the previous
        * window's list regardless of what the current query asked for). `dates` is `workspace`'s
-       * own argument, which is why the fix lives here rather than as a `read` on `days` itself -
-       * see the note below for why that was tried first and abandoned.
+       * own argument, which is why this lives here rather than as a `read` on `days` itself -
+       * see `Workspace.days` below for why that cannot work.
        *
        * Constructing references by date rather than trusting the stored list is what makes
        * scrolling a date window cache-correct: overlapping days resolve straight from already-
@@ -100,8 +100,8 @@ export const typePolicies: TypePolicies = {
         },
         // Explicit shallow merge, so Apollo knows a write with a narrower selection set (e.g.
         // ReferenceData's rooms/people, versus PageLoad's fuller set including days/boundaries)
-        // is an intentional partial update rather than potential data loss - see
-        // mootmaker-webapp#67. Without this, every write after the first logs Apollo's own
+        // is an intentional partial update rather than potential data loss (mootmaker-webapp#67).
+        // Without this, every write after the first logs Apollo's own
         // "Cache data may be lost when replacing the workspace field of a Query object" warning.
         merge: (existing: object | undefined, incoming: object) => ({ ...existing, ...incoming }),
       },
@@ -115,11 +115,10 @@ export const typePolicies: TypePolicies = {
  * Apollo's default for a watched query's refetch is to overwrite: merge functions are called with no
  * `existing` value. For `Query.workspace` that is destructive, because one stored `workspace` object
  * is shared by every query that reads it - `DAYS` writes `days`, `REFERENCE_DATA` writes `rooms` and
- * `people`, `BOUNDARIES` writes `boundaries`. A refetch of `DAYS` (every live update triggers one)
- * replaced the whole object with `{ days }`, wiping the others, so every other workspace query on the
- * page went incomplete and back to the network, `cache-first` or not. Measured with a real
- * ApolloClient before this was set: refetching `DAYS` alone also refetched an unrelated rooms query
- * (mootmaker-webapp#164).
+ * `people`, `BOUNDARIES` writes `boundaries`. Without this, a refetch of `DAYS` (every live update
+ * triggers one) replaces the whole object with `{ days }`, wiping the others, so every other
+ * workspace query on the page goes incomplete and back to the network, `cache-first` or not:
+ * refetching `DAYS` alone also refetches an unrelated rooms query (mootmaker-webapp#164).
  *
  * Safe here because `Query.workspace`'s shallow spread is the only `merge` function that keeps
  * anything; `Workspace.days` is `merge: false` and other fields replace by default, so a refetched

@@ -8,7 +8,7 @@ import { RESPOND_TO_MEETING_ERROR_MESSAGES } from '../graphql/validationMessages
 
 /**
  * The signed-in caller's own response control - Going / Maybe / Not going, mirroring
- * `respondToMeeting`'s self-only mutation (see mootmaker-api README's `respondToMeeting` entry).
+ * `respondToMeeting`'s self-only mutation (see mootmaker-api's docs/api-reference.md).
  * No "No response" option: that is the unset default, not something to switch back to once
  * answered - matching the design prototype's control, which offers the same three.
  *

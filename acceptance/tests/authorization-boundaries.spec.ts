@@ -35,8 +35,6 @@ test('L.89 - standard user has no Rooms/Persons nav links and cannot reach eithe
   await signInAsStandardUser(page)
 
   // Same mechanism as P.124 + Q.132, checked together in one visit per this entry's own Notes.
-  // Rooms/Persons moved out of Settings to their own top-level pages (see the admin-rooms-and-
-  // people design doc) - the old in-Settings-section check this test used to do no longer applies.
   await expect(page.getByRole('link', { name: 'Rooms' })).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'Persons' })).toHaveCount(0)
 
@@ -259,11 +257,9 @@ test('L.91 - a standard user cannot rename another user\'s Person, even by forci
   }
 
   // (c) forcing a raw renamePerson mutation, as accountA, targeting accountB's Person id.
-  // renamePerson is the admin-invoked half of the old self-or-admin updatePerson (see
-  // RenamePersonHandler's own doc comment) - accountA's self-rename path is now the separate,
+  // renamePerson is admin-only (see RenamePersonHandler); accountA's own rename path is the
   // self-only updateMyName mutation, which takes no id at all and so has no way to even attempt
-  // targeting someone else. There's no longer an "isAdmin-OR-self, fails both ways" check to
-  // reason about: renamePerson is unconditionally Identity.requireAdmin, so this rejection is
+  // targeting someone else. renamePerson is unconditionally Identity.requireAdmin, so this rejection is
   // the exact same shape as L.90's above (a thrown Forbidden, surfaced as a top-level GraphQL
   // `errors` array, not a structured RenamePersonResult.errors entry) - confirmed, not assumed.
   const renamePersonResponse = await request.post(graphqlUrl, {

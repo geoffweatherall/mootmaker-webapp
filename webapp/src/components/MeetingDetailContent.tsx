@@ -115,8 +115,8 @@ export function MeetingDetailContent({
   // to any meeting that day, by anyone, and every return to the tab or reconnect
   // (useDaysInvalidated.ts) - and usually it is back moments later, when the refetch lands. It also
   // goes missing for good when the meeting MOVES to a day nobody is watching. Treating "missing" as
-  // "cancelled" is what flashed "This meeting was cancelled." on every edit (mootmaker-webapp#132)
-  // and showed it permanently after a move (#134).
+  // "cancelled" would flash "This meeting was cancelled." on every edit (mootmaker-webapp#132) and
+  // show it permanently after a move (#134).
   //
   // So ask the API about this meeting itself. A meeting comes back: writing it to the cache makes
   // the fragment complete again - with its new date if it moved. null comes back: it really is gone

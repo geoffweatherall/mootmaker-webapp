@@ -2,7 +2,7 @@
 
 Use cases [mootmaker/use-cases.md § O](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#o-edit-and-cancel-meetings).
 See [README.md](README.md) for the entry format and test-data conventions, and
-`../../designs/edit-and-cancel-meetings.md` in the hub repo for the full design behind this
+`designs/archive/edit-and-cancel-meetings.md` in the hub repo for the full design behind this
 feature. The two cross-client live-update cases this design also needed
 (a response/edit/cancellation made elsewhere reflected on an already-open sheet) live in
 [m-cross-cutting.md](m-cross-cutting.md) as M.112/M.113, alongside M.109-M.111's identical shape

@@ -12,9 +12,8 @@ import { gateMyPersonQuery, gateMyPersonQueryNow, gateSessionQuery } from './sup
  * the two rather than on the button, so React's onClick never runs. The button is left focused, so
  * it even looks like the click worked.
  *
- * That cost a 120-second acceptance timeout on "Add room" in release 0.0.17 (mootmaker-webapp#43),
- * where the trace showed the click action itself completing and the notice disappearing between
- * the snapshot before it and the snapshot after it.
+ * In a trace this shows as the click action completing and the notice disappearing between the
+ * snapshot before it and the snapshot after it (mootmaker-webapp#43).
  *
  * So this holds myPerson open and asserts the page below does not move when it resolves.
  */
@@ -95,10 +94,9 @@ test.describe('Home page layout while personId is still resolving', () => {
 })
 
 /**
- * mootmaker-webapp#111: the home page (and, while investigating, the nav sidebar) guessed
- * "signed out" - and, separately, "no meetings" - before those were actually known, rather than
- * showing a progress indicator for the window where they weren't. Three windows, each covering a
- * state this app now must not guess through: whether there's a session at all, whether there's any
+ * mootmaker-webapp#111: the home page and the nav sidebar must show a progress indicator, not
+ * guess "signed out" or "no meetings", until those are actually known. Three windows, each a state
+ * the app must not guess through: whether there's a session at all, whether there's any
  * agenda data yet, and whether a `cache-and-network` revalidation might still correct data already
  * on screen.
  */
@@ -109,7 +107,7 @@ test.describe('Home page and nav sidebar while the session itself is still unkno
     page,
   }) => {
     // Establish a real (mocked) signed-in session first, same as any other test - this reload is
-    // what stands in for "opening a fresh tab with an existing session", the case that used to flash.
+    // what stands in for "opening a fresh tab with an existing session".
     await page.goto('/')
     await page.getByLabel('Email').fill(DEMO_USER.email)
     await page.getByLabel('Password').fill(DEMO_USER.password)

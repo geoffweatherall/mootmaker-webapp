@@ -41,10 +41,8 @@ test.describe('Forgot password', () => {
     await expect(page.getByLabel('Verification code')).toBeVisible()
   })
 
-  // Previously impossible to automate without reading a real inbox (see README.md's Tests
-  // section, before this suite moved onto mocked auth) - now that the verification code is a
-  // fixed, known mock value (MOCK_VERIFICATION_CODE), the full success path is cheap and
-  // deterministic to cover too.
+  // The verification code is a fixed, known mock value (MOCK_VERIFICATION_CODE), so the full
+  // success path is cheap and deterministic to cover here.
   test('the correct code resets the password and signs the user in automatically', async ({
     page,
   }) => {

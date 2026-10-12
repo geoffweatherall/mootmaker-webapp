@@ -49,13 +49,13 @@ export async function currentUserName(): Promise<string | null> {
 
 /**
  * The signed-in user's class ("standard" or "admin"), read directly from the ID token - no API
- * call needed, the JWT already carries it (see the API README's "Standard/admin user classes"
- * section). Null for a signed-out user, or an account that predates this attribute; both cases
- * must be treated as "standard" (fail-safe, never fail-open to admin).
+ * call needed, the JWT already carries it (`custom:class`). Null for a signed-out user, or an
+ * account without the attribute; both cases must be treated as "standard" (fail-safe, never
+ * fail-open to admin).
  *
- * This is presentation-only, used to decide what the Settings page shows - every admin mutation
- * is still enforced server-side regardless of what this returns, so there's no security
- * requirement on this value being tamper-proof on the client.
+ * This is presentation-only, deciding which admin pages, menu entries and meeting actions to
+ * show - every admin mutation is enforced server-side regardless of what this returns, so there's
+ * no security requirement on this value being tamper-proof on the client.
  */
 export async function currentUserClass(): Promise<string | null> {
   const session = await currentSession()
@@ -72,10 +72,9 @@ export async function currentUserClass(): Promise<string | null> {
  * while its siblings succeed. currentSession() maps that to null, so a claim silently reads as
  * absent even though the user is signed in.
  *
- * That is not hypothetical. It made an admin's Settings sections vanish mid-interaction: a page
- * snapshot from a failed release showed the display name and email both resolved (those two reads
- * won) while the admin-only Rooms and People sections were gone (the class read lost), destroying
- * an open dialog and hanging the test for its full 120s timeout. See mootmaker-webapp#41.
+ * When the `custom:class` read is the one that loses, an admin is briefly treated as a standard
+ * user and admin-only UI disappears mid-interaction, taking any open dialog with it
+ * (mootmaker-webapp#41).
  *
  * One fetch, three reads off the same session object. No race to lose.
  */

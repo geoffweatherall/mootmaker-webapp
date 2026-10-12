@@ -11,7 +11,7 @@ import type {
 } from './types'
 
 // These maps translate the API's validation-rule error codes into the user-facing text shown in
-// ErrorBanner (see README.md's "Error handling" section). The main risk here is silent drift: a
+// ErrorBanner (see docs/architecture.md, "Rules every page follows"). The main risk here is silent drift: a
 // new error code added to a union type without a matching message entry would compile fine (the
 // object literal just gets a wider index signature) unless we also assert the key sets match
 // exactly - these tests exist to catch that drift regardless of what codes are added later, not

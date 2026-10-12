@@ -34,8 +34,7 @@ export function useDaysInvalidated(signedIn: boolean): void {
       onData: (payload) => {
         const dates = (payload as InvalidationPayload).data?.daysInvalidated?.dates
         if (!dates?.length) return
-        // Evicting is not enough on its own, which is the one place the design's stated mechanism
-        // does not survive contact with Apollo 4. `workspace.days` still holds a reference to the
+        // Evicting is not enough on its own in Apollo 4. `workspace.days` still holds a reference to the
         // evicted Day, Apollo filters dangling references out of a list on read, and the query
         // therefore reads back COMPLETE with one fewer day - not incomplete. So nothing refills it,
         // and the screen shows "no meetings" indefinitely rather than refetching. Measured, not

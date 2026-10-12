@@ -12,18 +12,14 @@ import { gql } from './support/gql'
 // from, so they sign in as the no-person user instead.
 //
 // Every test starts from a reset environment (./support/test.ts) and creates the rooms and people
-// it needs over the API, so the suggest-a-room cases (F.49, F.50, F.53) rank only their own rooms.
-// They used to rank against every room earlier tests had left behind, which made this file depend
-// on test order and impossible to retry (mootmaker-webapp#30, #138).
+// it needs over the API, so the suggest-a-room cases (F.49, F.50, F.53) rank only their own rooms
+// (mootmaker-webapp#138).
 
-// Real Date.now()/Math.random(), deliberately not derived from any pinned clock - see each test's
-// own reasoning for why it needs a fresh value every run even against an already-deployed,
-// repeatedly-iterated-against environment.
-// The Room field's combobox is now an Autocomplete <input> (see AddMeetingPage.tsx), whose
+// The Room field's combobox is an Autocomplete <input> (see AddMeetingPage.tsx), whose
 // displayed text lives in its `value` attribute, not textContent - so matching a suggested room's
 // name needs toHaveValue(regex), not toContainText (which checks textContent, always empty for an
-// <input>, and would silently never match here). The regex form does the same "contains" check
-// toContainText used to, since the field's full value also has " (capacity N)" appended.
+// <input>, and would silently never match here). The regex is a "contains" check, since the
+// field's full value also has " (capacity N)" appended.
 function containsValue(text: string): RegExp {
   return new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
 }
@@ -139,8 +135,8 @@ async function directApiContext(page: Page, api: SetupApi, roomName: string): Pr
   await api.createRoom(roomName, 4)
   const token = await getIdToken(page)
 
-  // workspace { me }, not the deleted Query.myPerson: the caller's own Person is resolved from the
-  // custom:personId claim on the token, which is what removed the myPerson -> meetings waterfall.
+  // workspace { me }: the caller's own Person is resolved from the custom:personId claim on the
+  // token.
   const personResult = await graphqlRequest<{ workspace: { me: { id: string } | null } }>(
     page, token, gql`query { workspace { me { id } } }`, {})
   const organiserId = personResult.data?.workspace.me?.id
@@ -258,8 +254,7 @@ test('start/end time pickers only ever offer 15-minute-boundary minutes', async 
   }
 })
 
-// F.42 - now a real, fixed rule (see CreateMeetingHandler.java's EndBeforeStart check, added
-// alongside this catalog): reversed or zero-length start/end pairs on the same calendar date are
+// F.42 (see CreateMeetingHandler.java's EndBeforeStart check): reversed or zero-length start/end pairs on the same calendar date are
 // rejected, distinctly from SpansMultipleDays (genuinely different calendar dates - see F.43).
 test('an end time before the start time is rejected with EndBeforeStart', async ({ page, api }) => {
   const runId = uniqueId()
@@ -517,7 +512,7 @@ test('an overlapping time slot in the same room is rejected with TimeRangeUnavai
 
 test('multiple simultaneous validation failures are listed together in one banner', async ({ page }) => {
   // The personless account so Organiser starts blank without extra setup (see F.51's catalog
-  // Notes). The e2e user used to serve here, back when it had no Person by accident.
+  // Notes).
   await signInAsNoPersonUser(page)
   await goToAddMeeting(page)
 
@@ -537,18 +532,10 @@ test('suggest a room with none qualifying shows the inline "no room available" m
   api,
 }) => {
   const runId = uniqueId()
-  // suggestRoom scans every room in this shared environment (see SuggestRoomHandler.java), so
-  // "no room qualifies" can't be proven with just one deliberately-busy room the way a dedicated
-  // environment could - some unrelated room from another concurrently-running section could
-  // easily be free at whatever time this test picks. Pushing the required capacity comfortably
-  // above any plausible fixture room's capacity (every capacity used elsewhere in this catalog
-  // tops out in the single digits) makes the "nothing qualifies" outcome robust regardless of
-  // what else exists in the environment, without needing an actually-empty room list either.
+  // suggestRoom considers every room in the environment (see SuggestRoomHandler.java). Pushing
+  // the required capacity above any room that exists makes "nothing qualifies" certain.
   const attendeeNames = Array.from({ length: 8 }, (_, i) => `F52 Attendee ${i} ${runId}`)
   await signInAsStandardUser(page)
-  // A deliberately unusual date/time, distinct from the round examples used elsewhere in this
-  // catalog (e.g. 10:00 on 2026-08-19/24), to further reduce the odds of colliding with some
-  // other section's own fixture meeting.
   await page.clock.setFixedTime(pinnedFutureWeekday('Tuesday', { hour: 5 }))
   for (const name of attendeeNames) {
     await api.createPerson(name)
@@ -571,26 +558,8 @@ test('suggest a room fills the best-fit room on first press, then cycles through
   api,
 }) => {
   const runId = uniqueId()
-  // 2026-08-27 root cause (previously "under investigation" in f-add-meeting.md's F.53 Notes):
-  // this test used to leave Attendees empty (organiser-alone, requiredCapacity 1) on the theory
-  // that "distinctive" capacities (7/11/13) would dodge collisions with other fixture rooms. That
-  // reasoning was wrong for requiredCapacity 1 specifically: SuggestRoomHandler ranks EVERY room
-  // in this shared, never-torn-down-mid-suite environment that simply has capacity >= required
-  // and no overlapping meeting - and since nothing ever books this test's own far-future
-  // date/time, every room ever created earlier in this same file (e.g. F.49's own capacity-2
-  // room, still sitting unbooked at any future date) stays permanently "free" and therefore
-  // qualifies too. A smaller pre-existing room (capacity 2) always outranks a "distinctive" but
-  // larger capacity-7 fixture on the smallest-surplus rule, no matter how distinctive its number
-  // is. Confirmed via error-context.md from a live run: the Room field filled with
-  // "Acceptance Test Room F49 ... (capacity 2)" (created by the F.49 test earlier in this same
-  // file) instead of this test's own capacity-7 room.
-  //
-  // Fix: add enough attendees to push requiredCapacity comfortably above every capacity any
-  // earlier test in this file creates (observed max 4, see F.49/F.50 above) while staying at or
-  // below this test's own smallest fixture room - so only this test's three rooms can possibly
-  // qualify, regardless of what else has accumulated in the environment by this point. Still
-  // ranked smallest-surplus-first (see SuggestRoomHandler.java): with requiredCapacity 5, capacity
-  // 5 is the unambiguous best fit, then 7, then 9.
+  // Organiser plus four attendees makes requiredCapacity 5. Ranked smallest-surplus-first (see
+  // SuggestRoomHandler.java), capacity 5 is the unambiguous best fit, then 7, then 9.
   const room5 = `Suggest Room 5 ${runId}`
   const room7 = `Suggest Room 7 ${runId}`
   const room9 = `Suggest Room 9 ${runId}`
@@ -629,30 +598,13 @@ test('changing the attendee count invalidates the cached suggestion, re-ranking 
   api,
 }) => {
   const runId = uniqueId()
-  // 2026-08-27 root cause (previously "under investigation" in f-add-meeting.md's F.54 Notes):
-  // same root cause as F.53 just above - this test used to start from organiser-alone
-  // (requiredCapacity 1), which any pre-existing free room in this shared, never-torn-down-mid-
-  // suite environment (e.g. F.49's capacity-2 room, or F.53's own capacity 5/7/9 rooms, which run
-  // immediately before this test in file order and are themselves never booked at this test's
-  // date/time) can win purely on being smaller - regardless of how large this test's own fixture
-  // rooms are. Confirmed via error-context.md from a live run: the Room field filled with
-  // "Acceptance Test Room F49 ... (capacity 2)" instead of this test's own small room.
-  //
-  // Fix: use the same technique as F.53 - keep requiredCapacity comfortably clear of both the
-  // observed cross-test baseline (max capacity 4, see F.49/F.50 above) AND F.53's own leftover
-  // rooms (max capacity 9, see the test just above - deliberately staying clear of exactly 9 too,
-  // not just "above" it, so a required-capacity level that happens to equal F.53's leftover room's
-  // capacity can never tie with this test's own small room and fall back on name-ordering luck).
   const capacitySmall = 11
   const capacityLarge = 13
   const roomSmall = `Cache Room Small ${runId}`
   const roomLarge = `Cache Room Large ${runId}`
-  // First press needs requiredCapacity strictly above F.53's leftover max (9) and above the
-  // cross-test baseline (4), while staying at or below capacitySmall (11) - so requiredCapacity
-  // 10 (organiser + 9 attendees). Second press needs requiredCapacity strictly above capacitySmall
-  // (11) while staying at or below capacityLarge (13) - so requiredCapacity 12
-  // (organiser + 11 attendees), reached by adding 2 more attendees to the same pool rather than a
-  // disjoint set.
+  // First press: requiredCapacity 10 (organiser + 9 attendees), so both rooms qualify and the
+  // small one is the best fit. Second press: requiredCapacity 12 (organiser + 11 attendees),
+  // above capacitySmall, reached by adding 2 more attendees to the same pool.
   const attendeeNames = Array.from({ length: 11 }, (_, i) => `F54 Attendee ${i} ${runId}`)
   const firstPressAttendees = attendeeNames.slice(0, 9)
   await signInAsStandardUser(page)

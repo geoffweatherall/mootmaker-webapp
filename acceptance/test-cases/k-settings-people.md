@@ -3,8 +3,7 @@
 **Superseded by [Q. Persons](q-persons.md).** People moved out of Settings to its own top-level
 `/persons` page — see
 [the admin-rooms-and-people design doc](https://github.com/geoffweatherall/mootmaker/blob/main/designs/archive/admin-rooms-and-people.md).
-Kept as a file (rather than deleted) so history and inbound links stay resolvable; its content no
-longer describes the current UI and should not be used to write new tests.
+Kept so the retired case numbers still resolve to their replacements:
 
 | Old case | Superseded by |
 |---|---|

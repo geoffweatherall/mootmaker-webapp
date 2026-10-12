@@ -1,7 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
 
-// Same shape as ../e2e/playwright.config.ts and the same reasoning: real browser, real deployed
-// webapp + API + Cognito, no mocking, no hardcoded baseURL. See run.sh.
+// Real browser, real deployed webapp + API + Cognito, no mocking, no hardcoded baseURL. See run.sh.
 if (!process.env.WEBAPP_URL) {
   throw new Error(
     'WEBAPP_URL is not set - this suite runs against a real deployed webapp, not a local dev ' +
@@ -9,15 +8,11 @@ if (!process.env.WEBAPP_URL) {
   )
 }
 
-// This suite now runs in two genuinely different contexts (mootmaker-webapp#19): a developer's
-// own machine (disk usage doesn't matter, and a human reviewing a run wants to see exactly what a
-// *passing* test did too, not just failures) and mootmaker-release's release pipeline
-// (mootmaker/designs/archive/ci-cd-pipeline.md Decision 7 - unattended, once per release attempt, in
-// GitHub Actions, which sets CI=true automatically - no manual wiring needed here). Full capture
-// on a local machine has produced ~800MB for a run; the same thing unconditionally in CI is a
-// different cost story even on a free-tier runner. Branching here keeps local behaviour completely
-// unchanged and gives CI a deliberately lighter capture level instead of turning the suite down
-// globally.
+// This suite runs in two different contexts: a developer's own machine (disk usage doesn't matter,
+// and a human reviewing a run wants to see exactly what a *passing* test did too, not just
+// failures) and mootmaker-release's release pipeline (unattended, in GitHub Actions, which sets
+// CI=true automatically). Full capture locally can produce ~800MB for a run, so CI gets a lighter
+// capture level.
 const isCI = !!process.env.CI
 
 // Everything this suite writes at run time - the HTML report (local only), the JSON summary, and
@@ -26,24 +21,14 @@ const isCI = !!process.env.CI
 // stays in both contexts, for a live/log view while a run is in progress.
 export default defineConfig({
   testDir: './tests',
-  // Not fullyParallel, same reasoning as e2e/playwright.config.ts - this layer is meant to run
-  // deliberately against real infrastructure, not hammered concurrently. Revisit once this suite
-  // has enough specs that serial execution is the actual bottleneck.
+  // Not fullyParallel: this layer runs deliberately against real infrastructure, not hammered
+  // concurrently. Revisit if serial execution becomes the bottleneck.
   fullyParallel: false,
   workers: 1,
   // One retry in CI, none locally: in an unattended release nobody is watching to re-run the way
-  // a human would, and most of this suite IS independent - forgot-password.spec.ts, for instance,
-  // makes a fresh Cognito account per attempt and waits on a real SES->SNS->SQS email, which is
-  // exactly the kind of genuine transient a retry should absorb.
-  //
-  // The exception is add-meeting.spec.ts, which opts out at file scope. See the long comment
-  // there: that file's tests reason about what earlier tests have accumulated in this shared,
-  // never-torn-down-mid-suite environment, and a retry re-runs them against an environment that
-  // now also contains the failed attempt's own fixtures. Retrying those cannot help and provably
-  // makes things worse (mootmaker-webapp#30).
-  //
-  // Briefly set to 0 globally on 2026-09-04 as the fix for #30. That was too blunt: the very next
-  // release failed on the forgot-password email test, which a retry would rightly have absorbed.
+  // a human would, and every test resets the environment first, so a retry is safe.
+  // forgot-password.spec.ts, for instance, makes a fresh Cognito account per attempt and waits on a
+  // real SES->SNS->SQS email, which is exactly the kind of genuine transient a retry should absorb.
   retries: isCI ? 1 : 0,
   reporter: [
     ['list'],
@@ -57,8 +42,7 @@ export default defineConfig({
     // AI/machine-readable in both contexts: the same results as structured JSON (pass/fail,
     // timing, error messages, attachment *paths* - not embedded content, so this stays small
     // regardless of the trace/screenshot level below). No extra dependency, Playwright's own
-    // built-in reporter. This is what a CI shipping step forwards to CloudWatch per
-    // ci-cd-pipeline.md Decision 11.
+    // built-in reporter.
     ['json', { outputFile: 'test-output/results.json' }],
   ],
   // Where traces/screenshots/videos actually get written (the HTML/JSON reporters above just

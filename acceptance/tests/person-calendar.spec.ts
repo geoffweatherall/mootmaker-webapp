@@ -15,8 +15,6 @@ import { expect, test } from './support/test'
 // environment always has the demo and fixture users' Persons, even straight after a reset, so a
 // genuinely empty People table isn't a reachable state here.
 
-// Precondition helper - no data-seeding bypass for rooms/people, so every test creates its own via
-// the real Rooms/Persons UI (see acceptance/README.md's "Known gaps"), uniquely named per run.
 // Fills one of AddMeetingPage's MUI X time-picker fields (role="group", e.g. "Start time") by
 // clicking its "Hours" section then typing all four digits in one go - the sectioned field
 // auto-advances between segments as each fills up, e.g. "0900" types out to 09:00.
@@ -110,9 +108,8 @@ test("G.60 - switching the Person selector to someone else's calendar works for 
   await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible()
 
   // Standard-user half: the standard user (no admin rights) can do the exact same switch - see
-  // g-person-calendar.md's G.60 Notes: ListMeetingsHandler/ListPeopleHandler only require an
-  // authenticated identity, with no self-or-admin restriction, confirmed against source. This test
-  // documents that actual, current behaviour rather than deciding whether it should be restricted.
+  // g-person-calendar.md's G.60 Notes: reading people and meetings (WorkspaceHandler) only
+  // requires an authenticated identity, with no self-or-admin restriction.
   await signInAsStandardUser(page)
   await goToOwnCalendar(page)
 
@@ -146,14 +143,10 @@ test('G.61 - the weekly agenda shows exactly Monday-Friday, five day sections', 
 })
 
 test('G.62 - Previous/Next week and This week navigate the visible one-week window', async ({ page }) => {
-  // mootmaker-webapp#58: this test's own reasoning for staying a hardcoded literal ("books
-  // nothing, so the retention boundary never applies") turned out to be wrong - "Previous week" is
-  // disabled once the window it would navigate to falls entirely before the retention boundary,
-  // regardless of whether anything gets booked there, and that boundary advances every Monday the
-  // same as it does for every other pinned date in this suite. Caught exactly as #58 predicted,
-  // one calendar week after every OTHER G-series test had already been migrated off literals -
-  // this one was overlooked. Now derived the same way as its siblings (see support/pinnedDates.ts),
-  // with the three expected ranges computed from the same anchor rather than precomputed by hand.
+  // Derived, not a literal, even though this test books nothing: "Previous week" is disabled once
+  // the window it would navigate to falls entirely before the retention boundary, and that
+  // boundary advances every Monday (mootmaker-webapp#58, support/pinnedDates.ts). The three
+  // expected ranges are computed from the same anchor.
   const pinnedNow = pinnedWeekday('Wednesday')
   await page.clock.setFixedTime(pinnedNow)
   await signInAsStandardUser(page)
@@ -276,10 +269,8 @@ test('G.65 - clicking a meeting row on the calendar opens its detail panel, and 
   await page.getByText(subject, { exact: false }).click()
 
   // Clicking a meeting row opens the bottom-sheet/side-panel detail view in place, not a
-  // navigation - see designs/meeting-detail-consolidation.md. The panel no longer has its own
-  // "View full details" link through to the full page (#73/this design's consolidation) - Share is
-  // now the only path from the panel to Meeting Details, and it's what a real user would actually
-  // use to reach it too.
+  // navigation. Share is the only path from the panel to Meeting Details, and it's what a real
+  // user would use to reach it too.
   await expect(page.getByRole('heading', { name: subject, level: 2 })).toBeVisible()
   await page.getByRole('button', { name: 'Share meeting' }).click()
   const meetingUrl = await page.evaluate(() => navigator.clipboard.readText())

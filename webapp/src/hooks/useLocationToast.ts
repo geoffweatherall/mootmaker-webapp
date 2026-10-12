@@ -22,12 +22,10 @@ export function useLocationToast() {
       // Clear the TOAST from the navigation state so it doesn't reappear on refresh/back, and so
       // this effect doesn't re-fire for the same message on the next unrelated render.
       //
-      // Only the toast. This used to pass `state: null`, which destroyed every other key a page
-      // had put there - and since this hook lives in Layout, which stays mounted across route
-      // changes, it ran almost immediately after any navigation carrying a toast. Anything else
-      // travelling alongside the toast was silently wiped before the destination page could read
-      // it. Nothing depended on that until RoomAvailabilityPage started receiving a just-created
-      // meeting this way; it would have been a very confusing first bug to meet.
+      // Only the toast, never `state: null`: this hook lives in Layout, which stays mounted across
+      // route changes, so it runs almost immediately after any navigation carrying a toast.
+      // Clearing the whole state would wipe anything else travelling alongside the toast before
+      // the destination page could read it.
       const { toast: _toast, ...rest } = state
       const remaining = Object.keys(rest).length > 0 ? rest : null
       navigate(location.pathname, { replace: true, state: remaining })

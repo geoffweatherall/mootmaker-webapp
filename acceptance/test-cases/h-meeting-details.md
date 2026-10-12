@@ -3,13 +3,13 @@
 Use cases [mootmaker/use-cases.md § H](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#h-meeting-details).
 See [README.md](README.md) for the entry format and test-data conventions.
 
-**2026-09-20: `/meetings/:id` is now a deep-link-only route.** Nothing in the app navigates there
-any more - every meeting row opens the shared bottom-sheet/side-panel in place instead (see
+**`/meetings/:id` is a deep-link-only route.** Nothing in the app navigates there - every meeting row
+opens the shared bottom-sheet/side-panel in place instead (see
 [g-person-calendar.md#tc-g65](g-person-calendar.md#tc-g65)), and that panel's Share action is the
-only way to reach this page from within the app. Every case below now reaches a meeting's id via
+only way to reach this page from within the app. Every case below reaches a meeting's id via
 Share (`navigator.share` forced onto its clipboard-fallback branch deterministically, since a real
 OS share sheet can't be driven by Playwright) rather than a navigated-to URL. See
-`../../designs/meeting-detail-consolidation.md` in the hub repo.
+`designs/archive/meeting-detail-consolidation.md` in the hub repo.
 
 ---
 
@@ -32,7 +32,7 @@ OS share sheet can't be driven by Playwright) rather than a navigated-to URL. Se
 
 **Assertions:**
 - Subject heading matches.
-- Room name visible (no capacity shown any more - `MeetingDetailContent` never showed it, and the full page now renders the same shared component - see 2026-09-20 update below).
+- Room name visible (no capacity: the page renders the shared `MeetingDetailContent`, which does not show it).
 - "E2E Standard" is shown in the row directly below the "Organiser" caption.
 - The attendee's name is visible.
 - Date/Time: see H.71 for the exact format assertions.
@@ -41,9 +41,10 @@ OS share sheet can't be driven by Playwright) rather than a navigated-to URL. Se
 
 **Notes:** None.
 
-**2026-09-20: room capacity no longer shown; organiser/attendee assertions no longer scoped by a "Room"/"Organiser"/"Attendees" DetailRow label.** The full page renders the same shared `MeetingDetailContent` the bottom-sheet/side-panel already used, which never showed capacity.
-
-**2026-09-21: organiser row restyled to match the attendee rows (mootmaker-webapp#73).** The organiser's name is now plain text, identical in style to each attendee row, under its own "Organiser" caption (matching the "Attendees · N" caption above the attendee list) - no more bold name with an inline "· Organiser" suffix. If the organiser is the signed-in caller, their row shows "You" the same way their own attendee row would - but never an `AttendeeStatusBadge`, since the organiser's status is an implicit, never-stored "Going" (see `designs/attendee-response-status.md`) with no value to show a badge for.
+The organiser's name is plain text, styled like each attendee row, under its own "Organiser" caption
+(matching the "Attendees · N" caption above the attendee list). If the organiser is the signed-in caller,
+their row shows "You" - but never an `AttendeeStatusBadge`, since the organiser has no stored status (see
+`designs/archive/attendee-response-status.md`).
 
 ---
 
@@ -129,31 +130,21 @@ OS share sheet can't be driven by Playwright) rather than a navigated-to URL. Se
 
 **Notes:** `formatLocalDate` is a **raw string slice**, not a locale-aware formatter — this is easy to over-assert (expecting a "nice" date format) if the test author doesn't check the actual implementation first, which is exactly what this note is flagging.
 
-**2026-09-20: the date/time values are no longer inside labelled "Date"/"Time" rows.** `MeetingDetailContent` (shared with the bottom-sheet/side-panel) renders them as plain, unlabelled lines - located by their own shape now, not by a preceding label.
+The date and time are plain, unlabelled lines in `MeetingDetailContent`, located by their own shape, not
+by a label.
 
 ---
 
 <a id="tc-h72"></a>
-### H.72 — Removed: "Back" returning to the previous page is no longer a reachable scenario
+### H.72 — Not applicable: "Back" to the previous page
 
-**Status:** ❌ Removed 2026-09-20, not superseded 1:1 — see `../../designs/meeting-detail-consolidation.md` in the hub repo.
+**Status:** ➖ Not applicable — see `designs/archive/meeting-detail-consolidation.md` in the hub repo.
 
-This case originally covered `MeetingDetailsPage`'s "Back" button returning to whichever page (Room
-Availability, Home) an in-app navigation had come from. Both of those entry points now open the
-shared bottom-sheet/side-panel in place instead of navigating to `/meetings/:id` at all - there is
-no longer any in-app-originated navigation into this route for "Back" to return from, so the
-scenario this case tested no longer occurs.
-
-"Back"'s actual safety property is now the opposite concern: it must **never** appear for a cold
-link (see H.74 below), since an unconditional `navigate(-1)` there could leave the app entirely,
-into whatever a tab's unrelated prior history happened to be. That's covered by H.74 (real,
-end-to-end, this suite) and by a mocked-integration test in `webapp/tests/`
-(`meeting-detail-share-and-back.spec.ts`, covering a tab with unrelated prior history, which isn't
-practical to simulate against a real deployed environment).
-
-If a future change reintroduces an in-app link into `/meetings/:id` (see `MeetingDetailsPage.tsx`'s
-own comment on the `fromInApp` router-state mechanism that would gate it), a case like the original
-H.72 would need to return.
+Room Availability and Home open meetings in the shared bottom-sheet/side-panel rather than navigating to
+`/meetings/:id`, so there is no in-app navigation into this route for "Back" to return from. Back's real
+safety property is the opposite: it must **never** appear for a cold link, since `navigate(-1)` there
+could leave the app. That is covered by H.74 and by a mocked integration test in `webapp/tests/`
+(`meeting-detail-share-and-back.spec.ts`).
 
 ---
 
@@ -187,7 +178,7 @@ H.72 would need to return.
 <a id="tc-h74"></a>
 ### H.74 — A signed-out visitor following a real shared link goes through a real sign-in and lands on the correct meeting
 
-**Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts), new 2026-09-20 — see `../../designs/meeting-detail-consolidation.md` in the hub repo.
+**Status:** ✅ Automated — [`tests/meeting-details.spec.ts`](../tests/meeting-details.spec.ts)
 
 **Preconditions:** Signed in as the standard user (to create the meeting and its real Share link), then signed out.
 
@@ -218,7 +209,7 @@ a mocked test cannot stand in for. See H.72's removal note above for the full pi
 ### H.108 — Attendee status badges, "You", and a working self-response control
 
 **Use case:** [use-cases.md#uc-108](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md#uc-108) — "Every non-organiser attendee shows their own Going/Not going/Maybe/No response status; the signed-in caller's own row shows 'You' instead, next to a self-only three-way control that sets their response and persists across a close/reopen. The organiser has no status control."
-**Status:** ✅ Automated — [`tests/attendee-response-status.spec.ts`](../tests/attendee-response-status.spec.ts), new 2026-09-21 — see `../../designs/attendee-response-status.md` in the hub repo.
+**Status:** ✅ Automated — [`tests/attendee-response-status.spec.ts`](../tests/attendee-response-status.spec.ts)
 **Android:** see the `android:` link on its use case, above
 
 **Preconditions:** Same setup as D.107 - a meeting with the standard user as an attendee, created via the API.

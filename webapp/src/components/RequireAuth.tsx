@@ -13,7 +13,7 @@ export function RequireAuth() {
   // Whether there's even a session to check hasn't resolved yet - not the same as "confirmed
   // signed out", which is what would otherwise send an already-signed-in user briefly through the
   // sign-in redirect below. A progress indicator, not a blank page, per the "centred
-  // CircularProgress on first load" convention (README.md's "Progress indicators").
+  // CircularProgress on first load" rule (docs/architecture.md, "Rules every page follows").
   if (initialising) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>

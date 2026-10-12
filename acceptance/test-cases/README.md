@@ -2,21 +2,10 @@
 
 A detailed, per-use-case design for every test in the `acceptance/` suite — one entry per case in
 [mootmaker/docs/reference/use-cases.md](https://github.com/geoffweatherall/mootmaker/blob/main/docs/reference/use-cases.md),
-written to be reviewed by a human before any test code exists, and precise enough for Claude to
-generate that code from later. This catalog is the *design*; [`../tests/`](../tests/) is the
-*implementation* — every use case now has a spec (see each entry's **Status**),
-except G.64, confirmed infeasible against this project's standard environments (see its own
-Notes).
-
-F.53, F.54 and F.57 were flagged here as intermittently failing and under investigation. They are
-**fixed** (2026-09-05). They were not three problems, and not test noise: they were three of seven
-separate product defects that happened to share one symptom — a thing created through the UI not
-appearing afterwards. DynamoDB `Scan` defaulting to eventually consistent reads, the same through a
-GSI where a consistent read is not permitted at all, an Apollo cache race that survived both of
-those, and a layout shift that swallowed the click that would have opened the create dialog. Each
-now has a deterministic regression test. See
-[the design's "What the gate exposed"](https://github.com/geoffweatherall/mootmaker/blob/main/designs/archive/ci-cd-pipeline.md)
-for the full list and how each was diagnosed.
+written to be reviewed by a human before any test code exists, and precise enough to generate
+that code from. This catalog is the *design*; [`../tests/`](../tests/) is the
+*implementation*. Each entry's **Status** says whether it is automated; G.64 is not, being
+infeasible against this project's standard environments (see its own Notes).
 
 **Scope**: full coverage — every use case gets a complete real-browser test case
 here, including ones that are also (or better) provable at the mocked `webapp/tests/` integration
@@ -129,61 +118,3 @@ account to sign in as". In short:
 Every test starts from a reset environment (`tests/support/test.ts`): no rooms, no meetings, and the
 demo and fixture users, repaired to exactly the state above. So no case depends on another case's
 leftovers, on demo-data, or on run order.
-
-## Resolved since this catalog was first written
-
-- **2026-08-22: the 5-vs-15-minute boundary inconsistency this catalog originally flagged for
-  F.40/F.41 is fixed, system-wide.** What was previously two genuinely different things that
-  happened to both say "5 minutes" — a stale *default-value* description (already 15 minutes in
-  the shipped default, per the note that used to live here) and the *validation rule* itself
-  (`StartMissaligned`/`EndMissaligned`, still genuinely 5 minutes at the time) — are now both
-  consistently **15 minutes**, end to end: the server-side rule
-  (`CreateMeetingHandler.parseOnFifteenMinuteBoundary`), the time pickers' `timeSteps`
-  (`AddMeetingPage.tsx`'s `MEETING_TIME_STEPS`), the mocked-layer validation
-  (`testSupport/mocks/handlers.ts`), and every doc/error-message string across `mootmaker-api`,
-  this repo, and `mootmaker/docs/reference/use-cases.md`. See [f-add-meeting.md](f-add-meeting.md)'s F.40/F.41
-  entries, now rewritten to describe the fixed behaviour rather than the drift.
-
-## Known doc/code drift found while writing this catalog
-
-One inconsistency remains from when this catalog was first written, cross-checking `use-cases.md`
-against the actual webapp source — flagged here rather than silently "corrected" in place, since
-fixing the wording is a decision for whoever owns those docs, not this catalog:
-
-- ~~The demo user's linked-Person status is inconsistently described in code comments.~~ Moot
-  since mootmaker-webapp#138: no test relies on the demo user's Person any more.
-
-## Known implementation gaps found while writing this catalog
-
-Three cases in `use-cases.md` describe behaviour that doesn't appear to exist yet, confirmed by
-reading the actual source rather than just the test failing to find a selector:
-
-- **Nothing validates that a meeting's end time is after its start time.** Neither
-  `AddMeetingPage.tsx` (no client-side comparison) nor `CreateMeetingHandler.java` /
-  `MeetingError.java` (no `EndBeforeStart`-style rule, and no comparison between the parsed
-  `startTime`/`endTime` anywhere in the handler) enforce this. `RoomAvailability.hasOverlappingMeeting`'s
-  check (`startTime.isBefore(existingEnd) && endTime.isAfter(existingStart)`) doesn't independently
-  guard against a reversed or zero-length range either — against an otherwise-free room, submitting
-  `endTime <= startTime` appears to succeed and persist a nonsensical meeting. [F.42 in
-  f-add-meeting.md](f-add-meeting.md#tc-f42) is written to match `use-cases.md` case 42's evident
-  intent (rejection) and is expected to **fail** against current behaviour until this is fixed —
-  that failure is the point, not a flaw in the test. Recommend filing this as a real
-  `mootmaker-api` bug (a new `EndBeforeStart`/similar `MeetingError`) rather than adjusting the
-  test to match the gap. See also F.43's Notes: because the webapp always combines both times
-  against one shared `date` value, F.43's "spans midnight" scenario may collapse into this exact
-  same request shape rather than being independently reachable through this form.
-- **`RoomAvailabilityPage`'s "Add Meeting" button doesn't actually pass its currently-viewed date
-  through.** `use-cases.md` case 37 expects the Add Meeting form to default to whichever date is
-  currently being viewed on Room Availability; the button is a plain `<Link to="/meetings/add">`
-  with no state/query param carrying the date, and `AddMeetingPage`'s `defaultDate()` always
-  returns `dayjs().startOf('day')` (today), regardless of where the link was clicked from. See
-  [E.37 in e-room-availability.md](e-room-availability.md#tc-e37).
-- **`PersonCalendarPage` has no week/month navigation at all.** `use-cases.md` case 62 expects
-  navigating between weeks/months; the page's visible 6-week window is computed once from
-  `dayjs()` with an empty `useMemo` dependency array, and the only interactive control on the page
-  is the Person selector — no prev/next buttons, no date picker. See [G.62 in
-  g-person-calendar.md](g-person-calendar.md#tc-g62).
-
-None of these were fixed in place — each is either a small missing feature or a genuinely missing
-validation rule, and the right next step (build it vs. correct `use-cases.md`'s wording) is a
-product decision, not something to resolve silently while writing a test-design catalog.

@@ -183,4 +183,4 @@ renames, but far wider, since almost every spec asserts on a date or a time some
 
 **Out of scope:** the day-navigation `DatePicker` above the list, which deliberately stays fixed at `dddd D MMM YYYY` (see Trade-offs and decisions in the design) — it is a navigation aid whose weekday name is the useful part, not a record of when a meeting is.
 
-**Notes:** This case used to cover the grid's hour axis and its "Showing business hours" caption: time labels derived from a constant rather than a meeting, which the first implementation pass missed because the design's impact list came from grepping `formatLocalTime`/`formatLocalDate` call sites. The 2026-09-19 Room Availability redesign removed both, so the expanded meeting list is the only time display left on the page (mootmaker#103). The lesson stands: a time shown to a human is in scope however it was derived.
+**Notes:** The expanded meeting list is the only time display on the page. Any time shown to a human is in scope for the format setting, however it is derived, including labels computed from a constant rather than a meeting.

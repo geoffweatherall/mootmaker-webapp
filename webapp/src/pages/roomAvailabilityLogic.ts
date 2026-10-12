@@ -11,12 +11,11 @@ export function minutesSinceMidnight(isoLocalDateTime: string): number {
  * width - matches the prototype's own minimum. */
 const MIN_SEGMENT_WIDTH_PERCENT = 1.5
 
-/** The timeline bar's visible window. Originally the bar spanned the full 00:00-24:00 day - see
- * mootmaker-webapp#114 for why that was reversed: at the new demo-data generator's density, the
- * 00:00-08:00 and 18:00-24:00 stretches were empty dead space diluting the part of the bar that
- * carries information, and out-of-hours meetings are rare and low-contention enough that clipping
- * them is an acceptable trade (Geoff, 2026-09-22). A meeting that straddles an edge is clipped to
- * it rather than dropped; one entirely outside the window is dropped (see segmentsForRoom below). */
+/** The timeline bar's visible window, 08:00-18:00 (mootmaker-webapp#114). The hours outside it are
+ * nearly always empty and would dilute the part of the bar that carries information; out-of-hours
+ * meetings are rare and low-contention enough that clipping them is an acceptable trade. A meeting
+ * that straddles an edge is clipped to it rather than dropped; one entirely outside the window is
+ * dropped (see segmentsForRoom below). */
 const WINDOW_START_MINUTES = 8 * 60
 const WINDOW_END_MINUTES = 18 * 60
 const WINDOW_MINUTES = WINDOW_END_MINUTES - WINDOW_START_MINUTES

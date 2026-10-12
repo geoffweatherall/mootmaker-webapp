@@ -55,8 +55,8 @@ describe('DayInvalidations', () => {
     // Evicting the Day alone leaves each Meeting entity's own fields completely untouched -
     // wrong for one that's been cancelled: nothing else removes a Meeting entity, and Apollo's
     // automatic gc() does not reliably collect one with an active watcher (an open meeting detail
-    // sheet's own useFragment on that exact id always is one) - see designs/
-    // edit-and-cancel-meetings.md's Decision 10. Without this, a cancelled meeting an open sheet
+    // sheet's own useFragment on that exact id always is one) - see the edit-and-cancel-meetings
+    // design's Decision 10. Without this, a cancelled meeting an open sheet
     // is watching could stay "complete" in that sheet indefinitely.
     const cache = cacheHolding('2026-09-14', '2026-09-15')
     const invalidations = new DayInvalidations(cache)
@@ -192,8 +192,8 @@ describe('DayInvalidations', () => {
   })
 
   it('leaves a watched query COMPLETE but empty, which is why eviction alone cannot refill it', () => {
-    // Pins the Apollo behaviour the whole refetch step exists for, because it contradicts the
-    // design's "evict and the ordinary gap fetch refills it". The evicted Day leaves a dangling
+    // Pins the Apollo behaviour the whole refetch step exists for: eviction alone does not make
+    // the ordinary gap fetch refill the day. The evicted Day leaves a dangling
     // reference in workspace.days; Apollo filters those out of a list on read, so the query reads
     // back complete with one fewer day rather than incomplete. Nothing refetches, and the screen
     // shows "no meetings" forever.

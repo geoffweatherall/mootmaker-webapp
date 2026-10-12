@@ -17,16 +17,15 @@ import { MEETING_ERROR_MESSAGES } from '../graphql/validationMessages'
 import { ErrorBanner } from './ErrorBanner'
 
 /**
- * A hard delete - once confirmed, the meeting is gone, not marked cancelled (see
- * designs/edit-and-cancel-meetings.md's Decision 4). Mirrors SettingsPage.tsx's
+ * A hard delete - once confirmed, the meeting is gone, not marked cancelled (see the
+ * edit-and-cancel-meetings design's Decision 4). Mirrors SettingsPage.tsx's
  * `DeleteAccountSection` confirmation-dialog pattern: real friction (an explicit second step), no
  * re-authentication, warning copy that names the consequence before the destructive action fires.
  *
  * Deliberately a plain MUI `Dialog`, mounted alongside (never in place of) whatever opened it - a
  * `Dialog` is a portal that overlays with its own backdrop without unmounting the page underneath,
  * so the meeting's own details stay visible, dimmed, behind this while someone decides. That's a
- * requirement, not an implementation detail: see the design doc's Decision 5, caught as a real bug
- * in an earlier UI prototype that built the two states as mutually exclusive instead.
+ * requirement, not an implementation detail: see the design's Decision 5.
  */
 export function CancelMeetingDialog({
   open,

@@ -128,8 +128,8 @@ export class DayInvalidations {
     }
     // Also every Meeting on that date that no cached Day references. The pop-out meeting page
     // (MeetingDetailsPage) holds its meeting through MEETING_BY_ID alone, with no Day at all, so
-    // before this a broadcast for its date evicted nothing, triggered no refetch, and the page
-    // never changed however the meeting did (mootmaker-webapp#135). Evicting the entity puts it
+    // without this a broadcast for its date would evict nothing, trigger no refetch, and the page
+    // would never change however the meeting did (mootmaker-webapp#135). Evicting the entity puts it
     // through the same path as the sheet/panel: MeetingDetailContent sees it go incomplete and asks
     // the API what became of it.
     return this.evictMeetingsDated(date) || evicted
@@ -157,8 +157,8 @@ export class DayInvalidations {
    * every caller of `evict`) does not reliably collect an entity that still has an active
    * watcher - which an open `MeetingDetailContent`'s own `useFragment` on this exact id always
    * is. Without this, that sheet's `complete` flag could stay `true` indefinitely, watching an
-   * entity that no longer corresponds to anything (see designs/edit-and-cancel-meetings.md's
-   * Decision 10 - this is the fix that decision needed and gc() alone didn't reliably provide).
+   * entity that no longer corresponds to anything (see the edit-and-cancel-meetings design's
+   * Decision 10, which gc() alone does not reliably satisfy).
    *
    * Safe either way: a still-valid meeting is simply incomplete for the brief window until the
    * refetch this triggers lands and writes it fresh - the same transient every Day-level eviction
